@@ -24,6 +24,17 @@ class ACAPYContainer(BaseContainer):
         pass
 
 class DockerConfig(ContainerConfig):
+    def __init__(self):
+        """
+        Initialize the variables needed to generate a docker-compose and/or
+        Dockerfile configuration.
+        """
+        self.volumes = []
+        self.links = []
+        self.imageName = None
+        self.needsBuild = False
+        self.baseImage = "bcgovimages/aries-cloudagent:0.7.4"
+
     def generate(self):
         """Generates Dockerfile
 
@@ -32,6 +43,19 @@ class DockerConfig(ContainerConfig):
         pass
 
 class PoetryConfig(BaseContainerConfig):
+    def __init__(self):
+        """
+        Initialize the variables needed to generate a docker-compose and/or
+        Dockerfile configuration.
+        """
+        self.dependencies = []
+
+    def add_dependency(self, dep):
+        """
+        Add a dependency to the poetry requirements
+        """
+        self.dependencies.append(dep)
+
     def generate(self):
         """Generates pyproject.toml file"""
         pass
