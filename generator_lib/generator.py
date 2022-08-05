@@ -1,5 +1,7 @@
 from typing import List
 from abc import ABC, abstractmethod
+from jinja2 import Environment, PackageLoader, select_autoescape
+
 
 class BaseGenerator(ABC):
 
@@ -29,6 +31,7 @@ class DockerConfig(BaseContainerConfig):
         Initialize the variables needed to generate a docker-compose and/or
         Dockerfile configuration.
         """
+        self.templateName = "Dockerfile.template"
         self.volumes = []
         self.links = []
         self.imageName = None
@@ -36,17 +39,24 @@ class DockerConfig(BaseContainerConfig):
         self.baseImage = "bcgovimages/aries-cloudagent:0.7.4"
 
     def generate(self):
-        """Generates Dockerfile
-
-        TODO: needs to contain volume declaration
         """
-        pass
+        Generates Dockerfile
+        """
+        env = Environment(
+            loader=PackageLoader("yourapp"),  # TODO: update "yourapp"
+            autoescape=select_autoescape()
+        )
+        dockerfile_template = env.get_template(self.templateName)
+        dockerfile_template.render(config=self)
+
+    def set_name(self, imageName):
+        self.imageName = imageName
 
 class PoetryConfig(BaseContainerConfig):
     def __init__(self):
         """
-        Initialize the variables needed to generate a docker-compose and/or
-        Dockerfile configuration.
+        Initialize the variables needed to generate a
+        pyproject.toml file.
         """
         self.dependencies = []
 
