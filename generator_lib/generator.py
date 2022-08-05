@@ -1,9 +1,16 @@
 from typing import List
+from abc import ABC, abstractmethod
 
-class Container:
+class BaseGenerator:
+
+    @abstractmethod
+    def generate(self):
+        pass
+
+class Container(BaseGenerator):
     pass
 
-class ContainerConfig:
+class ContainerConfig(BaseGenerator):
     pass
 
 class ACAPYContainer(Container):
@@ -17,7 +24,7 @@ class PoetryConfig(ContainerConfig):
     def generate(self):
         pass
 
-class Generator:
+class Generator(BaseGenerator):
 
     def __init__(self):
         self.containers = list()
