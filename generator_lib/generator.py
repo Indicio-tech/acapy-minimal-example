@@ -23,7 +23,7 @@ class ACAPYContainer(BaseContainer):
         """
         pass
 
-class DockerConfig(ContainerConfig):
+class DockerConfig(BaseContainerConfig):
     def generate(self):
         """Generates Dockerfile
 
