@@ -1,8 +1,10 @@
 from typing import List
 from abc import ABC, abstractmethod
-from jinja2 import Environment, PackageLoader, select_autoescape
+from jinja2 import Environment, FileSystemLoader, select_autoescape
+import pathlib
+import os
 
-from . import jinja2_package
+SCRIPT_DIR = pathlib.Path(__file__).parent.resolve()
 
 
 class BaseGenerator(ABC):
@@ -52,11 +54,13 @@ class DockerConfig(BaseContainerConfig):
         Generates Dockerfile
         """
         env = Environment(
-            loader=PackageLoader("jinja2_package"),
+            loader=FileSystemLoader(
+                [os.path.join(SCRIPT_DIR, "jinja2_package/templates")]
+            ),
             autoescape=select_autoescape(),
         )
         dockerfile_template = env.get_template("templateDockerfile")
-        dockerfile_template.render(config=self)
+        return dockerfile_template.render(config=self)
 
     def set_name(self, imageName):
         self.imageName = imageName

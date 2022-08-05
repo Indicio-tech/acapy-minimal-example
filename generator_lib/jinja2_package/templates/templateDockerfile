@@ -1,0 +1,3 @@
+FROM {{ config.baseImage }}
+ADD pyproject.toml poetry.lock .
+RUN poetry install
