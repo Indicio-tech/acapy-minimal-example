@@ -16,12 +16,24 @@ class ContainerConfig(BaseGenerator):
 class ACAPYContainer(Container):
     def generate(self) -> List[tuple]:
         """
-        Returns: [(file name, file contents),]
+
+        Returns: [(file name, config class),]
+        - Example: [(Dockerfile, DockerConfig),]
+        - Example: [(pyproject.toml, PoetryConfig),]
+        """
+        pass
+
+class DockerConfig(ContainerConfig):
+    def generate(self):
+        """Generates Dockerfile
+
+        TODO: needs to contain volume declaration
         """
         pass
 
 class PoetryConfig(ContainerConfig):
     def generate(self):
+        """Generates pyproject.toml file"""
         pass
 
 class Generator(BaseGenerator):
