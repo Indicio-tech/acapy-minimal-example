@@ -1,9 +1,11 @@
+from typing import List
 
 class Container:
     pass
 
 class ACAPYContainer(Container):
-    pass
+    def generate(slef) -> List[tuple]:
+        pass
 
 
 class Generator:
