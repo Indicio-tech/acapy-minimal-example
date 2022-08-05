@@ -1,10 +1,7 @@
 version: "3"
 services:
   agent:
-    image: acapy-plugin-data-transfer
-    build:
-      context: ../
-      dockerfile: ./Dockerfile
+    image: bcgovimages/aries-cloudagent:py36-1.16-1_0.7.4
     ports:
       - "3001:3001"
     command: >

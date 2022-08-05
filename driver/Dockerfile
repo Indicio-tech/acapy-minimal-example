@@ -9,7 +9,7 @@ ENV PATH="/opt/poetry/bin:$PATH"
 RUN poetry config virtualenvs.in-project true
 
 # Setup project
-RUN touch driver.py
+RUN mkdir driver && touch driver/__init__.py
 COPY pyproject.toml poetry.lock ./
 ARG install_flags=--no-dev
 RUN poetry install ${install_flags}
@@ -17,6 +17,6 @@ RUN poetry install ${install_flags}
 COPY pyproject.toml poetry.lock ./
 RUN poetry install --no-dev
 
-COPY driver.py driver.py
+COPY driver/ driver/
 
 ENTRYPOINT ["/bin/sh", "-c", "poetry run python -m driver \"$@\"", "--"]
