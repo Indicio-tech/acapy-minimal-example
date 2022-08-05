@@ -4,18 +4,24 @@ from jinja2 import Environment, PackageLoader, select_autoescape
 
 
 class BaseGenerator(ABC):
-
     @abstractmethod
     def generate(self):
         pass
 
+
 class BaseContainer(BaseGenerator, ABC):
     pass
+
 
 class BaseContainerConfig(BaseGenerator, ABC):
     pass
 
+
 class ACAPYContainer(BaseContainer):
+    """
+    Contains information to setup a container running acapy
+    """
+
     def generate(self) -> List[tuple]:
         """
 
@@ -24,6 +30,7 @@ class ACAPYContainer(BaseContainer):
         - Example: [(pyproject.toml, PoetryConfig),]
         """
         pass
+
 
 class DockerConfig(BaseContainerConfig):
     def __init__(self):
@@ -44,13 +51,14 @@ class DockerConfig(BaseContainerConfig):
         """
         env = Environment(
             loader=PackageLoader("yourapp"),  # TODO: update "yourapp"
-            autoescape=select_autoescape()
+            autoescape=select_autoescape(),
         )
         dockerfile_template = env.get_template(self.templateName)
         dockerfile_template.render(config=self)
 
     def set_name(self, imageName):
         self.imageName = imageName
+
 
 class PoetryConfig(BaseContainerConfig):
     def __init__(self):
@@ -70,8 +78,8 @@ class PoetryConfig(BaseContainerConfig):
         """Generates pyproject.toml file"""
         pass
 
-class Generator(BaseGenerator):
 
+class Generator(BaseGenerator):
     def __init__(self):
         self.containers = list()
 
