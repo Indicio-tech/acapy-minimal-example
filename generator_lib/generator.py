@@ -23,7 +23,7 @@ class ACAPYContainer(BaseContainer):
         """
         pass
 
-class DockerConfig(ContainerConfig):
+class DockerConfig(BaseContainerConfig):
     def __init__(self):
         """
         Initialize the variables needed to generate a docker-compose and/or
