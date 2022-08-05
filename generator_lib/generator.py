@@ -2,6 +2,8 @@ from typing import List
 from abc import ABC, abstractmethod
 from jinja2 import Environment, PackageLoader, select_autoescape
 
+from . import jinja2_package
+
 
 class BaseGenerator(ABC):
     @abstractmethod
@@ -50,10 +52,10 @@ class DockerConfig(BaseContainerConfig):
         Generates Dockerfile
         """
         env = Environment(
-            loader=PackageLoader("yourapp"),  # TODO: update "yourapp"
+            loader=PackageLoader("jinja2_package"),
             autoescape=select_autoescape(),
         )
-        dockerfile_template = env.get_template(self.templateName)
+        dockerfile_template = env.get_template("templateDockerfile")
         dockerfile_template.render(config=self)
 
     def set_name(self, imageName):
