@@ -1,19 +1,19 @@
 from typing import List
 from abc import ABC, abstractmethod
 
-class BaseGenerator:
+class BaseGenerator(ABC):
 
     @abstractmethod
     def generate(self):
         pass
 
-class Container(BaseGenerator):
+class BaseContainer(BaseGenerator, ABC):
     pass
 
-class ContainerConfig(BaseGenerator):
+class BaseContainerConfig(BaseGenerator, ABC):
     pass
 
-class ACAPYContainer(Container):
+class ACAPYContainer(BaseContainer):
     def generate(self) -> List[tuple]:
         """
 
@@ -31,7 +31,7 @@ class DockerConfig(ContainerConfig):
         """
         pass
 
-class PoetryConfig(ContainerConfig):
+class PoetryConfig(BaseContainerConfig):
     def generate(self):
         """Generates pyproject.toml file"""
         pass
