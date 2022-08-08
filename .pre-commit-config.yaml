@@ -16,7 +16,8 @@ repos:
     hooks:
       - id: pylint
         name: pylint
-        entry: bash -c 'pylint || true'
+        # entry: bash -c 'pylint && true'
+        entry: pylint
         language: python
         types: [python]
   - repo: local

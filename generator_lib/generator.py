@@ -1,30 +1,65 @@
+"""
+Generator library
+"""
 from typing import List
 from abc import ABC, abstractmethod
-from jinja2 import Environment, FileSystemLoader, select_autoescape
 import pathlib
 import os
+
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 SCRIPT_DIR = pathlib.Path(__file__).parent.resolve()
 
 
 class BaseGenerator(ABC):
+    """
+    Base Generator class
+
+    All generator methods must provide the following method(s)
+    """
+
+    def __init__(self):
+        pass
+
     @abstractmethod
     def generate(self):
-        pass
+        """
+        Interface method used to generate something.
+
+        Typically returns something.
+        """
 
 
 class BaseContainer(BaseGenerator, ABC):
-    pass
+    """
+    BaseContainer
+
+    All container "types" (ACA-Py, Echo, Webhook Listener, and Postgress) must
+    inherit all methods contained herein. Also provides common setup for all
+    containers.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.docker_config = DockerConfig()
 
 
 class BaseContainerConfig(BaseGenerator, ABC):
-    pass
+    """
+    BaseContainerConfig
+
+    Common type used to distinguish config objects
+    """
 
 
 class ACAPYContainer(BaseContainer):
     """
     Contains information to setup a container running acapy
     """
+
+    def __init__(self):
+        super().__init__()
+        self.docker_config.template_name = "ACA-Py.Dockerfile.Templat"
 
     def generate(self) -> List[tuple]:
         """
@@ -33,21 +68,31 @@ class ACAPYContainer(BaseContainer):
         - Example: [(Dockerfile, DockerConfig),]
         - Example: [(pyproject.toml, PoetryConfig),]
         """
-        pass
+        return [
+            ("Dockerfile", self.docker_config),
+        ]
 
 
 class DockerConfig(BaseContainerConfig):
+    """
+    DockerConfig
+
+    The DockerConfig class contains all necessary information to create the
+    docker-compose AND Dockerfile contents for a particular container.
+    """
+
     def __init__(self):
         """
         Initialize the variables needed to generate a docker-compose and/or
         Dockerfile configuration.
         """
-        self.templateName = "Dockerfile.template"
+        super().__init__()
+        self.template_name = "Dockerfile.template"
         self.volumes = []
         self.links = []
-        self.imageName = None
-        self.needsBuild = False
-        self.baseImage = "bcgovimages/aries-cloudagent:0.7.4"
+        self.image_name = None
+        self.needs_build = False
+        self.base_image = "bcgovimages/aries-cloudagent:0.7.4"
 
     def generate(self):
         """
@@ -62,16 +107,27 @@ class DockerConfig(BaseContainerConfig):
         dockerfile_template = env.get_template("templateDockerfile")
         return dockerfile_template.render(config=self)
 
-    def set_name(self, imageName):
-        self.imageName = imageName
+    def set_name(self, image_name):
+        """
+        Set the name (and thus, image name) of the container
+        """
+        self.image_name = image_name
 
 
 class PoetryConfig(BaseContainerConfig):
+    """
+    PoetryConfig
+
+    The PoetryConfig class contains all necessary information to create the
+    setup poetry for a container.
+    """
+
     def __init__(self):
         """
         Initialize the variables needed to generate a
         pyproject.toml file.
         """
+        super().__init__()
         self.dependencies = []
 
     def add_dependency(self, dep):
@@ -82,15 +138,24 @@ class PoetryConfig(BaseContainerConfig):
 
     def generate(self):
         """Generates pyproject.toml file"""
-        pass
 
 
 class Generator(BaseGenerator):
+    """
+    Generator
+
+    The Generator class contains all necessary information to generate a
+    completely reproducable environment for recreating ACA-Py problems.
+    """
+
     def __init__(self):
-        self.containers = list()
+        super().__init__()
+        self.containers = []
 
     def create_acapy(self) -> ACAPYContainer:
-        """ """
+        """
+        Create an ACA-Py container object.
+        """
         acapy = ACAPYContainer()
         self.containers.append(acapy)
         return acapy
@@ -100,5 +165,9 @@ class Generator(BaseGenerator):
         list of containers
         """
         for container in self.containers:
-            pass
+            # docker = container.docker_config
+            # contents = docker.generate()
+            # with open("path/to/Dockerfile", "rw+") as f:
+            #     f.write(contents)
+            print(container)
         return "hi"
