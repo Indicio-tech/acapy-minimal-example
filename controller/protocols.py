@@ -19,7 +19,6 @@ async def connection(alice: Controller, bob: Controller):
         f"/connections/{invitation.connection_id}",
         response=ConnRecord,
     )
-    LOGGER.debug("Invitation serialized: %s", invitation.invitation.dict())
 
     bob_conn = await bob.post(
         "/connections/receive-invitation",

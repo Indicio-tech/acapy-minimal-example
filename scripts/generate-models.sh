@@ -23,4 +23,8 @@ ${CONTAINER_RUNTIME} run --rm -it -v "../:/usr/src/app:z" ${NAME} \
     --field-constraints \
     --use-schema-description \
     --enum-field-as-literal all \
-    --reuse-model
+    --reuse-model \
+    --snake-case-field \
+    --allow-population-by-field-name \
+    --aliases ./scripts/aliases.json \
+    $@
