@@ -18,7 +18,6 @@ from typing import (
     runtime_checkable,
 )
 from weakref import finalize
-from urllib.parse import urlsplit
 
 from aiohttp import ClientResponse, ClientSession
 from pydantic import BaseModel
