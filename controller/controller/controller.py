@@ -199,7 +199,7 @@ class Controller:
         *,
         params: Optional[Mapping[str, str]] = None,
         headers: Optional[Mapping[str, str]] = None,
-        as_type: None,
+        response: None,
     ) -> Mapping[str, Any]:
         ...
 
@@ -210,7 +210,7 @@ class Controller:
         *,
         params: Optional[Mapping[str, str]] = None,
         headers: Optional[Mapping[str, str]] = None,
-        as_type: Type[T],
+        response: Type[T],
     ) -> T:
         ...
 
@@ -220,13 +220,13 @@ class Controller:
         *,
         params: Optional[Mapping[str, str]] = None,
         headers: Optional[Mapping[str, str]] = None,
-        as_type: Optional[Type[T]] = None,
+        response: Optional[Type[T]] = None,
     ) -> Union[T, Mapping[str, Any]]:
         """HTTP Get."""
         async with ClientSession(base_url=self.base_url, headers=headers) as session:
             async with session.get(url, params=params) as resp:
                 body = await self._handle_response(resp)
-                return _deserialize(body, as_type)
+                return _deserialize(body, response)
 
     @overload
     async def post(
@@ -250,7 +250,7 @@ class Controller:
         json: Optional[Serializable] = None,
         params: Optional[Mapping[str, str]] = None,
         headers: Optional[Mapping[str, str]] = None,
-        as_type: None,
+        response: None,
     ) -> Mapping[str, Any]:
         """HTTP Post and return json."""
         ...
@@ -264,7 +264,7 @@ class Controller:
         json: Optional[Serializable] = None,
         params: Optional[Mapping[str, str]] = None,
         headers: Optional[Mapping[str, str]] = None,
-        as_type: Type[T],
+        response: Type[T],
     ) -> T:
         """HTTP Post and parse returned json as type T."""
         ...
@@ -277,11 +277,11 @@ class Controller:
         json: Optional[Serializable] = None,
         params: Optional[Mapping[str, str]] = None,
         headers: Optional[Mapping[str, str]] = None,
-        as_type: Optional[Type[T]] = None,
+        response: Optional[Type[T]] = None,
     ) -> Union[T, Mapping[str, Any]]:
         """HTTP POST."""
         async with ClientSession(base_url=self.base_url, headers=headers) as session:
             json_ = _serialize(json)
             async with session.post(url, data=data, json=json_, params=params) as resp:
                 body = await self._handle_response(resp, data=data, json=json_)
-                return _deserialize(body, as_type)
+                return _deserialize(body, response)

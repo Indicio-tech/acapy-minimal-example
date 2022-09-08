@@ -13,15 +13,14 @@ async def main():
     """Driver test."""
     agent = await Controller(base_url=BASE_URL).setup()
     print(await agent.get("/status/config"))
-    print(
-        await agent.post(
-            "/wallet/did/create",
-            json=DIDCreate(
-                method="sov", options=DIDCreateOptions(key_type="ed25519")
-            ),
-            as_type=DIDResult,
-        )
+    result = await agent.post(
+        "/wallet/did/create",
+        json=DIDCreate(
+            method="sov", options=DIDCreateOptions(key_type="ed25519")
+        ),
+        response=DIDResult,
     )
+    print(result.result.did)
 
 
 if __name__ == "__main__":
