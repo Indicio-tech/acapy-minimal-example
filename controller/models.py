@@ -1159,14 +1159,14 @@ class InvitationCreateRequest(BaseModel):
 
 
 class InvitationResult(BaseModel):
-    connection_id: Optional[str] = Field(
-        None,
+    connection_id: str = Field(
+        ...,
         description='Connection identifier',
         example='3fa85f64-5717-4562-b3fc-2c963f66afa6',
     )
-    invitation: Optional[ConnectionInvitation] = None
-    invitation_url: Optional[str] = Field(
-        None,
+    invitation: ConnectionInvitation
+    invitation_url: str = Field(
+        ...,
         description='Invitation URL',
         example='http://192.168.56.101:8020/invite?c_i=eyJAdHlwZSI6Li4ufQ==',
     )

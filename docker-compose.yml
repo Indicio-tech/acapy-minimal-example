@@ -1,15 +1,38 @@
 version: "3"
 services:
-  agent:
+  alice:
     image: bcgovimages/aries-cloudagent:py36-1.16-1_0.7.4
     ports:
       - "3001:3001"
     command: >
       start -it http 0.0.0.0 3000
+        --label Alice
         -ot http
-        -e http://agent:3000
+        -e http://alice:3000
         --admin 0.0.0.0 3001 --admin-insecure-mode
-        --plugin acapy_plugin_data_transfer
+        --no-ledger
+        --log-level debug
+        --webhook-url http://echo:3002/webhook
+    healthcheck:
+      test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3001/status/live" | grep "200" > /dev/null
+      start_period: 5s
+      interval: 1s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      echo:
+        condition: service_healthy
+
+  bob:
+    image: bcgovimages/aries-cloudagent:py36-1.16-1_0.7.4
+    ports:
+      - "3002:3001"
+    command: >
+      start -it http 0.0.0.0 3000
+        --label Bob
+        -ot http
+        -e http://bob:3000
+        --admin 0.0.0.0 3001 --admin-insecure-mode
         --no-ledger
         --log-level debug
         --webhook-url http://echo:3002/webhook
@@ -24,10 +47,9 @@ services:
         condition: service_healthy
 
   echo:
-    # Image with session support, replace with latest after merged
     image: ghcr.io/indicio-tech/echo-agent:0.1.2
     ports:
-      - "3002:3002"
+      - "3003:3002"
     command: --host 0.0.0.0 --port 3002 --log-level debug
     healthcheck:
       test: nc -z localhost 3002
@@ -36,19 +58,21 @@ services:
       timeout: 5s
       retries: 5
 
-  driver:
-    container_name: driver
+  controller:
+    container_name: controller
     build:
-      context: ./driver
-      dockerfile: ./Dockerfile
+      context: .
     environment:
-      - AGENT_ENDPOINT=http://agent:3001
+      - ALICE=http://alice:3001
+      - BOB=http://bob:3001
       - ECHO_ENDPOINT=http://echo:3002
     volumes:
-      - ./driver/driver.py:/usr/src/app/driver.py:z
+      - ./controller:/usr/src/app/controller:z
     depends_on:
       echo: 
         condition: service_healthy
-      agent: 
+      alice: 
+        condition: service_healthy
+      bob: 
         condition: service_healthy
 

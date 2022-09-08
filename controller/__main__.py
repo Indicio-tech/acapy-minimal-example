@@ -3,24 +3,19 @@ import asyncio
 from os import getenv
 
 from .controller import Controller
-from .models import DIDCreate, DIDCreateOptions, DIDResult
 from .logging import logging_to_stdout
+from .protocols import connection
 
-BASE_URL = getenv("AGENT_ENDPOINT", "http://localhost:3001")
+ALICE = getenv("ALICE", "http://alice:3001")
+BOB = getenv("BOB", "http://alice:3001")
 
 
 async def main():
     """Driver test."""
-    agent = await Controller(base_url=BASE_URL).setup()
-    print(await agent.get("/status/config"))
-    result = await agent.post(
-        "/wallet/did/create",
-        json=DIDCreate(
-            method="sov", options=DIDCreateOptions(key_type="ed25519")
-        ),
-        response=DIDResult,
-    )
-    print(result.result.did)
+    alice = await Controller(base_url=ALICE).setup()
+    bob = await Controller(base_url=BOB).setup()
+
+    print(await connection(alice, bob))
 
 
 if __name__ == "__main__":

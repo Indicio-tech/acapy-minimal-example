@@ -59,7 +59,7 @@ def _serialize(value: Serializable):
     if isinstance(value, Serde):
         return value.serialize()
     if isinstance(value, BaseModel):
-        return value.dict(by_alias=True, exclude_unset=True)
+        return value.dict(by_alias=True, exclude_unset=True, exclude_none=True)
     if is_dataclass(value):
         return asdict(value)
     raise TypeError(f"Could not serialize value {value}")
