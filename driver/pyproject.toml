@@ -1,13 +1,12 @@
 [tool.poetry]
-name = "driver"
+name = "controller"
 version = "0.1.0"
-description = "ACA-Py scenario driver"
+description = "ACA-Py Controller"
 authors = ["Daniel Bluhm <dbluhm@pm.me>"]
 license = "Apache-2.0"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-aries-cloudcontroller = {git = "https://github.com/Indicio-tech/aries-cloudcontroller-python.git", rev = "chore/update-0.7.4"}
 async-selective-queue = "^0.1.0"
 aiohttp = "^3.8.1"
 
