@@ -3,31 +3,28 @@ import asyncio
 from contextlib import asynccontextmanager, suppress
 import json
 import logging
-from typing import AsyncIterator, Generic, TypeVar
+from typing import Any, AsyncIterator, Mapping
 
 from aiohttp import ClientSession, WSMsgType
-from aries_cloudcontroller.acapy_client import AcaPyClient
 from async_selective_queue import AsyncSelectiveQueue as Queue
 from attr import dataclass
 
 LOGGER = logging.getLogger(__name__)
 
-T = TypeVar("T")
-
 
 @dataclass
-class Event(Generic[T]):
+class Event:
     """Event data class."""
 
     topic: str
-    payload: T
+    payload: Mapping[str, Any]
 
 
 @asynccontextmanager
-async def EventQueue(name: str, client: AcaPyClient) -> AsyncIterator[Queue[Event]]:
+async def EventQueue(name: str, url: str) -> AsyncIterator[Queue[Event]]:
     """Create event queue."""
     event_queue: Queue[Event] = Queue()
-    ws_task = asyncio.get_event_loop().create_task(ws(name, client, event_queue))
+    ws_task = asyncio.get_event_loop().create_task(ws(name, url, event_queue))
 
     yield event_queue
 
@@ -37,9 +34,9 @@ async def EventQueue(name: str, client: AcaPyClient) -> AsyncIterator[Queue[Even
     ws_task = None
 
 
-async def ws(name: str, client: AcaPyClient, queue: Queue[Event]):
+async def ws(name: str, url: str, queue: Queue[Event]):
     """WS Task."""
-    async with ClientSession(client.base_url) as session:
+    async with ClientSession(url) as session:
         async with session.ws_connect("/ws", timeout=30.0) as ws:
             try:
                 async for msg in ws:
@@ -48,7 +45,7 @@ async def ws(name: str, client: AcaPyClient, queue: Queue[Event]):
                         if data.get("topic") != "ping":
                             try:
                                 event = Event(**data)
-                                LOGGER.debug("%s: Event received: %s", name, event)
+                                LOGGER.debug("%s: %s", name, event)
                                 await queue.put(event)
                             except Exception:
                                 LOGGER.warning(

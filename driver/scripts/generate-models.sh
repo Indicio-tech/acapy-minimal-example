@@ -22,4 +22,5 @@ ${CONTAINER_RUNTIME} run --rm -it -v "../:/usr/src/app:z" ${NAME} \
     --output ./controller/models.py \
     --field-constraints \
     --use-schema-description \
+    --enum-field-as-literal all \
     --reuse-model
