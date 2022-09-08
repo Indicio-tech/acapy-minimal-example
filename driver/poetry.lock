@@ -49,6 +49,14 @@ reference = "chore/update-0.7.4"
 resolved_reference = "6e2a07fc91c48844062a51925a4ab4920ffdc87e"
 
 [[package]]
+name = "async-selective-queue"
+version = "0.1.0.post0"
+description = "Async queue with selective retrieval"
+category = "main"
+optional = false
+python-versions = ">=3.7,<4.0"
+
+[[package]]
 name = "async-timeout"
 version = "4.0.2"
 description = "Timeout context manager for asyncio programs"
@@ -523,12 +531,13 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10"
-content-hash = "f647c27fad836f61f8a0ba1f5b13888df2b71046732b72570599966e509530fd"
+content-hash = "ae209c4de115d58a47b3a51f94b51ccd0abcc0b0e5753a1089943da0691102c0"
 
 [metadata.files]
 aiohttp = []
 aiosignal = []
 aries-cloudcontroller = []
+async-selective-queue = []
 async-timeout = []
 atomicwrites = []
 attrs = []
