@@ -327,8 +327,8 @@ class ConnectionList(BaseModel):
     class Config:
         allow_population_by_field_name = True
 
-    results: Optional[List[ConnRecord]] = Field(
-        None, description='List of connection records'
+    results: List[ConnRecord] = Field(
+        ..., description='List of connection records'
     )
 
 
@@ -1403,14 +1403,14 @@ class InvitationResult(BaseModel):
     class Config:
         allow_population_by_field_name = True
 
-    connection_id: Optional[str] = Field(
-        None,
+    connection_id: str = Field(
+        ...,
         description='Connection identifier',
         example='3fa85f64-5717-4562-b3fc-2c963f66afa6',
     )
-    invitation: Optional[ConnectionInvitation] = None
-    invitation_url: Optional[str] = Field(
-        None,
+    invitation: ConnectionInvitation
+    invitation_url: str = Field(
+        ...,
         description='Invitation URL',
         example='http://192.168.56.101:8020/invite?c_i=eyJAdHlwZSI6Li4ufQ==',
     )
@@ -4370,25 +4370,25 @@ class InvitationMessage(BaseModel):
     class Config:
         allow_population_by_field_name = True
 
-    id: Optional[str] = Field(
-        None,
+    id: str = Field(
+        ...,
         alias='@id',
         description='Message identifier',
         example='3fa85f64-5717-4562-b3fc-2c963f66afa6',
     )
-    type: Optional[str] = Field(
-        None,
+    type: str = Field(
+        ...,
         alias='@type',
         description='Message type',
         example='https://didcomm.org/my-family/1.0/my-message-type',
     )
-    handshake_protocols: Optional[List[str]] = None
-    label: Optional[str] = Field(None, description='Optional label', example='Bob')
+    handshake_protocols: List[str]
+    label: str = Field(..., description='Optional label', example='Bob')
     requests_attach: Optional[List[AttachDecorator]] = Field(
         None, alias='requests~attach', description='Optional request attachment'
     )
-    services: Optional[List[Union[Dict[str, Any], str]]] = Field(
-        None,
+    services: List[Union[Dict[str, Any], str]] = Field(
+        ...,
         example=[
             {
                 'did': 'WgWxqztrNooG92RXvxSTWv',
@@ -4417,34 +4417,34 @@ class InvitationRecord(BaseModel):
         example='2021-12-31 23:59:59+00:00',
         regex='^\\d{4}-\\d\\d-\\d\\d[T ]\\d\\d:\\d\\d(?:\\:(?:\\d\\d(?:\\.\\d{1,6})?))?(?:[+-]\\d\\d:?\\d\\d|Z|)$',
     )
-    invi_msg_id: Optional[str] = Field(
-        None,
+    invi_msg_id: str = Field(
+        ...,
         description='Invitation message identifier',
         example='3fa85f64-5717-4562-b3fc-2c963f66afa6',
     )
-    invitation: Optional[InvitationMessage] = Field(
-        None, description='Out of band invitation message'
+    invitation: InvitationMessage = Field(
+        ..., description='Out of band invitation message'
     )
     invitation_id: Optional[str] = Field(
         None,
         description='Invitation record identifier',
         example='3fa85f64-5717-4562-b3fc-2c963f66afa6',
     )
-    invitation_url: Optional[str] = Field(
-        None,
+    invitation_url: str = Field(
+        ...,
         description='Invitation message URL',
         example='https://example.com/endpoint?c_i=eyJAdHlwZSI6ICIuLi4iLCAiLi4uIjogIi4uLiJ9XX0=',
     )
-    oob_id: Optional[str] = Field(
-        None,
+    oob_id: str = Field(
+        ...,
         description='Out of band record identifier',
         example='3fa85f64-5717-4562-b3fc-2c963f66afa6',
     )
-    state: Optional[str] = Field(
-        None, description='Out of band message exchange state', example='await_response'
+    state: str = Field(
+        ..., description='Out of band message exchange state', example='await_response'
     )
-    trace: Optional[bool] = Field(
-        None, description='Record trace information, based on agent configuration'
+    trace: bool = Field(
+        ..., description='Record trace information, based on agent configuration'
     )
     updated_at: Optional[str] = Field(
         None,

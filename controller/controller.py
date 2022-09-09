@@ -124,7 +124,7 @@ class Controller:
 
     async def setup(self) -> "Controller":
         """Set up the controller."""
-        event_queue_context = EventQueue(self.label, self.base_url)
+        event_queue_context = EventQueue(self)
         self._event_queue = await event_queue_context.__aenter__()
 
         # Close event queue when controller falls out of scope
@@ -154,7 +154,7 @@ class Controller:
                 "Request to %s %s %s: %s",
                 self.label,
                 resp.method,
-                resp.url.path + resp.url.query_string,
+                "?".join([resp.url.path, resp.url.query_string]),
                 data or dumps(json, sort_keys=True, indent=2),
             )
         else:
@@ -162,7 +162,7 @@ class Controller:
                 "Request to %s %s %s",
                 self.label,
                 resp.method,
-                resp.url.path + resp.url.query_string,
+                "?".join([resp.url.path, resp.url.query_string]),
             )
         resp.request_info
 
@@ -186,7 +186,7 @@ class Controller:
         self,
         url: str,
         *,
-        params: Optional[Mapping[str, str]] = None,
+        params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
     ) -> Mapping[str, Any]:
         ...
@@ -196,7 +196,7 @@ class Controller:
         self,
         url: str,
         *,
-        params: Optional[Mapping[str, str]] = None,
+        params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
         response: None,
     ) -> Mapping[str, Any]:
@@ -207,7 +207,7 @@ class Controller:
         self,
         url: str,
         *,
-        params: Optional[Mapping[str, str]] = None,
+        params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
         response: Type[T],
     ) -> T:
@@ -217,7 +217,7 @@ class Controller:
         self,
         url: str,
         *,
-        params: Optional[Mapping[str, str]] = None,
+        params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
         response: Optional[Type[T]] = None,
     ) -> Union[T, Mapping[str, Any]]:
@@ -234,7 +234,7 @@ class Controller:
         *,
         data: Optional[bytes] = None,
         json: Optional[Serializable] = None,
-        params: Optional[Mapping[str, str]] = None,
+        params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
     ) -> Mapping[str, Any]:
         """HTTP Post and return json."""
@@ -247,7 +247,7 @@ class Controller:
         *,
         data: Optional[bytes] = None,
         json: Optional[Serializable] = None,
-        params: Optional[Mapping[str, str]] = None,
+        params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
         response: None,
     ) -> Mapping[str, Any]:
@@ -261,7 +261,7 @@ class Controller:
         *,
         data: Optional[bytes] = None,
         json: Optional[Serializable] = None,
-        params: Optional[Mapping[str, str]] = None,
+        params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
         response: Type[T],
     ) -> T:
@@ -274,7 +274,7 @@ class Controller:
         *,
         data: Optional[bytes] = None,
         json: Optional[Serializable] = None,
-        params: Optional[Mapping[str, str]] = None,
+        params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
         response: Optional[Type[T]] = None,
     ) -> Union[T, Mapping[str, Any]]:
