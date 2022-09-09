@@ -5,6 +5,7 @@ import json
 import logging
 from typing import Any, Mapping, Optional
 
+<<<<<<< Updated upstream
 from .controller import Controller
 from .models import (
     ConnRecord,
@@ -16,6 +17,11 @@ from .models import (
     PingRequest,
     ReceiveInvitationRequest,
 )
+=======
+from .controller import Controller, ControllerError
+from .models import ConnRecord, InvitationResult, PingRequest, ReceiveInvitationRequest
+from .onboarding import get_onboarder
+>>>>>>> Stashed changes
 
 
 LOGGER = logging.getLogger(__name__)
@@ -213,3 +219,27 @@ async def didexchange(
         )
 
     return alice_conn, bob_conn
+
+
+async def indy_anoncred_onboard(agent: Controller):
+    genesis_url = await agent.get_genesis_url()
+    if not genesis_url:
+        raise ControllerError("No ledger configured on agent")
+
+    taa = await agent.fetch_taa()
+    if taa.taa_required is True and (
+        isinstance(taa.taa_accepted, (Unset)) or taa.taa_accepted is None
+    ):
+        assert isinstance(taa.taa_record, TAARecord)
+        await agent.accept_taa(
+            unwrap(taa.taa_record.text), unwrap(taa.taa_record.version)
+        )
+
+    public_did = await agent.get_public_did()
+    if not public_did:
+        public_did, verkey = await agent.create_did()
+        onboarder = get_onboarder(genesis_url)
+        if not onboarder:
+            raise ControllerError("Unrecognized ledger, cannot automatically onboard")
+        await onboarder.onboard(public_did, verkey)
+        await agent.set_public_did(public_did)
