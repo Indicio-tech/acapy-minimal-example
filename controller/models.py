@@ -3241,11 +3241,11 @@ class IndyCredPrecis(BaseModel):
     class Config:
         allow_population_by_field_name = True
 
-    cred_info: Optional[IndyCredInfo] = Field(None, description="Credential info")
+    cred_info: IndyCredInfo = Field(..., description="Credential info")
     interval: Optional[IndyNonRevocationInterval] = Field(
         None, description="Non-revocation interval from presentation request"
     )
-    presentation_referents: Optional[List[str]] = None
+    presentation_referents: List[str]
 
 
 class IndyGEProof(BaseModel):
@@ -4733,8 +4733,8 @@ class V10PresentationExchange(BaseModel):
     presentation: Optional[IndyProof] = Field(
         None, description="(Indy) presentation (also known as proof)"
     )
-    presentation_exchange_id: Optional[str] = Field(
-        None,
+    presentation_exchange_id: str = Field(
+        ...,
         description="Presentation exchange identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
     )
