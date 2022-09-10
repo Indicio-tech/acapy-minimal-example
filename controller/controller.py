@@ -16,11 +16,13 @@ from typing import (
     cast,
     overload,
     runtime_checkable,
+    get_origin,
 )
 from weakref import finalize
 
 from aiohttp import ClientResponse, ClientSession
-from pydantic import BaseModel
+from async_selective_queue import Select
+from pydantic import BaseModel, parse_obj_as
 
 from .events import Event, EventQueue, Queue
 
@@ -86,6 +88,8 @@ def _deserialize(
     """Deserialize value."""
     if as_type is None:
         return value
+    if get_origin(as_type) is not None:
+        return parse_obj_as(as_type, value)
     if issubclass(as_type, Mapping):
         return cast(T, value)
     if issubclass(as_type, BaseModel):
@@ -284,3 +288,88 @@ class Controller:
             async with session.post(url, data=data, json=json_, params=params) as resp:
                 body = await self._handle_response(resp, data=data, json=json_)
                 return _deserialize(body, response)
+
+    @overload
+    async def record(
+        self,
+        topic: str,
+        select: Optional[Select[Event]] = None,
+    ) -> Mapping[str, Any]:
+        ...
+
+    @overload
+    async def record(
+        self,
+        topic: str,
+        select: Optional[Select[Event]] = None,
+        *,
+        record_type: None,
+    ) -> Mapping[str, Any]:
+        ...
+
+    @overload
+    async def record(
+        self,
+        topic: str,
+        select: Optional[Select[Event]] = None,
+        *,
+        record_type: Type[T],
+    ) -> T:
+        ...
+
+    async def record(
+        self,
+        topic: str,
+        select: Optional[Select[Event]] = None,
+        *,
+        record_type: Optional[Type[T]] = None,
+    ) -> Union[T, Mapping[str, Any]]:
+        """Get a record from an event."""
+        event = await self.event_queue.get(
+            lambda event: event.topic == topic and (select(event) if select else True)
+        )
+        return _deserialize(event.payload, record_type)
+
+    @overload
+    async def record_with_values(
+        self,
+        topic: str,
+        *,
+        record_type: Type[T],
+        **values,
+    ) -> T:
+        ...
+
+    @overload
+    async def record_with_values(
+        self,
+        topic: str,
+        **values,
+    ) -> Mapping[str, Any]:
+        ...
+
+    @overload
+    async def record_with_values(
+        self,
+        topic: str,
+        *,
+        record_type: None,
+        **values,
+    ) -> Mapping[str, Any]:
+        ...
+
+    async def record_with_values(
+        self,
+        topic: str,
+        *,
+        record_type: Optional[Type[T]] = None,
+        **values,
+    ) -> Union[T, Mapping[str, Any]]:
+        """Get a record from an event with values matching those passed in."""
+        return await self.record(
+            topic,
+            select=lambda event: all(
+                [event.payload[key] == value for key, value in values.items()]
+            ),
+            record_type=record_type,
+        )
