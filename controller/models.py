@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
-from uuid import UUID
 
 from pydantic import BaseModel, Extra, Field
 from typing_extensions import Literal
@@ -169,8 +168,8 @@ class ConnRecord(BaseModel):
         description="Optional alias to apply to connection for later use",
         example="Bob, providing quotes",
     )
-    connection_id: Optional[str] = Field(
-        None,
+    connection_id: str = Field(
+        ...,
         description="Connection identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
     )
@@ -2399,6 +2398,7 @@ class V10CredentialConnFreeOfferRequest(BaseModel):
     trace: Optional[bool] = Field(
         None, description="Record trace information, based on agent configuration"
     )
+    connection_id: str = Field(..., description="Connection identifier")
 
 
 class V10CredentialCreate(BaseModel):
@@ -2459,7 +2459,7 @@ class V10CredentialFreeOfferRequest(BaseModel):
         description="Whether to remove the credential exchange record on completion (overrides --preserve-exchange-records configuration setting)",
     )
     comment: Optional[str] = Field(None, description="Human-readable comment")
-    connection_id: UUID = Field(
+    connection_id: str = Field(
         ...,
         description="Connection identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -2499,7 +2499,7 @@ class V10CredentialProposalRequestMand(BaseModel):
         description="Whether to remove the credential exchange record on completion (overrides --preserve-exchange-records configuration setting)",
     )
     comment: Optional[str] = Field(None, description="Human-readable comment")
-    connection_id: UUID = Field(
+    connection_id: str = Field(
         ...,
         description="Connection identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -2549,7 +2549,7 @@ class V10CredentialProposalRequestOpt(BaseModel):
         description="Whether to remove the credential exchange record on completion (overrides --preserve-exchange-records configuration setting)",
     )
     comment: Optional[str] = Field(None, description="Human-readable comment")
-    connection_id: UUID = Field(
+    connection_id: str = Field(
         ...,
         description="Connection identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -2614,7 +2614,7 @@ class V10PresentationProposalRequest(BaseModel):
         description="Whether to respond automatically to presentation requests, building and presenting requested proof",
     )
     comment: Optional[str] = Field(None, description="Human-readable comment")
-    connection_id: UUID = Field(
+    connection_id: str = Field(
         ...,
         description="Connection identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -3654,7 +3654,7 @@ class V10PresentationSendRequestRequest(BaseModel):
         example=False,
     )
     comment: Optional[str] = None
-    connection_id: UUID = Field(
+    connection_id: str = Field(
         ...,
         description="Connection identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -3721,7 +3721,7 @@ class V20CredOfferRequest(BaseModel):
         description="Whether to remove the credential exchange record on completion (overrides --preserve-exchange-records configuration setting)",
     )
     comment: Optional[str] = Field(None, description="Human-readable comment")
-    connection_id: UUID = Field(
+    connection_id: str = Field(
         ...,
         description="Connection identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -3744,7 +3744,7 @@ class V20CredRequestFree(BaseModel):
         description="Whether to remove the credential exchange record on completion (overrides --preserve-exchange-records configuration setting)",
     )
     comment: Optional[str] = Field(None, description="Human-readable comment")
-    connection_id: UUID = Field(
+    connection_id: str = Field(
         ...,
         description="Connection identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -4132,7 +4132,7 @@ class V20CredExFree(BaseModel):
         description="Whether to remove the credential exchange record on completion (overrides --preserve-exchange-records configuration setting)",
     )
     comment: Optional[str] = Field(None, description="Human-readable comment")
-    connection_id: UUID = Field(
+    connection_id: str = Field(
         ...,
         description="Connection identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -4970,7 +4970,7 @@ class V20PresProposalRequest(BaseModel):
         description="Whether to respond automatically to presentation requests, building and presenting requested proof",
     )
     comment: Optional[str] = Field(None, description="Human-readable comment")
-    connection_id: UUID = Field(
+    connection_id: str = Field(
         ...,
         description="Connection identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -5031,7 +5031,7 @@ class V20PresSendRequestRequest(BaseModel):
         example=False,
     )
     comment: Optional[str] = None
-    connection_id: UUID = Field(
+    connection_id: str = Field(
         ...,
         description="Connection identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -5092,8 +5092,8 @@ class V20CredExRecord(BaseModel):
         example="2021-12-31 23:59:59+00:00",
         regex="^\\d{4}-\\d\\d-\\d\\d[T ]\\d\\d:\\d\\d(?:\\:(?:\\d\\d(?:\\.\\d{1,6})?))?(?:[+-]\\d\\d:?\\d\\d|Z|)$",
     )
-    cred_ex_id: Optional[str] = Field(
-        None,
+    cred_ex_id: str = Field(
+        ...,
         description="Credential exchange identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
     )
