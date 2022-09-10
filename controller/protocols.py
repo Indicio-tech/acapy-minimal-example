@@ -3,25 +3,27 @@
 from dataclasses import dataclass
 import json
 import logging
-from typing import Any, Mapping, Optional
+from typing import Any, List, Mapping, Optional
 
-<<<<<<< Updated upstream
-from .controller import Controller
+from .controller import Controller, ControllerError
 from .models import (
+    AdminConfig,
     ConnRecord,
     ConnectionList,
+    DIDCreate,
+    DIDCreateOptions,
+    DIDResult,
     InvitationCreateRequest,
     InvitationMessage,
     InvitationRecord,
     InvitationResult,
     PingRequest,
     ReceiveInvitationRequest,
+    SchemaSendRequest,
+    TAAAccept,
+    TAAResult,
 )
-=======
-from .controller import Controller, ControllerError
-from .models import ConnRecord, InvitationResult, PingRequest, ReceiveInvitationRequest
 from .onboarding import get_onboarder
->>>>>>> Stashed changes
 
 
 LOGGER = logging.getLogger(__name__)
@@ -187,11 +189,15 @@ async def didexchange(
             f"/didexchange/{bob_oob_record.connection_id}/accept-invitation",
             response=ConnRecord,
         )
-        alice_oob_record = OOBRecord(**(await alice.event_queue.get(
-            lambda event: event.topic == "out_of_band"
-            and event.payload["connection_id"] == alice_conn.connection_id
-            and event.payload["state"] == "done"
-        )).payload)
+        alice_oob_record = OOBRecord(
+            **(
+                await alice.event_queue.get(
+                    lambda event: event.topic == "out_of_band"
+                    and event.payload["connection_id"] == alice_conn.connection_id
+                    and event.payload["state"] == "done"
+                )
+            ).payload
+        )
         alice_conn = await alice.post(
             f"/didexchange/{alice_oob_record.connection_id}/accept-request",
             response=ConnRecord,
@@ -222,24 +228,64 @@ async def didexchange(
 
 
 async def indy_anoncred_onboard(agent: Controller):
-    genesis_url = await agent.get_genesis_url()
+    """Onboard agent for indy anoncred operations."""
+
+    config = (await agent.get("/status/config", response=AdminConfig)).config
+    genesis_url = config.get("ledger.genesis_url")
+
     if not genesis_url:
         raise ControllerError("No ledger configured on agent")
 
-    taa = await agent.fetch_taa()
-    if taa.taa_required is True and (
-        isinstance(taa.taa_accepted, (Unset)) or taa.taa_accepted is None
-    ):
-        assert isinstance(taa.taa_record, TAARecord)
-        await agent.accept_taa(
-            unwrap(taa.taa_record.text), unwrap(taa.taa_record.version)
+    taa = (await agent.get("/ledger/taa", response=TAAResult)).result
+    if taa.taa_required is True and taa.taa_accepted is None:
+        assert taa.taa_record
+        await agent.post(
+            "/ledger/taa/accept",
+            json=TAAAccept(
+                mechanism="on_file",
+                text=taa.taa_record.text,
+                version=taa.taa_record.version,
+            ),
         )
 
-    public_did = await agent.get_public_did()
+    public_did = (await agent.get("/wallet/did/public", response=DIDResult)).result
     if not public_did:
-        public_did, verkey = await agent.create_did()
+        public_did = (
+            await agent.post(
+                "/wallet/did/create",
+                json=DIDCreate(
+                    method="sov", options=DIDCreateOptions(key_type="ed25519")
+                ),
+                response=DIDResult,
+            )
+        ).result
+        assert public_did
+
         onboarder = get_onboarder(genesis_url)
         if not onboarder:
             raise ControllerError("Unrecognized ledger, cannot automatically onboard")
-        await onboarder.onboard(public_did, verkey)
-        await agent.set_public_did(public_did)
+        await onboarder.onboard(public_did.did, public_did.verkey)
+
+        await agent.post("/wallet/did/public", params=_make_params(did=public_did.did))
+
+    return public_did
+
+
+async def indy_anoncred_credential_artifacts(
+    agent: Controller,
+    schema_name: str,
+    schema_version: str,
+    attributes: List[str],
+    cred_def_tag: Optional[str] = None,
+    support_revocation: bool = False,
+    revocation_registry_size: Optional[int] = None,
+):
+    """Prepare credential artifacts for indy anoncreds."""
+    await agent.post(
+        "/schemas",
+        json=SchemaSendRequest(
+            schema_name=schema_name,
+            schema_version=schema_version,
+            attributes=attributes,
+        ),
+    )

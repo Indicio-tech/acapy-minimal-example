@@ -1,7 +1,7 @@
 version: "3"
 services:
   alice:
-    image: bcgovimages/aries-cloudagent:py36-1.16-1_0.7.4
+    image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
     ports:
       - "3001:3001"
     command: >
@@ -10,9 +10,13 @@ services:
         -ot http
         -e http://alice:3000
         --admin 0.0.0.0 3001 --admin-insecure-mode
-        --no-ledger
         --log-level debug
         --webhook-url http://echo:3002/webhook
+        --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/master/genesis_files/pool_transactions_testnet_genesis
+        --wallet-type askar
+        --wallet-name alice
+        --wallet-key insecure
+        --auto-provision
     healthcheck:
       test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3001/status/live" | grep "200" > /dev/null
       start_period: 5s
@@ -24,7 +28,7 @@ services:
         condition: service_healthy
 
   bob:
-    image: bcgovimages/aries-cloudagent:py36-1.16-1_0.7.4
+    image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
     ports:
       - "3002:3001"
     command: >
@@ -33,9 +37,13 @@ services:
         -ot http
         -e http://bob:3000
         --admin 0.0.0.0 3001 --admin-insecure-mode
-        --no-ledger
         --log-level debug
         --webhook-url http://echo:3002/webhook
+        --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/master/genesis_files/pool_transactions_testnet_genesis
+        --wallet-type askar
+        --wallet-name bob
+        --wallet-key insecure
+        --auto-provision
     healthcheck:
       test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3001/status/live" | grep "200" > /dev/null
       start_period: 5s

@@ -151,10 +151,10 @@ class Controller:
     ) -> Mapping[str, Any]:
         if data or json:
             LOGGER.info(
-                "Request to %s %s %s: %s",
+                "Request to %s %s %s %s",
                 self.label,
                 resp.method,
-                "?".join([resp.url.path, resp.url.query_string]),
+                resp.url.path_qs,
                 data or dumps(json, sort_keys=True, indent=2),
             )
         else:
@@ -162,7 +162,7 @@ class Controller:
                 "Request to %s %s %s",
                 self.label,
                 resp.method,
-                "?".join([resp.url.path, resp.url.query_string]),
+                resp.url.path_qs,
             )
         resp.request_info
 
