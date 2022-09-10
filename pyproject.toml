@@ -1,3 +1,7 @@
+[tool.black]
+exclude = [
+    "controller/models.py"
+]
 [tool.poetry]
 name = "controller"
 version = "0.1.0"

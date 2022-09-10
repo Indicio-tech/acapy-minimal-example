@@ -32,7 +32,7 @@ class AdminConfig(BaseModel):
     class Config:
         allow_population_by_field_name = True
 
-    config: Optional[Dict[str, Any]] = Field(None, description='Configuration settings')
+    config: Dict[str, Any] = Field(..., description='Configuration settings')
 
 
 class AdminMediationDeny(BaseModel):
@@ -747,25 +747,25 @@ class DID(BaseModel):
     class Config:
         allow_population_by_field_name = True
 
-    did: Optional[str] = Field(
-        None,
+    did: str = Field(
+        ...,
         description='DID of interest',
         example='WgWxqztrNooG92RXvxSTWv',
         regex='^did:key:z[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$|^(did:sov:)?[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{21,22}$',
     )
-    key_type: Optional[Literal['ed25519', 'bls12381g2']] = Field(
-        None, description='Key type associated with the DID', example='ed25519'
+    key_type: Literal['ed25519', 'bls12381g2'] = Field(
+        ..., description='Key type associated with the DID', example='ed25519'
     )
-    method: Optional[Literal['sov', 'key']] = Field(
-        None, description='Did method associated with the DID', example='sov'
+    method: Literal['sov', 'key'] = Field(
+        ..., description='Did method associated with the DID', example='sov'
     )
-    posture: Optional[Literal['public', 'posted', 'wallet_only']] = Field(
-        None,
+    posture: Literal['public', 'posted', 'wallet_only'] = Field(
+        ...,
         description='Whether DID is current public DID, posted to ledger but not current public DID, or local to the wallet',
         example='wallet_only',
     )
-    verkey: Optional[str] = Field(
-        None,
+    verkey: str = Field(
+        ...,
         description='Public verification key',
         example='H3C2AVvLMv6gmMNam3uVAjZpfkcJCwDwnZn6z3wXmqPV',
         regex='^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{43,44}$',
@@ -3577,7 +3577,7 @@ class TAAResult(BaseModel):
     class Config:
         allow_population_by_field_name = True
 
-    result: Optional[TAAInfo] = None
+    result: TAAInfo
 
 
 class TransactionList(BaseModel):
