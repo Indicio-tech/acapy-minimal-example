@@ -11,6 +11,7 @@ from .protocols import (
     indy_anoncred_onboard,
     indy_issue_credential_v1,
     indy_issue_credential_v2,
+    indy_present_proof_v1,
 )
 
 ALICE = getenv("ALICE", "http://alice:3001")
@@ -47,6 +48,15 @@ async def main():
         {"firstname": "Bob", "lastname": "Builder"},
     )
     print(alice_cred_ex.json(by_alias=True, indent=2))
+
+    bob_pres_ex, alice_pres_ex = await indy_present_proof_v1(
+        bob,
+        alice,
+        bob_conn.connection_id,
+        alice_conn.connection_id,
+        requested_attributes=[{"name": "firstname"}],
+    )
+    print(alice_pres_ex.json(by_alias=True, indent=2))
 
 
 if __name__ == "__main__":

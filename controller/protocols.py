@@ -3,9 +3,9 @@
 from dataclasses import dataclass
 import json
 import logging
-import random
-import string
 from typing import Any, List, Mapping, Optional, Tuple
+from uuid import uuid4
+from secrets import token_hex, randbelow
 
 from .controller import Controller, ControllerError
 from .models import (
@@ -19,6 +19,12 @@ from .models import (
     DIDCreate,
     DIDCreateOptions,
     DIDResult,
+    IndyCredPrecis,
+    IndyPresSpec,
+    IndyProofReqAttrSpec,
+    IndyProofReqPredSpec,
+    IndyProofRequest,
+    IndyProofRequestNonRevoked,
     InvitationCreateRequest,
     InvitationMessage,
     InvitationRecord,
@@ -31,6 +37,8 @@ from .models import (
     TAAResult,
     V10CredentialConnFreeOfferRequest,
     V10CredentialExchange,
+    V10PresentationExchange,
+    V10PresentationSendRequestRequest,
     V20CredExRecord,
     V20CredExRecordDetail,
     V20CredFilter,
@@ -42,13 +50,6 @@ from .onboarding import get_onboarder
 
 
 LOGGER = logging.getLogger(__name__)
-
-
-def random_string(size: int):
-    """Generate a random string."""
-    return "".join(
-        random.choice(string.ascii_letters + string.digits) for _ in range(size)
-    )
 
 
 def _serialize_param(value: Any):
@@ -90,10 +91,10 @@ async def connection(alice: Controller, bob: Controller):
         f"/connections/{bob_conn.connection_id}/accept-invitation",
     )
 
-    await alice.event_queue.get(
-        lambda event: event.topic == "connections"
-        and event.payload["connection_id"] == alice_conn.connection_id
-        and event.payload["rfc23_state"] == "request-received"
+    await alice.record_with_values(
+        topic="connections",
+        connection_id=alice_conn.connection_id,
+        rfc23_state="request-received",
     )
 
     alice_conn = await alice.post(
@@ -101,28 +102,28 @@ async def connection(alice: Controller, bob: Controller):
         response=ConnRecord,
     )
 
-    await bob.event_queue.get(
-        lambda event: event.topic == "connections"
-        and event.payload["connection_id"] == bob_conn.connection_id
-        and event.payload["rfc23_state"] == "response-received"
+    await bob.record_with_values(
+        topic="connections",
+        connection_id=bob_conn.connection_id,
+        rfc23_state="response-received",
     )
     await bob.post(
         f"/connections/{bob_conn.connection_id}/send-ping",
         json=PingRequest(comment="Making connection active"),
     )
 
-    event = await alice.event_queue.get(
-        lambda event: event.topic == "connections"
-        and event.payload["connection_id"] == alice_conn.connection_id
-        and event.payload["rfc23_state"] == "completed"
+    alice_conn = await alice.record_with_values(
+        topic="connections",
+        record_type=ConnRecord,
+        connection_id=alice_conn.connection_id,
+        rfc23_state="completed",
     )
-    alice_conn = ConnRecord.parse_obj(event.payload)
-    event = await bob.event_queue.get(
-        lambda event: event.topic == "connections"
-        and event.payload["connection_id"] == bob_conn.connection_id
-        and event.payload["rfc23_state"] == "completed"
+    bob_conn = await bob.record_with_values(
+        topic="connections",
+        record_type=ConnRecord,
+        connection_id=bob_conn.connection_id,
+        rfc23_state="completed",
     )
-    bob_conn = ConnRecord.parse_obj(event.payload)
 
     return alice_conn, bob_conn
 
@@ -188,13 +189,10 @@ async def didexchange(
     )
 
     if use_existing_connection and bob_oob_record == "reuse-accepted":
-        alice_oob_record = OOBRecord(
-            **(
-                await alice.event_queue.get(
-                    lambda event: event.topic == "out_of_band"
-                    and event.payload["invi_msg_id"] == invite.id
-                )
-            ).payload
+        alice_oob_record = await alice.record_with_values(
+            topic="out_of_band",
+            record_type=OOBRecord,
+            invi_msg_id=invite.id,
         )
         alice_conn = await alice.get(
             f"/connections/{alice_oob_record.connection_id}",
@@ -211,34 +209,31 @@ async def didexchange(
             f"/didexchange/{bob_oob_record.connection_id}/accept-invitation",
             response=ConnRecord,
         )
-        alice_oob_record = OOBRecord(
-            **(
-                await alice.event_queue.get(
-                    lambda event: event.topic == "out_of_band"
-                    and event.payload["connection_id"] == alice_conn.connection_id
-                    and event.payload["state"] == "done"
-                )
-            ).payload
+        alice_oob_record = await alice.record_with_values(
+            topic="out_of_band",
+            record_type=OOBRecord,
+            connection_id=alice_conn.connection_id,
+            state="done",
         )
         alice_conn = await alice.post(
             f"/didexchange/{alice_oob_record.connection_id}/accept-request",
             response=ConnRecord,
         )
 
-        await bob.event_queue.get(
-            lambda event: event.topic == "connections"
-            and event.payload["connection_id"] == bob_conn.connection_id
-            and event.payload["rfc23_state"] == "response-received"
+        await bob.record_with_values(
+            topic="connections",
+            connection_id=bob_conn.connection_id,
+            rfc23_state="response-received",
         )
-        await bob.event_queue.get(
-            lambda event: event.topic == "connections"
-            and event.payload["connection_id"] == bob_conn.connection_id
-            and event.payload["rfc23_state"] == "completed"
+        await bob.record_with_values(
+            topic="connections",
+            connection_id=bob_conn.connection_id,
+            rfc23_state="completed",
         )
-        await alice.event_queue.get(
-            lambda event: event.topic == "connections"
-            and event.payload["connection_id"] == alice_conn.connection_id
-            and event.payload["rfc23_state"] == "completed"
+        await alice.record_with_values(
+            topic="connections",
+            connection_id=alice_conn.connection_id,
+            rfc23_state="completed",
         )
     else:
         bob_conn = await bob.get(
@@ -306,7 +301,7 @@ async def indy_anoncred_credential_artifacts(
     schema = await agent.post(
         "/schemas",
         json=SchemaSendRequest(
-            schema_name=schema_name or "minimal-" + random_string(8),
+            schema_name=schema_name or "minimal-" + token_hex(8),
             schema_version=schema_version or "1.0",
             attributes=attributes,
         ),
@@ -319,7 +314,7 @@ async def indy_anoncred_credential_artifacts(
             revocation_registry_size=revocation_registry_size,
             schema_id=schema.schema_id,
             support_revocation=support_revocation,
-            tag=cred_def_tag or random_string(8),
+            tag=cred_def_tag or token_hex(8),
         ),
         response=CredentialDefinitionSendResult,
     )
@@ -362,12 +357,12 @@ async def indy_issue_credential_v1(
     )
     issuer_cred_ex_id = issuer_cred_ex.credential_exchange_id
 
-    event = await holder.event_queue.get(
-        lambda event: event.topic == "issue_credential"
-        and event.payload["connection_id"] == holder_connection_id
-        and event.payload["state"] == "offer_received"
+    holder_cred_ex = await holder.record_with_values(
+        topic="issue_credential",
+        record_type=V10CredentialExchange,
+        connection_id=holder_connection_id,
+        state="offer_received",
     )
-    holder_cred_ex = V10CredentialExchange.parse_obj(event.payload)
     holder_cred_ex_id = holder_cred_ex.credential_exchange_id
 
     holder_cred_ex = await holder.post(
@@ -375,10 +370,10 @@ async def indy_issue_credential_v1(
         response=V10CredentialExchange,
     )
 
-    event = await issuer.event_queue.get(
-        lambda event: event.topic == "issue_credential"
-        and event.payload["credential_exchange_id"] == issuer_cred_ex_id
-        and event.payload["state"] == "request_received"
+    await issuer.record_with_values(
+        topic="issue_credential",
+        credential_exchange_id=issuer_cred_ex_id,
+        state="request_received",
     )
 
     issuer_cred_ex = await issuer.post(
@@ -387,10 +382,10 @@ async def indy_issue_credential_v1(
         response=V10CredentialExchange,
     )
 
-    event = await holder.event_queue.get(
-        lambda event: event.topic == "issue_credential"
-        and event.payload["credential_exchange_id"] == holder_cred_ex_id
-        and event.payload["state"] == "credential_received"
+    await holder.record_with_values(
+        topic="issue_credential",
+        credential_exchange_id=holder_cred_ex_id,
+        state="credential_received",
     )
 
     holder_cred_ex = await holder.post(
@@ -398,19 +393,19 @@ async def indy_issue_credential_v1(
         json={},
         response=V10CredentialExchange,
     )
-    event = await issuer.event_queue.get(
-        lambda event: event.topic == "issue_credential"
-        and event.payload["credential_exchange_id"] == issuer_cred_ex_id
-        and event.payload["state"] == "credential_acked"
+    issuer_cred_ex = await issuer.record_with_values(
+        topic="issue_credential",
+        record_type=V10CredentialExchange,
+        credential_exchange_id=issuer_cred_ex_id,
+        state="credential_acked",
     )
-    issuer_cred_ex = V10CredentialExchange.parse_obj(event.payload)
 
-    event = await holder.event_queue.get(
-        lambda event: event.topic == "issue_credential"
-        and event.payload["credential_exchange_id"] == holder_cred_ex_id
-        and event.payload["state"] == "credential_acked"
+    holder_cred_ex = await holder.record_with_values(
+        topic="issue_credential",
+        record_type=V10CredentialExchange,
+        credential_exchange_id=holder_cred_ex_id,
+        state="credential_acked",
     )
-    holder_cred_ex = V10CredentialExchange.parse_obj(event.payload)
 
     return issuer_cred_ex, holder_cred_ex
 
@@ -455,12 +450,12 @@ async def indy_issue_credential_v2(
     )
     issuer_cred_ex_id = issuer_cred_ex.cred_ex_id
 
-    event = await holder.event_queue.get(
-        lambda event: event.topic == "issue_credential_v2_0"
-        and event.payload["connection_id"] == holder_connection_id
-        and event.payload["state"] == "offer-received"
+    holder_cred_ex = await holder.record_with_values(
+        topic="issue_credential_v2_0",
+        record_type=V20CredExRecord,
+        connection_id=holder_connection_id,
+        state="offer-received",
     )
-    holder_cred_ex = V20CredExRecord.parse_obj(event.payload)
     holder_cred_ex_id = holder_cred_ex.cred_ex_id
 
     holder_cred_ex = await holder.post(
@@ -468,10 +463,10 @@ async def indy_issue_credential_v2(
         response=V20CredExRecord,
     )
 
-    event = await issuer.event_queue.get(
-        lambda event: event.topic == "issue_credential_v2_0"
-        and event.payload["cred_ex_id"] == issuer_cred_ex_id
-        and event.payload["state"] == "request-received"
+    await issuer.record_with_values(
+        topic="issue_credential_v2_0",
+        cred_ex_id=issuer_cred_ex_id,
+        state="request-received",
     )
 
     issuer_cred_ex = await issuer.post(
@@ -480,10 +475,10 @@ async def indy_issue_credential_v2(
         response=V20CredExRecordDetail,
     )
 
-    event = await holder.event_queue.get(
-        lambda event: event.topic == "issue_credential_v2_0"
-        and event.payload["cred_ex_id"] == holder_cred_ex_id
-        and event.payload["state"] == "credential-received"
+    await holder.record_with_values(
+        topic="issue_credential_v2_0",
+        cred_ex_id=holder_cred_ex_id,
+        state="credential-received",
     )
 
     holder_cred_ex = await holder.post(
@@ -491,18 +486,139 @@ async def indy_issue_credential_v2(
         json={},
         response=V20CredExRecordDetail,
     )
-    event = await issuer.event_queue.get(
-        lambda event: event.topic == "issue_credential_v2_0"
-        and event.payload["cred_ex_id"] == issuer_cred_ex_id
-        and event.payload["state"] == "done"
+    issuer_cred_ex = await issuer.record_with_values(
+        topic="issue_credential_v2_0",
+        record_type=V20CredExRecord,
+        cred_ex_id=issuer_cred_ex_id,
+        state="done",
     )
-    issuer_cred_ex = V20CredExRecord.parse_obj(event.payload)
 
-    event = await holder.event_queue.get(
-        lambda event: event.topic == "issue_credential_v2_0"
-        and event.payload["cred_ex_id"] == holder_cred_ex_id
-        and event.payload["state"] == "done"
+    holder_cred_ex = await holder.record_with_values(
+        topic="issue_credential_v2_0",
+        record_type=V20CredExRecord,
+        cred_ex_id=holder_cred_ex_id,
+        state="done",
     )
-    holder_cred_ex = V20CredExRecord.parse_obj(event.payload)
 
     return issuer_cred_ex, holder_cred_ex
+
+
+def indy_auto_select_credentials_for_presentation_request(
+    presentation_request: IndyProofRequest, relevant_creds: List[IndyCredPrecis]
+) -> IndyPresSpec:
+    """Select credentials to use for presentation automatically."""
+    requested_attributes = {}
+    for pres_referrent in presentation_request.requested_attributes.keys():
+        for cred_precis in relevant_creds:
+            if pres_referrent in cred_precis.presentation_referents:
+                requested_attributes[pres_referrent] = {
+                    "cred_id": cred_precis.cred_info.referent,
+                    "revealed": True,
+                }
+    requested_predicates = {}
+    for pres_referrent in presentation_request.requested_predicates.keys():
+        for cred_precis in relevant_creds:
+            if pres_referrent in cred_precis.presentation_referents:
+                requested_predicates[pres_referrent] = {
+                    "cred_id": cred_precis.cred_info.referent,
+                }
+
+    return IndyPresSpec.parse_obj(
+        {
+            "requested_attributes": requested_attributes,
+            "requested_predicates": requested_predicates,
+            "self_attested_attributes": {},
+        }
+    )
+
+
+async def indy_present_proof_v1(
+    holder: Controller,
+    verifier: Controller,
+    holder_connection_id: str,
+    verifier_connection_id: str,
+    *,
+    name: Optional[str] = None,
+    version: Optional[str] = None,
+    comment: Optional[str] = None,
+    requested_attributes: Optional[List[Mapping[str, Any]]] = None,
+    requested_predicates: Optional[List[Mapping[str, Any]]] = None,
+    non_revoked: Optional[Mapping[str, int]] = None,
+):
+    """Present an Indy credential using present proof v1."""
+    verifier_pres_ex = await verifier.post(
+        "/present-proof/send-request",
+        json=V10PresentationSendRequestRequest(
+            auto_verify=False,
+            comment=comment or "Presentation request from minimal",
+            connection_id=verifier_connection_id,
+            proof_request=IndyProofRequest(
+                name=name or "proof",
+                version=version or "0.1.0",
+                nonce=str(randbelow(10**10)),
+                requested_attributes={
+                    str(uuid4()): IndyProofReqAttrSpec.parse_obj(attr)
+                    for attr in requested_attributes or []
+                },
+                requested_predicates={
+                    str(uuid4()): IndyProofReqPredSpec.parse_obj(pred)
+                    for pred in requested_predicates or []
+                },
+                non_revoked=IndyProofRequestNonRevoked.parse_obj(non_revoked)
+                if non_revoked
+                else None,
+            ),
+            trace=False,
+        ),
+        response=V10PresentationExchange,
+    )
+    verifier_pres_ex_id = verifier_pres_ex.presentation_exchange_id
+
+    holder_pres_ex = await holder.record_with_values(
+        topic="present_proof",
+        record_type=V10PresentationExchange,
+        connection_id=holder_connection_id,
+        state="request_received",
+    )
+    assert holder_pres_ex.presentation_request
+    holder_pres_ex_id = holder_pres_ex.presentation_exchange_id
+
+    relevant_creds = await holder.get(
+        f"/present-proof/records/{holder_pres_ex_id}/credentials",
+        response=List[IndyCredPrecis],
+    )
+    pres_spec = indy_auto_select_credentials_for_presentation_request(
+        holder_pres_ex.presentation_request, relevant_creds
+    )
+    holder_pres_ex = await holder.post(
+        f"/present-proof/records/{holder_pres_ex_id}/send-presentation",
+        json=pres_spec,
+        response=V10PresentationExchange,
+    )
+
+    await verifier.record_with_values(
+        topic="present_proof",
+        record_type=V10PresentationExchange,
+        presentation_exchange_id=verifier_pres_ex_id,
+        state="presentation_received",
+    )
+    verifier_pres_ex = await verifier.post(
+        f"/present-proof/records/{verifier_pres_ex_id}/verify-presentation",
+        json={},
+        response=V10PresentationExchange,
+    )
+    verifier_pres_ex = await verifier.record_with_values(
+        topic="present_proof",
+        record_type=V10PresentationExchange,
+        presentation_exchange_id=verifier_pres_ex_id,
+        state="verified",
+    )
+
+    holder_pres_ex = await holder.record_with_values(
+        topic="present_proof",
+        record_type=V10PresentationExchange,
+        presentation_exchange_id=holder_pres_ex_id,
+        state="presentation_acked",
+    )
+
+    return holder_pres_ex, verifier_pres_ex
