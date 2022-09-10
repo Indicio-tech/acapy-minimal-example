@@ -3,13 +3,19 @@
 from dataclasses import dataclass
 import json
 import logging
-from typing import Any, List, Mapping, Optional
+import random
+import string
+from typing import Any, List, Mapping, Optional, Tuple
 
 from .controller import Controller, ControllerError
 from .models import (
     AdminConfig,
     ConnRecord,
     ConnectionList,
+    CredAttrSpec,
+    CredentialDefinitionSendRequest,
+    CredentialDefinitionSendResult,
+    CredentialPreview,
     DIDCreate,
     DIDCreateOptions,
     DIDResult,
@@ -20,13 +26,29 @@ from .models import (
     PingRequest,
     ReceiveInvitationRequest,
     SchemaSendRequest,
+    SchemaSendResult,
     TAAAccept,
     TAAResult,
+    V10CredentialConnFreeOfferRequest,
+    V10CredentialExchange,
+    V20CredExRecord,
+    V20CredExRecordDetail,
+    V20CredFilter,
+    V20CredFilterIndy,
+    V20CredOfferRequest,
+    V20CredPreview,
 )
 from .onboarding import get_onboarder
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+def random_string(size: int):
+    """Generate a random string."""
+    return "".join(
+        random.choice(string.ascii_letters + string.digits) for _ in range(size)
+    )
 
 
 def _serialize_param(value: Any):
@@ -273,19 +295,214 @@ async def indy_anoncred_onboard(agent: Controller):
 
 async def indy_anoncred_credential_artifacts(
     agent: Controller,
-    schema_name: str,
-    schema_version: str,
     attributes: List[str],
+    schema_name: Optional[str] = None,
+    schema_version: Optional[str] = None,
     cred_def_tag: Optional[str] = None,
     support_revocation: bool = False,
     revocation_registry_size: Optional[int] = None,
 ):
     """Prepare credential artifacts for indy anoncreds."""
-    await agent.post(
+    schema = await agent.post(
         "/schemas",
         json=SchemaSendRequest(
-            schema_name=schema_name,
-            schema_version=schema_version,
+            schema_name=schema_name or "minimal-" + random_string(8),
+            schema_version=schema_version or "1.0",
             attributes=attributes,
         ),
+        response=SchemaSendResult,
     )
+
+    cred_def = await agent.post(
+        "/credential-definitions",
+        json=CredentialDefinitionSendRequest(
+            revocation_registry_size=revocation_registry_size,
+            schema_id=schema.schema_id,
+            support_revocation=support_revocation,
+            tag=cred_def_tag or random_string(8),
+        ),
+        response=CredentialDefinitionSendResult,
+    )
+
+    return schema, cred_def
+
+
+async def indy_issue_credential_v1(
+    issuer: Controller,
+    holder: Controller,
+    issuer_connection_id: str,
+    holder_connection_id: str,
+    cred_def_id: str,
+    attributes: Mapping[str, str],
+) -> Tuple[V10CredentialExchange, V10CredentialExchange]:
+    """Issue an indy credential using issue-credential/1.0.
+
+    Issuer and holder should already be connected.
+    """
+    issuer_cred_ex = await issuer.post(
+        "/issue-credential/send-offer",
+        json=V10CredentialConnFreeOfferRequest(
+            auto_issue=False,
+            auto_remove=False,
+            comment="Credential from minimal example",
+            trace=False,
+            connection_id=issuer_connection_id,
+            cred_def_id=cred_def_id,
+            credential_preview=CredentialPreview(
+                type="issue-credential/1.0/credential-preview",  # pyright: ignore
+                attributes=[
+                    CredAttrSpec(
+                        mime_type=None, name=name, value=value  # pyright: ignore
+                    )
+                    for name, value in attributes.items()
+                ],
+            ),
+        ),
+        response=V10CredentialExchange,
+    )
+    issuer_cred_ex_id = issuer_cred_ex.credential_exchange_id
+
+    event = await holder.event_queue.get(
+        lambda event: event.topic == "issue_credential"
+        and event.payload["connection_id"] == holder_connection_id
+        and event.payload["state"] == "offer_received"
+    )
+    holder_cred_ex = V10CredentialExchange.parse_obj(event.payload)
+    holder_cred_ex_id = holder_cred_ex.credential_exchange_id
+
+    holder_cred_ex = await holder.post(
+        f"/issue-credential/records/{holder_cred_ex_id}/send-request",
+        response=V10CredentialExchange,
+    )
+
+    event = await issuer.event_queue.get(
+        lambda event: event.topic == "issue_credential"
+        and event.payload["credential_exchange_id"] == issuer_cred_ex_id
+        and event.payload["state"] == "request_received"
+    )
+
+    issuer_cred_ex = await issuer.post(
+        f"/issue-credential/records/{issuer_cred_ex_id}/issue",
+        json={},
+        response=V10CredentialExchange,
+    )
+
+    event = await holder.event_queue.get(
+        lambda event: event.topic == "issue_credential"
+        and event.payload["credential_exchange_id"] == holder_cred_ex_id
+        and event.payload["state"] == "credential_received"
+    )
+
+    holder_cred_ex = await holder.post(
+        f"/issue-credential/records/{holder_cred_ex_id}/store",
+        json={},
+        response=V10CredentialExchange,
+    )
+    event = await issuer.event_queue.get(
+        lambda event: event.topic == "issue_credential"
+        and event.payload["credential_exchange_id"] == issuer_cred_ex_id
+        and event.payload["state"] == "credential_acked"
+    )
+    issuer_cred_ex = V10CredentialExchange.parse_obj(event.payload)
+
+    event = await holder.event_queue.get(
+        lambda event: event.topic == "issue_credential"
+        and event.payload["credential_exchange_id"] == holder_cred_ex_id
+        and event.payload["state"] == "credential_acked"
+    )
+    holder_cred_ex = V10CredentialExchange.parse_obj(event.payload)
+
+    return issuer_cred_ex, holder_cred_ex
+
+
+async def indy_issue_credential_v2(
+    issuer: Controller,
+    holder: Controller,
+    issuer_connection_id: str,
+    holder_connection_id: str,
+    cred_def_id: str,
+    attributes: Mapping[str, str],
+) -> Tuple[V20CredExRecord, V20CredExRecord]:
+    """Issue an indy credential using issue-credential/2.0.
+
+    Issuer and holder should already be connected.
+    """
+
+    issuer_cred_ex = await issuer.post(
+        "/issue-credential-2.0/send-offer",
+        json=V20CredOfferRequest(
+            auto_issue=False,
+            auto_remove=False,
+            comment="Credential from minimal example",
+            trace=False,
+            connection_id=issuer_connection_id,
+            filter=V20CredFilter(  # pyright: ignore
+                indy=V20CredFilterIndy(  # pyright: ignore
+                    cred_def_id=cred_def_id,
+                )
+            ),
+            credential_preview=V20CredPreview(
+                type="issue-credential-2.0/2.0/credential-preview",  # pyright: ignore
+                attributes=[
+                    CredAttrSpec(
+                        mime_type=None, name=name, value=value  # pyright: ignore
+                    )
+                    for name, value in attributes.items()
+                ],
+            ),
+        ),
+        response=V20CredExRecord,
+    )
+    issuer_cred_ex_id = issuer_cred_ex.cred_ex_id
+
+    event = await holder.event_queue.get(
+        lambda event: event.topic == "issue_credential_v2_0"
+        and event.payload["connection_id"] == holder_connection_id
+        and event.payload["state"] == "offer-received"
+    )
+    holder_cred_ex = V20CredExRecord.parse_obj(event.payload)
+    holder_cred_ex_id = holder_cred_ex.cred_ex_id
+
+    holder_cred_ex = await holder.post(
+        f"/issue-credential-2.0/records/{holder_cred_ex_id}/send-request",
+        response=V20CredExRecord,
+    )
+
+    event = await issuer.event_queue.get(
+        lambda event: event.topic == "issue_credential_v2_0"
+        and event.payload["cred_ex_id"] == issuer_cred_ex_id
+        and event.payload["state"] == "request-received"
+    )
+
+    issuer_cred_ex = await issuer.post(
+        f"/issue-credential-2.0/records/{issuer_cred_ex_id}/issue",
+        json={},
+        response=V20CredExRecordDetail,
+    )
+
+    event = await holder.event_queue.get(
+        lambda event: event.topic == "issue_credential_v2_0"
+        and event.payload["cred_ex_id"] == holder_cred_ex_id
+        and event.payload["state"] == "credential-received"
+    )
+
+    holder_cred_ex = await holder.post(
+        f"/issue-credential-2.0/records/{holder_cred_ex_id}/store",
+        json={},
+        response=V20CredExRecordDetail,
+    )
+    event = await issuer.event_queue.get(
+        lambda event: event.topic == "issue_credential_v2_0"
+        and event.payload["cred_ex_id"] == issuer_cred_ex_id
+        and event.payload["state"] == "done"
+    )
+    issuer_cred_ex = V20CredExRecord.parse_obj(event.payload)
+
+    event = await holder.event_queue.get(
+        lambda event: event.topic == "issue_credential_v2_0"
+        and event.payload["cred_ex_id"] == holder_cred_ex_id
+        and event.payload["state"] == "done"
+    )
+    holder_cred_ex = V20CredExRecord.parse_obj(event.payload)
+
+    return issuer_cred_ex, holder_cred_ex
