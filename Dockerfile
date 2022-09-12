@@ -14,9 +14,6 @@ COPY pyproject.toml poetry.lock ./
 ARG install_flags=--no-dev
 RUN poetry install ${install_flags}
 
-COPY pyproject.toml poetry.lock ./
-RUN poetry install --no-dev
-
 COPY controller/ controller/
 
-ENTRYPOINT ["/bin/sh", "-c", "poetry run python -m controller \"$@\"", "--"]
+ENTRYPOINT ["poetry", "run", "python", "-m", "controller"]
