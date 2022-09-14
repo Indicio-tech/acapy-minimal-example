@@ -5209,8 +5209,8 @@ class V20PresExRecord(BaseModel):
     auto_verify: Optional[bool] = Field(
         None, description="Verifier choice to auto-verify proof presentation"
     )
-    by_format: Optional[V20PresExRecordByFormat] = Field(
-        None,
+    by_format: V20PresExRecordByFormat = Field(
+        ...,
         description="Attachment content by format for proposal, request, and presentation",
     )
     connection_id: Optional[str] = Field(

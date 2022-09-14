@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 import json
 import logging
-from typing import Any, List, Mapping, Optional, Tuple
+from typing import Any, List, Mapping, Optional, Tuple, Union
 from uuid import uuid4
 from secrets import token_hex, randbelow
 
@@ -45,6 +45,10 @@ from .models import (
     V20CredFilterIndy,
     V20CredOfferRequest,
     V20CredPreview,
+    V20PresExRecord,
+    V20PresRequestByFormat,
+    V20PresSendRequestRequest,
+    V20PresSpecByFormatRequest,
 )
 from .onboarding import get_onboarder
 
@@ -504,9 +508,13 @@ async def indy_issue_credential_v2(
 
 
 def indy_auto_select_credentials_for_presentation_request(
-    presentation_request: IndyProofRequest, relevant_creds: List[IndyCredPrecis]
+    presentation_request: Union[IndyProofRequest, dict],
+    relevant_creds: List[IndyCredPrecis],
 ) -> IndyPresSpec:
     """Select credentials to use for presentation automatically."""
+    if isinstance(presentation_request, dict):
+        presentation_request = IndyProofRequest.parse_obj(presentation_request)
+
     requested_attributes = {}
     for pres_referrent in presentation_request.requested_attributes.keys():
         for cred_precis in relevant_creds:
@@ -619,6 +627,105 @@ async def indy_present_proof_v1(
         record_type=V10PresentationExchange,
         presentation_exchange_id=holder_pres_ex_id,
         state="presentation_acked",
+    )
+
+    return holder_pres_ex, verifier_pres_ex
+
+
+async def indy_present_proof_v2(
+    holder: Controller,
+    verifier: Controller,
+    holder_connection_id: str,
+    verifier_connection_id: str,
+    *,
+    name: Optional[str] = None,
+    version: Optional[str] = None,
+    comment: Optional[str] = None,
+    requested_attributes: Optional[List[Mapping[str, Any]]] = None,
+    requested_predicates: Optional[List[Mapping[str, Any]]] = None,
+    non_revoked: Optional[Mapping[str, int]] = None,
+):
+    """Present an Indy credential using present proof v1."""
+    verifier_pres_ex = await verifier.post(
+        "/present-proof-2.0/send-request",
+        json=V20PresSendRequestRequest(
+            auto_verify=False,
+            comment=comment or "Presentation request from minimal",
+            connection_id=verifier_connection_id,
+            presentation_request=V20PresRequestByFormat(  # pyright: ignore
+                indy=IndyProofRequest(
+                    name=name or "proof",
+                    version=version or "0.1.0",
+                    nonce=str(randbelow(10**10)),
+                    requested_attributes={
+                        str(uuid4()): IndyProofReqAttrSpec.parse_obj(attr)
+                        for attr in requested_attributes or []
+                    },
+                    requested_predicates={
+                        str(uuid4()): IndyProofReqPredSpec.parse_obj(pred)
+                        for pred in requested_predicates or []
+                    },
+                    non_revoked=IndyProofRequestNonRevoked.parse_obj(non_revoked)
+                    if non_revoked
+                    else None,
+                ),
+            ),
+            trace=False,
+        ),
+        response=V20PresExRecord,
+    )
+    verifier_pres_ex_id = verifier_pres_ex.pres_ex_id
+
+    holder_pres_ex = await holder.record_with_values(
+        topic="present_proof_v2_0",
+        record_type=V20PresExRecord,
+        connection_id=holder_connection_id,
+        state="request-received",
+    )
+    assert holder_pres_ex.pres_request
+    holder_pres_ex_id = holder_pres_ex.pres_ex_id
+
+    relevant_creds = await holder.get(
+        f"/present-proof-2.0/records/{holder_pres_ex_id}/credentials",
+        response=List[IndyCredPrecis],
+    )
+    assert holder_pres_ex.by_format.pres_request
+    indy_proof_request = holder_pres_ex.by_format.pres_request["indy"]
+    pres_spec = indy_auto_select_credentials_for_presentation_request(
+        indy_proof_request, relevant_creds
+    )
+    holder_pres_ex = await holder.post(
+        f"/present-proof-2.0/records/{holder_pres_ex_id}/send-presentation",
+        json=V20PresSpecByFormatRequest(  # pyright: ignore
+            indy=pres_spec,
+            trace=False,
+        ),
+        response=V20PresExRecord,
+    )
+
+    await verifier.record_with_values(
+        topic="present_proof_v2_0",
+        record_type=V20PresExRecord,
+        pres_ex_id=verifier_pres_ex_id,
+        state="presentation-received",
+    )
+    verifier_pres_ex = await verifier.post(
+        f"/present-proof-2.0/records/{verifier_pres_ex_id}/verify-presentation",
+        json={},
+        response=V20PresExRecord,
+    )
+    verifier_pres_ex = await verifier.record_with_values(
+        topic="present_proof_v2_0",
+        record_type=V20PresExRecord,
+        pres_ex_id=verifier_pres_ex_id,
+        state="done",
+    )
+
+    holder_pres_ex = await holder.record_with_values(
+        topic="present_proof_v2_0",
+        record_type=V20PresExRecord,
+        pres_ex_id=holder_pres_ex_id,
+        state="done",
     )
 
     return holder_pres_ex, verifier_pres_ex
