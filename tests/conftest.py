@@ -1,6 +1,7 @@
 from os import getenv
 
 import pytest
+import pytest_asyncio
 from controller.controller import Controller
 
 
@@ -12,14 +13,18 @@ def getenv_or_raise(var: str) -> str:
     return value
 
 
-@pytest.fixture
-def holder():
-    yield Controller(getenv_or_raise("HOLDER"))
+@pytest_asyncio.fixture
+async def holder():
+    controller = await Controller(getenv_or_raise("HOLDER")).setup()
+    yield controller
+    await controller.shutdown()
 
 
-@pytest.fixture
-def issuer():
-    yield Controller(getenv_or_raise("ISSUER"))
+@pytest_asyncio.fixture
+async def issuer():
+    controller = await Controller(getenv_or_raise("ISSUER")).setup()
+    yield controller
+    await controller.shutdown()
 
 
 @pytest.fixture
