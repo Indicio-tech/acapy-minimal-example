@@ -1,5 +1,5 @@
 from secrets import randbelow
-from typing import List, NamedTuple
+from typing import List, NamedTuple, Optional
 from uuid import uuid4
 import base64
 from datetime import datetime
@@ -160,6 +160,11 @@ async def test_issue_credential_with_attachment(issue_credential_with_attachment
     """Test issuance with attachments."""
 
 
+class ModifiedV20PresExRecord(V20PresExRecord):
+    supplements: Optional[dict] = None
+    attachments: Optional[dict] = None
+
+
 @pytest.mark.asyncio
 async def test_presentation_with_attachment(
     issue_credential_with_attachment: IssuerHolderInfo,
@@ -192,13 +197,13 @@ async def test_presentation_with_attachment(
             ),
             trace=False,
         ),
-        response=V20PresExRecord,
+        response=ModifiedV20PresExRecord,
     )
     verifier_pres_ex_id = verifier_pres_ex.pres_ex_id
 
     holder_pres_ex = await holder.record_with_values(
         topic="present_proof_v2_0",
-        record_type=V20PresExRecord,
+        record_type=ModifiedV20PresExRecord,
         connection_id=issue_credential_with_attachment.holder_conn.connection_id,
         state="request-received",
     )
@@ -220,30 +225,30 @@ async def test_presentation_with_attachment(
             indy=pres_spec,
             trace=False,
         ),
-        response=V20PresExRecord,
+        response=ModifiedV20PresExRecord,
     )
 
     await verifier.record_with_values(
         topic="present_proof_v2_0",
-        record_type=V20PresExRecord,
+        record_type=ModifiedV20PresExRecord,
         pres_ex_id=verifier_pres_ex_id,
         state="presentation-received",
     )
     verifier_pres_ex = await verifier.post(
         f"/present-proof-2.0/records/{verifier_pres_ex_id}/verify-presentation",
         json={},
-        response=V20PresExRecord,
+        response=ModifiedV20PresExRecord,
     )
     verifier_pres_ex = await verifier.record_with_values(
         topic="present_proof_v2_0",
-        record_type=V20PresExRecord,
+        record_type=ModifiedV20PresExRecord,
         pres_ex_id=verifier_pres_ex_id,
         state="done",
     )
 
     holder_pres_ex = await holder.record_with_values(
         topic="present_proof_v2_0",
-        record_type=V20PresExRecord,
+        record_type=ModifiedV20PresExRecord,
         pres_ex_id=holder_pres_ex_id,
         state="done",
     )
@@ -251,3 +256,5 @@ async def test_presentation_with_attachment(
     print(verifier_pres_ex.json(by_alias=True, indent=2))
     print(holder_pres_ex.json(by_alias=True, indent=2))
     assert verifier_pres_ex.verified == "true"
+    assert verifier_pres_ex.supplements
+    assert verifier_pres_ex.attach
