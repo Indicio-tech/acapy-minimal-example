@@ -1,3 +1,5 @@
+from secrets import randbelow
+from typing import List, NamedTuple
 from uuid import uuid4
 import base64
 from datetime import datetime
@@ -5,19 +7,37 @@ import pytest
 import pytest_asyncio
 from controller.controller import Controller
 from controller.models import (
+    ConnRecord,
     CredAttrSpec,
+    CredentialDefinitionSendResult,
+    IndyCredPrecis,
+    IndyProofReqAttrSpec,
+    IndyProofRequest,
+    SchemaSendResult,
     V20CredExRecord,
     V20CredExRecordDetail,
     V20CredFilter,
     V20CredFilterIndy,
     V20CredOfferRequest,
     V20CredPreview,
+    V20PresExRecord,
+    V20PresRequestByFormat,
+    V20PresSendRequestRequest,
+    V20PresSpecByFormatRequest,
 )
 from controller.protocols import (
     connection,
     indy_anoncred_onboard,
     indy_anoncred_credential_artifacts,
+    indy_auto_select_credentials_for_presentation_request,
 )
+
+
+class IssuerHolderInfo(NamedTuple):
+    issuer_conn: ConnRecord
+    holder_conn: ConnRecord
+    schema: SchemaSendResult
+    cred_def: CredentialDefinitionSendResult
 
 
 @pytest_asyncio.fixture
@@ -127,7 +147,12 @@ async def issue_credential_with_attachment(issuer: Controller, holder: Controlle
         state="done",
     )
 
-    yield issuer_cred_ex, holder_cred_ex
+    yield IssuerHolderInfo(
+        issuer_conn,
+        holder_conn,
+        schema,
+        cred_def,
+    )
 
 
 @pytest.mark.asyncio
@@ -136,5 +161,93 @@ async def test_issue_credential_with_attachment(issue_credential_with_attachment
 
 
 @pytest.mark.asyncio
-async def test_presentation_with_attachment(issue_credential_with_attachment):
+async def test_presentation_with_attachment(
+    issue_credential_with_attachment: IssuerHolderInfo,
+    verifier: Controller,
+    holder: Controller,
+):
     """Test presentation with attachments."""
+    requested_attributes = [
+        {"name": "firstname"},
+        {"name": "image"},
+    ]
+    verifier_pres_ex = await verifier.post(
+        "/present-proof-2.0/send-request",
+        json=V20PresSendRequestRequest(
+            auto_verify=False,
+            comment="Presentation request from minimal",
+            connection_id=issue_credential_with_attachment.issuer_conn.connection_id,
+            presentation_request=V20PresRequestByFormat(  # pyright: ignore
+                indy=IndyProofRequest(
+                    name="proof",
+                    version="0.1.0",
+                    nonce=str(randbelow(10**10)),
+                    requested_attributes={
+                        str(uuid4()): IndyProofReqAttrSpec.parse_obj(attr)
+                        for attr in requested_attributes
+                    },
+                    requested_predicates={},
+                    non_revoked=None,
+                ),
+            ),
+            trace=False,
+        ),
+        response=V20PresExRecord,
+    )
+    verifier_pres_ex_id = verifier_pres_ex.pres_ex_id
+
+    holder_pres_ex = await holder.record_with_values(
+        topic="present_proof_v2_0",
+        record_type=V20PresExRecord,
+        connection_id=issue_credential_with_attachment.holder_conn.connection_id,
+        state="request-received",
+    )
+    assert holder_pres_ex.pres_request
+    holder_pres_ex_id = holder_pres_ex.pres_ex_id
+
+    relevant_creds = await holder.get(
+        f"/present-proof-2.0/records/{holder_pres_ex_id}/credentials",
+        response=List[IndyCredPrecis],
+    )
+    assert holder_pres_ex.by_format.pres_request
+    indy_proof_request = holder_pres_ex.by_format.pres_request["indy"]
+    pres_spec = indy_auto_select_credentials_for_presentation_request(
+        indy_proof_request, relevant_creds
+    )
+    holder_pres_ex = await holder.post(
+        f"/present-proof-2.0/records/{holder_pres_ex_id}/send-presentation",
+        json=V20PresSpecByFormatRequest(  # pyright: ignore
+            indy=pres_spec,
+            trace=False,
+        ),
+        response=V20PresExRecord,
+    )
+
+    await verifier.record_with_values(
+        topic="present_proof_v2_0",
+        record_type=V20PresExRecord,
+        pres_ex_id=verifier_pres_ex_id,
+        state="presentation-received",
+    )
+    verifier_pres_ex = await verifier.post(
+        f"/present-proof-2.0/records/{verifier_pres_ex_id}/verify-presentation",
+        json={},
+        response=V20PresExRecord,
+    )
+    verifier_pres_ex = await verifier.record_with_values(
+        topic="present_proof_v2_0",
+        record_type=V20PresExRecord,
+        pres_ex_id=verifier_pres_ex_id,
+        state="done",
+    )
+
+    holder_pres_ex = await holder.record_with_values(
+        topic="present_proof_v2_0",
+        record_type=V20PresExRecord,
+        pres_ex_id=holder_pres_ex_id,
+        state="done",
+    )
+
+    print(verifier_pres_ex.json(by_alias=True, indent=2))
+    print(holder_pres_ex.json(by_alias=True, indent=2))
+    assert verifier_pres_ex.verified == "true"
