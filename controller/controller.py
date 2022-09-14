@@ -1,15 +1,16 @@
 """ACA-Py Controller."""
 
-import asyncio
 from dataclasses import asdict, is_dataclass
 import logging
 from json import dumps
+from types import TracebackType
 from typing import (
     Any,
     AsyncContextManager,
     Mapping,
     Optional,
     Protocol,
+    Tuple,
     Type,
     TypeVar,
     Union,
@@ -18,7 +19,6 @@ from typing import (
     runtime_checkable,
     get_origin,
 )
-from weakref import finalize
 
 from aiohttp import ClientResponse, ClientSession
 from async_selective_queue import Select
@@ -118,6 +118,7 @@ class Controller:
         self.label = label or "ACA-Py"
         self.headers = headers
         self._event_queue: Optional[Queue[Event]] = None
+        self._event_queue_context: Optional[AsyncContextManager] = None
 
     @property
     def event_queue(self) -> Queue[Event]:
@@ -126,26 +127,35 @@ class Controller:
             raise ControllerError("Controller is not set up")
         return self._event_queue
 
+    async def __aenter__(self):
+        """Async context enter."""
+        return await self.setup()
+
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ):
+        """Async context exit."""
+        await self.shutdown((exc_type, exc_value, traceback))
+
     async def setup(self) -> "Controller":
         """Set up the controller."""
-        event_queue_context = EventQueue(self)
-        self._event_queue = await event_queue_context.__aenter__()
-
-        # Close event queue when controller falls out of scope
-        def _close_event_queue(context: AsyncContextManager):
-            coro = context.__aexit__(None, None, None)
-            try:
-                asyncio.get_running_loop().create_task(coro)
-            except RuntimeError:
-                asyncio.run(coro)
-
-        finalize(self, _close_event_queue, event_queue_context)
+        self._event_queue_context = EventQueue(self)
+        self._event_queue = await self._event_queue_context.__aenter__()
 
         # Get settings event
         settings = await self._event_queue.get(lambda event: event.topic == "settings")
         self.label = settings.payload["label"]
 
         return self
+
+    async def shutdown(self, exc_info: Optional[Tuple] = None):
+        """Shutdown the controller."""
+        if self._event_queue_context is None:
+            raise ControllerError("Cannont shutdown controller that has not be set up")
+        await self._event_queue_context.__aexit__(*(exc_info or (None, None, None)))
 
     async def _handle_response(
         self,
