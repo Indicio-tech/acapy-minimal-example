@@ -1,0 +1,6 @@
+FROM bcgovimages/von-image:py36-1.16-1
+
+ARG acapy_url
+RUN pip install "git+${acapy_url}#egg=aries_cloudagent[indy,askar,bbs]"
+
+ENTRYPOINT ["/bin/bash", "-c", "aca-py \"$@\"", "--"]

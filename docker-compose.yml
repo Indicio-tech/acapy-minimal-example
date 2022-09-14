@@ -1,7 +1,13 @@
 version: "3"
 services:
   alice:
-    image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
+    # image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
+    image: acapy-cred-attachments
+    build:
+      context: .
+      dockerfile: Dockerfile.acapy
+      args:
+        acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
     ports:
       - "3001:3001"
     command: >
@@ -28,7 +34,13 @@ services:
         condition: service_healthy
 
   bob:
-    image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
+    # image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
+    image: acapy-cred-attachments
+    build:
+      context: .
+      dockerfile: Dockerfile.acapy
+      args:
+        acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
     ports:
       - "3002:3001"
     command: >
