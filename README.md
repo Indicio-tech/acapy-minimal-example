@@ -59,3 +59,40 @@ This controller differs from these in a few key ways:
   body.
 - This controller provides a system for capturing webhooks/events that is well
   suited for a testing or demonstration scenario.
+  
+## Instructions on Running with a Local Image
+
+One can also build the docker images from local repo contents, if so desired. 
+
+From the ACA-Py repo, do:
+
+```
+docker build -t acapy-cred-attach -f docker/Dockerfile.run .
+```
+
+Then remove the build mapping from the ACA-Py services (back in this [[the acapy-minimal-example](https://github.com/Indicio-tech/acapy-minimal-example)] repo) and replace it with ```image: acapy-cred-attach```
+
+## Instructions on Running Tests
+
+```
+docker-compose run tests
+```
+
+should build everything as needed, triggering the necessary docker build commands. If not,
+
+```
+docker-compose build
+```
+
+should do the trick
+
+<i> Note: You shouldn't have to run ```docker-compose down``` between tests the way things are currently set up but doing so should give the cleanest state possible for inspection after the tests complete </i>
+
+Presently, the tests are pulling from the latest commit of the ```feature/credential-attachments``` for the ACA-Py images. This can be changed by modifying the ```acapy_url``` in the ```docker-compose.yml```. If you <i>do</i> change the ```acapy_url```, you need to make sure you manually trigger a build with ```docker-compose build```.
+
+<hr> </hr>
+
+<footer> <i> README.md original credit: Daniel Bluhm and the Aca-Py team
+  <br>
+Edited by Alexandra N. Walker 
+  <br>
