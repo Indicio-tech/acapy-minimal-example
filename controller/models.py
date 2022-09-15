@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Union
 
 from pydantic import BaseModel, Extra, Field
 from typing_extensions import Literal
@@ -5058,6 +5058,49 @@ class V20PresSpecByFormatRequest(BaseModel):
     )
 
 
+class Supplement(BaseModel):
+    """Model for the supplements received in issue credential message."""
+
+    class Config:
+        allow_population_by_field_name = True
+
+    type: Optional[str] = Field(
+        None,
+        description="Type of the supplement",
+    )
+
+    id: Optional[str] = Field(
+        None,
+        description="Unique ID for the supplement",
+    )
+
+    ref: Optional[str] = Field(
+        None,
+        description="Reference to ID of attachment described by this supplement",
+    )
+
+    attrs: Optional[Sequence[SupplementAttribute]] = Field(
+        None,
+        description="Additional information for supplement",
+    )
+
+
+class SupplementAttribute(BaseModel):
+
+    class Config:
+        allow_population_by_field_name = True
+
+    key: Optional[str] = Field(
+        None,
+        description="Key",
+    )
+
+    value: Optional[str] = Field(
+        None,
+        description="Value",
+    )
+
+
 class V20CredExRecord(BaseModel):
     class Config:
         allow_population_by_field_name = True
@@ -5158,6 +5201,12 @@ class V20CredExRecord(BaseModel):
         description="Time of last record update",
         example="2021-12-31 23:59:59+00:00",
         regex="^\\d{4}-\\d\\d-\\d\\d[T ]\\d\\d:\\d\\d(?:\\:(?:\\d\\d(?:\\.\\d{1,6})?))?(?:[+-]\\d\\d:?\\d\\d|Z|)$",
+    )
+    supplements: Optional[Sequence[Union[Mapping, Supplement]]] = Field(
+        None
+    )
+    attachments: Optional[Sequence[Union[Mapping, AttachDecorator]]] = Field(
+        None
     )
 
 
