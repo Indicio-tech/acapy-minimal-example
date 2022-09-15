@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import json
+import logging
 from typing import Optional
 from aiohttp import ClientSession
 
@@ -11,6 +12,11 @@ INDICIO_TESTNET_GENESIS_OLD = (
     "https://raw.githubusercontent.com/Indicio-tech/indicio-network/master/"
     "genesis_files/pool_transactions_testnet_genesis"
 )
+INDICIO_DEMONET_GENESIS = (
+    "https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/"
+    "genesis_files/pool_transactions_demonet_genesis"
+)
+LOGGER = logging.getLogger(__name__)
 
 
 def get_onboarder(genesis_url: str) -> Optional["Onboarder"]:
@@ -25,13 +31,20 @@ def get_onboarder(genesis_url: str) -> Optional["Onboarder"]:
         INDICIO_TESTNET_GENESIS_OLD: SelfServeOnboarder(
             "https://selfserve.indiciotech.io/nym", "testnet"
         ),
+        INDICIO_DEMONET_GENESIS: SelfServeOnboarder(
+            "https://selfserve.indiciotech.io/nym", "demonet"
+        ),
     }.get(genesis_url)
+
+
+class OnboardingError(Exception):
+    """Error while onboarding."""
 
 
 class Onboarder(ABC):
     @abstractmethod
     async def onboard(self, did: str, verkey: str):
-        """Onboard a DID"""
+        """Onboard a DID."""
 
 
 class VonOnboarder(Onboarder):
@@ -59,6 +72,9 @@ class SelfServeOnboarder(Onboarder):
         self.network = network
 
     async def onboard(self, did: str, verkey: str):
+        LOGGER.debug(
+            "Anchoring DID %s using self-serve on network: %s", did, self.network
+        )
         async with ClientSession() as session:
             async with session.post(
                 self.registration_url,
@@ -77,3 +93,6 @@ class SelfServeOnboarder(Onboarder):
                         return json.loads(body)
                     except json.decoder.JSONDecodeError:
                         return None
+                else:
+                    body = await resp.text()
+                    raise OnboardingError(f"Failed to write DID: {resp.status}; {body}")
