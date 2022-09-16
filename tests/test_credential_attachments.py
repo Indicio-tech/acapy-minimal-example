@@ -257,4 +257,4 @@ async def test_presentation_with_attachment(
     print(holder_pres_ex.json(by_alias=True, indent=2))
     assert verifier_pres_ex.verified == "true"
     assert verifier_pres_ex.supplements
-    assert verifier_pres_ex.attach
+    assert verifier_pres_ex.attachments
