@@ -15,6 +15,7 @@ services:
         --label Alice
         -ot http
         -e http://alice:3000
+        --tails-server-base-url http://tails:6543
         --admin 0.0.0.0 3001 --admin-insecure-mode
         --log-level debug
         --webhook-url http://echo:3002/webhook
@@ -32,6 +33,8 @@ services:
     depends_on:
       echo:
         condition: service_healthy
+      tails:
+        condition: service_started
 
   bob:
     # image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
@@ -48,6 +51,7 @@ services:
         --label Bob
         -ot http
         -e http://bob:3000
+        --tails-server-base-url http://tails:6543
         --admin 0.0.0.0 3001 --admin-insecure-mode
         --log-level debug
         --webhook-url http://echo:3002/webhook
@@ -63,6 +67,8 @@ services:
       timeout: 5s
       retries: 5
     depends_on:
+      tails:
+        condition: service_started
       echo:
         condition: service_healthy
 
@@ -95,6 +101,20 @@ services:
         condition: service_healthy
       bob:
         condition: service_healthy
+        
+        
+  tails:
+    image: ghcr.io/bcgov/tails-server:latest
+    ports:
+      - 6543:6543
+    environment:
+      - GENESIS_URL=https://raw.githubusercontent.com/Indicio-tech/indicio-network/master/genesis_files/pool_transactions_testnet_genesis
+    command: >
+      tails-server
+      --host 0.0.0.0
+      --port 6543
+      --storage-path /tmp/tails-files
+      --log-level INFO
 
   tests:
     container_name: juggernaut
@@ -117,3 +137,27 @@ services:
         condition: service_healthy
       bob:
         condition: service_healthy
+        
+  tests:
+    container_name: juggernaut
+    build:
+      context: .
+      args:
+        install_flags: ""
+    environment:
+      - ISSUER=http://alice:3001
+      - HOLDER=http://bob:3001
+      - ECHO_ENDPOINT=http://echo:3002
+    volumes:
+      - ./controller:/usr/src/app/controller:z
+      - ./tests:/usr/src/app/tests:z
+    entrypoint: "poetry run pytest"
+    depends_on:
+      echo:
+        condition: service_healthy
+      alice:
+        condition: service_healthy
+      bob:
+        condition: service_healthy
+
+    
