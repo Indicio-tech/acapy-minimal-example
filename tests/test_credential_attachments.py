@@ -38,6 +38,7 @@ class IssuerHolderInfo(NamedTuple):
     holder_conn: ConnRecord
     schema: SchemaSendResult
     cred_def: CredentialDefinitionSendResult
+    issuer_cred_ex: V20CredExRecord
 
 
 @pytest_asyncio.fixture
@@ -152,6 +153,7 @@ async def issue_credential_with_attachment(issuer: Controller, holder: Controlle
         holder_conn,
         schema,
         cred_def,
+        issuer_cred_ex,
     )
 
 
@@ -161,8 +163,8 @@ async def test_issue_credential_with_attachment(issue_credential_with_attachment
 
 
 class ModifiedV20PresExRecord(V20PresExRecord):
-    supplements: Optional[dict] = None
-    attachments: Optional[dict] = None
+    supplements: Optional[List[dict]] = None
+    attachments: Optional[List[dict]] = None
 
 
 @pytest.mark.asyncio
@@ -253,8 +255,28 @@ async def test_presentation_with_attachment(
         state="done",
     )
 
+    def strip_unique(list_to_strip: List) -> List:
+        blocklist = ["lastmod_time", "@id", "id", "ref"]
+        new_list = []
+        for obj in list_to_strip:
+            new_obj = {}
+            for key, value in obj.items():
+                if key in blocklist:
+                    continue
+                new_obj[key] = value
+            new_list.append(new_obj)
+        return new_list
+
     print(verifier_pres_ex.json(by_alias=True, indent=2))
     print(holder_pres_ex.json(by_alias=True, indent=2))
     assert verifier_pres_ex.verified == "true"
     assert verifier_pres_ex.supplements
     assert verifier_pres_ex.attachments
+
+    issued_creds = issue_credential_with_attachment.issuer_cred_ex
+    print(verifier_pres_ex.supplements)
+    print(issued_creds.supplements)
+    print(verifier_pres_ex.attachments)
+    print(issued_creds.attachments)
+    assert strip_unique(verifier_pres_ex.supplements) == strip_unique(issued_creds.supplements)
+    assert strip_unique(verifier_pres_ex.attachments) == strip_unique(issued_creds.attachments)
