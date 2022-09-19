@@ -7,7 +7,7 @@ services:
       context: .
       dockerfile: Dockerfile.acapy
       args:
-        acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@f4da57368c5a3ce489dae762f34695e927e45c03
+        acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@9f0280a7bd2276c9a500c6c5fb9104741bf61c41
     ports:
       - "3001:3001"
     command: >
@@ -40,7 +40,7 @@ services:
       context: .
       dockerfile: Dockerfile.acapy
       args:
-        acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@f4da57368c5a3ce489dae762f34695e927e45c03
+        acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@9f0280a7bd2276c9a500c6c5fb9104741bf61c41
     ports:
       - "3002:3001"
     command: >
