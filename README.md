@@ -57,43 +57,57 @@ This controller differs from these in a few key ways:
   dataclass (from python's standard `dataclasses`), or a class/instance
   implementing a `serialize` and `deserialize` method can be used as the request
   body.
+- Deserialization (and typing) of response bodies is built into all operations.
+  This makes it far more convenient to validate and access the data of an ACA-Py
+  response. This is done by passing the desired response type to the operation.
+  Supported types match the supported auto-serialzation types for request
+  bodies: the included models, pydantic models, dataclasses, and classes
+  implementing `serialize` and `deserialize`.
 - This controller provides a system for capturing webhooks/events that is well
   suited for a testing or demonstration scenario.
 
-## Instructions on Running with a Local Image
-
-One can also build the docker images from local repo contents, if so desired. 
-
-From the ACA-Py repo, do:
-
-```
-docker build -t acapy-cred-attach -f docker/Dockerfile.run .
-```
-
-Then remove the build mapping from the ACA-Py services (back in this [[the acapy-minimal-example](https://github.com/Indicio-tech/acapy-minimal-example)] repo) and replace it with ```image: acapy-cred-attach```
-
 ## Instructions on Running Tests
+
+To run the tests:
 
 ```
 docker-compose run tests
 ```
 
-should build everything as needed, triggering the necessary docker build commands. If not,
+This should build everything as needed. If not:
 
 ```
 docker-compose build
 ```
 
-should do the trick
+To stop and remove all running containers:
 
-<i> Note: You shouldn't have to run ```docker-compose down``` between tests the way things are currently set up but doing so should give the cleanest state possible for inspection after the tests complete </i>
+```
+docker-compose down
+```
 
-Presently, the tests are pulling from the latest commit of the ```feature/credential-attachments``` for the ACA-Py images. This can be changed by modifying the ```acapy_url``` in the ```docker-compose.yml```. If you <i>do</i> change the ```acapy_url```, you need to make sure you manually trigger a build with ```docker-compose build```.
+> Note: You shouldn't have to run `docker-compose down` between tests the way
+> things are currently set up but doing so should give the cleanest state
+> possible for inspection after the tests complete
 
--
+### Custom ACA-Py Images/Versions
 
-*README.md original credit: Daniel Bluhm and the Aca-Py team*
+Presently, ACA-Py version 0.7.4 is used. This can be changed by modifying the
+build parameter of the ACA-Py services. A commented out example is included. You
+can adjust `acapy_url` as needed. If you _do_ change the `acapy_url`, you need
+to make sure you manually trigger a build with `docker-compose build`.
 
-*Edited by Alexandra N. Walker *
+#### Instructions on Running with a Local Image
 
-*(8/15/2022)*
+One can also build the docker images from a local ACA-Py repo contents, if so desired. 
+
+From the root of the ACA-Py repo, do:
+
+```
+docker build -t acapy-test-image -f docker/Dockerfile.run .
+```
+
+Then remove the build mapping from the ACA-Py services (back in [the
+acapy-minimal-example](https://github.com/Indicio-tech/acapy-minimal-example)
+repo) and replace it with `image: acapy-test-image`
+
