@@ -1,7 +1,9 @@
-import logging
-from os import getenv
-import sys
+"""Logging utilities."""
 
+from contextlib import contextmanager
+import logging
+from os import getenv, get_terminal_size
+import sys
 
 from blessings import Terminal
 
@@ -10,8 +12,25 @@ LOG_LEVEL = getenv("LOG_LEVEL", "debug")
 LOGGING_SET = False
 
 
+@contextmanager
+def section(title: str):
+    """Mark a section of output."""
+    if sys.stdout.isatty():
+        term = Terminal()
+        size = get_terminal_size()
+        left = "=" * (int(size.columns / 2) - int((len(title) + 1) / 2))
+        right = "=" * (size.columns - (len(left) + len(title) + 2))
+        print(f"{term.blue}{term.bold}{left} {title} {right}{term.normal}")
+    else:
+        print(title)
+    yield
+
+
 class ColorFormatter(logging.Formatter):
+    """Colorizer for logging output."""
+
     def __init__(self, fmt: str):
+        """Init formatter."""
         self.default = logging.Formatter(fmt)
         term = Terminal()
         self.formats = {
@@ -20,11 +39,14 @@ class ColorFormatter(logging.Formatter):
         }
 
     def format(self, record):
+        """Format log record."""
         formatter = self.formats.get(record.levelno, self.default)
         return formatter.format(record)
 
 
 def logging_to_stdout():
+    """Set up logging to stdout."""
+
     global LOGGING_SET
     if LOGGING_SET:
         return

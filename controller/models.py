@@ -2147,8 +2147,7 @@ class SchemasInputDescriptorFilter(BaseModel):
     class Config:
         allow_population_by_field_name = True
 
-    oneof_filter: Optional[bool] = Field(None, description="oneOf")
-    uri_groups: Optional[List[List[SchemaInputDescriptor]]] = None
+    __root__: Union[List[Dict[str, str]], Dict[str, Any]]
 
 
 class SendMessage(BaseModel):
