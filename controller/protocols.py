@@ -730,16 +730,20 @@ async def indy_present_proof_v2(
 
     return holder_pres_ex, verifier_pres_ex
 
+async def post_method(issuer: Controller,url,rev_reg_id,cred_rev_id,publish=False,notify=True):
+    await issuer.post(url,
+        json={"rev_reg_id": rev_reg_id,
+            "cred_rev_id": cred_rev_id,
+            "publish": publish,
+            "notify": notify},
+        response=None)
+
 async def indy_anoncreds_revoke(
     issuer: Controller,
     v10_credential_exchange_object=None,
     v20_credential_exchange_record=None,
-    revoc_reg_id=None,
-    revocation_id=None,
     publish=False,
     notify=True):
-    # revocation_registry_id = None
-    # cred_def_id: str,
     '''
     Revoking an Indy credential using revocation revoke
         V1.0: V10CredentialExchange
@@ -747,23 +751,19 @@ async def indy_anoncreds_revoke(
     '''
     # Passes in V10CredentialExchange
     if v10_credential_exchange_object:
-        await issuer.post(
-            "/revocation/revoke",
-            json={"rev_reg_id": v10_credential_exchange_object.revoc_reg_id,
-                "cred_rev_id": v10_credential_exchange_object.revocation_id,
-                "publish": publish,
-                "notify": notify},
-            response=None)
+        post_method(url="/revocation/revoke",
+                    rev_reg_id=v10_credential_exchange_object.revoc_reg_id,
+                    cred_rev_id=v10_credential_exchange_object.revocation_id,
+                    publish=publish,
+                    notify=notify)
     
     # Passes in V20CredExRecordDetail
     elif v20_credential_exchange_record:
-        await issuer.post(
-            "/revocation/revoke",
-            json={"rev_reg_id": v20_credential_exchange_record.indy.rev_reg_id,
-                "cred_rev_id": v20_credential_exchange_record.indy.cred_rev_id, 
-                "publish": publish,
-                "notify": notify},
-            response=None)
+        post_method(url="/revocation/revoke",
+                    rev_reg_id=v20_credential_exchange_record.indy.rev_reg_id,
+                    cred_rev_id=v20_credential_exchange_record.indy.cred_rev_id,
+                    publish=publish,
+                    notify=notify)
         
     else:
         raise ValueError("If using V1.0, try passing in a V10CredentialExchange object. If using V2.0, try passing in a V20CredExRecordDetail object.")
@@ -775,22 +775,19 @@ async def indy_anoncreds_publish_revocation(
     publish=False,
     notify=True):
     if v10_credential_exchange_object:
-        await issuer.post(
-            "​/revocation​/publish-revocations",
-            json={"rev_reg_id": v10_credential_exchange_object.revoc_reg_id,
-                "cred_rev_id": v10_credential_exchange_object.revocation_id,
-                "publish": publish,
-                "notify": notify},
-            response=None)
+        await post_method(url="/revocation​/publish-revocations",
+                    rev_reg_id=v10_credential_exchange_object.revoc_reg_id,
+                    cred_rev_id=v10_credential_exchange_object.revocation_id,
+                    publish=publish,
+                    notify=notify)
         
     elif v20_credential_exchange_record:
-        await issuer.post(
-            "​/revocation​/publish-revocations",
-            json={"rev_reg_id": v20_credential_exchange_record.indy.rev_reg_id,
-                "cred_rev_id": v20_credential_exchange_record.indy.cred_rev_id, 
-                "publish": publish,
-                "notify": notify},
-            response=None)
+        await post_method(url="/revocation​/publish-revocations",
+                    rev_reg_id=v20_credential_exchange_record.indy.rev_reg_id,
+                    cred_rev_id=v20_credential_exchange_record.indy.cred_rev_id,
+                    publish=publish,
+                    notify=notify)
+
     else:
         raise ValueError("If using V1.0, try passing in a V10CredentialExchange object. If using V2.0, try passing in a V20CredExRecordDetail object.")
         
