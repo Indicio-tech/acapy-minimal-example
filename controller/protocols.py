@@ -741,7 +741,7 @@ async def post_method(issuer: Controller,url,rev_reg_id,cred_rev_id,publish=Fals
 async def indy_anoncreds_revoke(
     issuer: Controller,
     v10_credential_exchange_object=None,
-    v20_credential_exchange_record=None,
+    v20_credential_exchange_object=None,
     publish=False,
     notify=True):
     '''
@@ -758,10 +758,10 @@ async def indy_anoncreds_revoke(
                     notify=notify)
     
     # Passes in V20CredExRecordDetail
-    elif v20_credential_exchange_record:
+    elif v20_credential_exchange_object:
         post_method(url="/revocation/revoke",
-                    rev_reg_id=v20_credential_exchange_record.indy.rev_reg_id,
-                    cred_rev_id=v20_credential_exchange_record.indy.cred_rev_id,
+                    rev_reg_id=v20_credential_exchange_object.indy.rev_reg_id,
+                    cred_rev_id=v20_credential_exchange_object.indy.cred_rev_id,
                     publish=publish,
                     notify=notify)
         
@@ -771,7 +771,7 @@ async def indy_anoncreds_revoke(
 async def indy_anoncreds_publish_revocation(
     issuer: Controller,
     v10_credential_exchange_object=None,
-    v20_credential_exchange_record=None,
+    v20_credential_exchange_object=None,
     publish=False,
     notify=True):
     if v10_credential_exchange_object:
@@ -781,10 +781,10 @@ async def indy_anoncreds_publish_revocation(
                     publish=publish,
                     notify=notify)
         
-    elif v20_credential_exchange_record:
+    elif v20_credential_exchange_object:
         await post_method(url="/revocation​/publish-revocations",
-                    rev_reg_id=v20_credential_exchange_record.indy.rev_reg_id,
-                    cred_rev_id=v20_credential_exchange_record.indy.cred_rev_id,
+                    rev_reg_id=v20_credential_exchange_object.indy.rev_reg_id,
+                    cred_rev_id=v20_credential_exchange_object.indy.cred_rev_id,
                     publish=publish,
                     notify=notify)
 
@@ -792,13 +792,13 @@ async def indy_anoncreds_publish_revocation(
         raise ValueError("If using V1.0, try passing in a V10CredentialExchange object. If using V2.0, try passing in a V20CredExRecordDetail object.")
         
 
-async def indy_anoncreds_publish_revocations(issuer: Controller,
+async def indy_anoncreds_proof_revocations(issuer: Controller,
     holder: Controller,
     issuer_connection_id: str,
     holder_connection_id: str,
     cred_def_id: str,
     v10_credential_exchange_object=None,
-    v20_credential_exchange_record=None,
+    v20_credential_exchange_object=None,
     revocation_registry_id = None,
     requested_attributes: Optional[List[Mapping[str, Any]]] = None,
     requested_predicates: Optional[List[Mapping[str, Any]]] = None,
