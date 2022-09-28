@@ -210,6 +210,18 @@ class Controller:
         *,
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
+        response: Type[T],
+        **kwargs,
+    ) -> T:
+        ...
+
+    @overload
+    async def get(
+        self,
+        url: str,
+        *,
+        params: Optional[Mapping[str, Any]] = None,
+        headers: Optional[Mapping[str, str]] = None,
         **kwargs,
     ) -> Mapping[str, Any]:
         ...
@@ -224,18 +236,6 @@ class Controller:
         response: None,
         **kwargs,
     ) -> Mapping[str, Any]:
-        ...
-
-    @overload
-    async def get(
-        self,
-        url: str,
-        *,
-        params: Optional[Mapping[str, Any]] = None,
-        headers: Optional[Mapping[str, str]] = None,
-        response: Type[T],
-        **kwargs,
-    ) -> T:
         ...
 
     async def get(
@@ -260,6 +260,18 @@ class Controller:
         *,
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
+        response: Type[T],
+        **kwargs,
+    ) -> T:
+        ...
+
+    @overload
+    async def delete(
+        self,
+        url: str,
+        *,
+        params: Optional[Mapping[str, Any]] = None,
+        headers: Optional[Mapping[str, str]] = None,
         **kwargs,
     ) -> Mapping[str, Any]:
         ...
@@ -274,18 +286,6 @@ class Controller:
         response: None,
         **kwargs,
     ) -> Mapping[str, Any]:
-        ...
-
-    @overload
-    async def delete(
-        self,
-        url: str,
-        *,
-        params: Optional[Mapping[str, Any]] = None,
-        headers: Optional[Mapping[str, str]] = None,
-        response: Type[T],
-        **kwargs,
-    ) -> T:
         ...
 
     async def delete(
@@ -312,6 +312,21 @@ class Controller:
         json: Optional[Serializable] = None,
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
+        response: Type[T],
+        **kwargs,
+    ) -> T:
+        """HTTP Post and parse returned json as type T."""
+        ...
+
+    @overload
+    async def post(
+        self,
+        url: str,
+        *,
+        data: Optional[bytes] = None,
+        json: Optional[Serializable] = None,
+        params: Optional[Mapping[str, Any]] = None,
+        headers: Optional[Mapping[str, str]] = None,
         **kwargs,
     ) -> Mapping[str, Any]:
         """HTTP Post and return json."""
@@ -330,21 +345,6 @@ class Controller:
         **kwargs,
     ) -> Mapping[str, Any]:
         """HTTP Post and return json."""
-        ...
-
-    @overload
-    async def post(
-        self,
-        url: str,
-        *,
-        data: Optional[bytes] = None,
-        json: Optional[Serializable] = None,
-        params: Optional[Mapping[str, Any]] = None,
-        headers: Optional[Mapping[str, str]] = None,
-        response: Type[T],
-        **kwargs,
-    ) -> T:
-        """HTTP Post and parse returned json as type T."""
         ...
 
     async def post(
@@ -380,6 +380,21 @@ class Controller:
         json: Optional[Serializable] = None,
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
+        response: Type[T],
+        **kwargs,
+    ) -> T:
+        """HTTP Put and parse returned json as type T."""
+        ...
+
+    @overload
+    async def put(
+        self,
+        url: str,
+        *,
+        data: Optional[bytes] = None,
+        json: Optional[Serializable] = None,
+        params: Optional[Mapping[str, Any]] = None,
+        headers: Optional[Mapping[str, str]] = None,
         **kwargs,
     ) -> Mapping[str, Any]:
         """HTTP Put and return json."""
@@ -398,21 +413,6 @@ class Controller:
         **kwargs,
     ) -> Mapping[str, Any]:
         """HTTP Put and return json."""
-        ...
-
-    @overload
-    async def put(
-        self,
-        url: str,
-        *,
-        data: Optional[bytes] = None,
-        json: Optional[Serializable] = None,
-        params: Optional[Mapping[str, Any]] = None,
-        headers: Optional[Mapping[str, str]] = None,
-        response: Type[T],
-        **kwargs,
-    ) -> T:
-        """HTTP Put and parse returned json as type T."""
         ...
 
     async def put(
