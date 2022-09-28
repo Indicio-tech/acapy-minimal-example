@@ -210,6 +210,7 @@ class Controller:
         *,
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
+        **kwargs,
     ) -> Mapping[str, Any]:
         ...
 
@@ -221,6 +222,7 @@ class Controller:
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
         response: None,
+        **kwargs,
     ) -> Mapping[str, Any]:
         ...
 
@@ -232,6 +234,7 @@ class Controller:
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
         response: Type[T],
+        **kwargs,
     ) -> T:
         ...
 
@@ -242,10 +245,61 @@ class Controller:
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
         response: Optional[Type[T]] = None,
+        **kwargs,
     ) -> Union[T, Mapping[str, Any]]:
         """HTTP Get."""
         async with ClientSession(base_url=self.base_url, headers=headers) as session:
-            async with session.get(url, params=params) as resp:
+            async with session.get(url, params=params, **kwargs) as resp:
+                body = await self._handle_response(resp)
+                return _deserialize(body, response)
+
+    @overload
+    async def delete(
+        self,
+        url: str,
+        *,
+        params: Optional[Mapping[str, Any]] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        **kwargs,
+    ) -> Mapping[str, Any]:
+        ...
+
+    @overload
+    async def delete(
+        self,
+        url: str,
+        *,
+        params: Optional[Mapping[str, Any]] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        response: None,
+        **kwargs,
+    ) -> Mapping[str, Any]:
+        ...
+
+    @overload
+    async def delete(
+        self,
+        url: str,
+        *,
+        params: Optional[Mapping[str, Any]] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        response: Type[T],
+        **kwargs,
+    ) -> T:
+        ...
+
+    async def delete(
+        self,
+        url: str,
+        *,
+        params: Optional[Mapping[str, Any]] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        response: Optional[Type[T]] = None,
+        **kwargs,
+    ) -> Union[T, Mapping[str, Any]]:
+        """HTTP Delete."""
+        async with ClientSession(base_url=self.base_url, headers=headers) as session:
+            async with session.delete(url, params=params, **kwargs) as resp:
                 body = await self._handle_response(resp)
                 return _deserialize(body, response)
 
@@ -258,6 +312,7 @@ class Controller:
         json: Optional[Serializable] = None,
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
+        **kwargs,
     ) -> Mapping[str, Any]:
         """HTTP Post and return json."""
         ...
@@ -272,6 +327,7 @@ class Controller:
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
         response: None,
+        **kwargs,
     ) -> Mapping[str, Any]:
         """HTTP Post and return json."""
         ...
@@ -286,6 +342,7 @@ class Controller:
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
         response: Type[T],
+        **kwargs,
     ) -> T:
         """HTTP Post and parse returned json as type T."""
         ...
@@ -299,6 +356,7 @@ class Controller:
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
         response: Optional[Type[T]] = None,
+        **kwargs,
     ) -> Union[T, Mapping[str, Any]]:
         """HTTP POST."""
         async with ClientSession(base_url=self.base_url, headers=headers) as session:
@@ -307,7 +365,77 @@ class Controller:
             if not data and not json_:
                 json_ = {}
 
-            async with session.post(url, data=data, json=json_, params=params) as resp:
+            async with session.post(
+                url, data=data, json=json_, params=params, **kwargs
+            ) as resp:
+                body = await self._handle_response(resp, data=data, json=json_)
+                return _deserialize(body, response)
+
+    @overload
+    async def put(
+        self,
+        url: str,
+        *,
+        data: Optional[bytes] = None,
+        json: Optional[Serializable] = None,
+        params: Optional[Mapping[str, Any]] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        **kwargs,
+    ) -> Mapping[str, Any]:
+        """HTTP Put and return json."""
+        ...
+
+    @overload
+    async def put(
+        self,
+        url: str,
+        *,
+        data: Optional[bytes] = None,
+        json: Optional[Serializable] = None,
+        params: Optional[Mapping[str, Any]] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        response: None,
+        **kwargs,
+    ) -> Mapping[str, Any]:
+        """HTTP Put and return json."""
+        ...
+
+    @overload
+    async def put(
+        self,
+        url: str,
+        *,
+        data: Optional[bytes] = None,
+        json: Optional[Serializable] = None,
+        params: Optional[Mapping[str, Any]] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        response: Type[T],
+        **kwargs,
+    ) -> T:
+        """HTTP Put and parse returned json as type T."""
+        ...
+
+    async def put(
+        self,
+        url: str,
+        *,
+        data: Optional[bytes] = None,
+        json: Optional[Serializable] = None,
+        params: Optional[Mapping[str, Any]] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        response: Optional[Type[T]] = None,
+        **kwargs,
+    ) -> Union[T, Mapping[str, Any]]:
+        """HTTP Put."""
+        async with ClientSession(base_url=self.base_url, headers=headers) as session:
+            json_ = _serialize(json)
+
+            if not data and not json_:
+                json_ = {}
+
+            async with session.put(
+                url, data=data, json=json_, params=params, **kwargs
+            ) as resp:
                 body = await self._handle_response(resp, data=data, json=json_)
                 return _deserialize(body, response)
 
