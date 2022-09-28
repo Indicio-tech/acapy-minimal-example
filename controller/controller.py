@@ -1,5 +1,6 @@
 """ACA-Py Controller."""
 
+import asyncio
 from dataclasses import asdict, is_dataclass
 import logging
 from json import dumps
@@ -146,8 +147,15 @@ class Controller:
         self._event_queue = await self._event_queue_context.__aenter__()
 
         # Get settings event
-        settings = await self._event_queue.get(lambda event: event.topic == "settings")
-        self.label = settings.payload["label"]
+        try:
+            settings = await self._event_queue.get(
+                lambda event: event.topic == "settings"
+            )
+            self.label = settings.payload["label"]
+        except asyncio.TimeoutError:
+            raise ControllerError(
+                "Failed to receive settings from agent; is it running?"
+            )
 
         return self
 
