@@ -303,6 +303,10 @@ class Controller:
         """HTTP POST."""
         async with ClientSession(base_url=self.base_url, headers=headers) as session:
             json_ = _serialize(json)
+
+            if not data and not json_:
+                json_ = {}
+
             async with session.post(url, data=data, json=json_, params=params) as resp:
                 body = await self._handle_response(resp, data=data, json=json_)
                 return _deserialize(body, response)
