@@ -347,9 +347,15 @@ class Controller:
         record_type: Optional[Type[T]] = None,
     ) -> Union[T, Mapping[str, Any]]:
         """Get a record from an event."""
-        event = await self.event_queue.get(
-            lambda event: event.topic == topic and (select(event) if select else True)
-        )
+        try:
+            event = await self.event_queue.get(
+                lambda event: event.topic == topic
+                and (select(event) if select else True)
+            )
+        except asyncio.TimeoutError:
+            raise ControllerError(
+                f"Record with topic {topic} not received before timeout"
+            )
         return _deserialize(event.payload, record_type)
 
     @overload
@@ -388,10 +394,14 @@ class Controller:
         **values,
     ) -> Union[T, Mapping[str, Any]]:
         """Get a record from an event with values matching those passed in."""
-        return await self.record(
-            topic,
-            select=lambda event: all(
-                [event.payload[key] == value for key, value in values.items()]
-            ),
-            record_type=record_type,
-        )
+        try:
+            event = await self.event_queue.get(
+                lambda event: event.topic == topic
+                and all([event.payload[key] == value for key, value in values.items()])
+            )
+        except asyncio.TimeoutError:
+            raise ControllerError(
+                f"Record with topic {topic} and values {values} "
+                "not received before timeout"
+            )
+        return _deserialize(event.payload, record_type)
