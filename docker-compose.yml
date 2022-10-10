@@ -126,6 +126,10 @@ services:
       bob:
         condition: service_healthy
 
+  tunnel-tails:
+    image: shkoliar/ngrok:latest
+    command: -s tails:6543 -p 4040 -h ${AGENT_TUNNEL_HOST}
+        
   tails:
     image: ghcr.io/bcgov/tails-server:latest
     ports:
@@ -138,28 +142,6 @@ services:
       --port 6543
       --storage-path /tmp/tails-files
       --log-level INFO
-
-  tests:
-    container_name: juggernaut
-    build:
-      context: .
-      args:
-        install_flags: ""
-    environment:
-      - ISSUER=http://alice:3001
-      - HOLDER=http://bob:3001
-      - ECHO_ENDPOINT=http://echo:3002
-    volumes:
-      - ./controller:/usr/src/app/controller:z
-      - ./tests:/usr/src/app/tests:z
-    entrypoint: "poetry run pytest"
-    depends_on:
-      echo:
-        condition: service_healthy
-      alice:
-        condition: service_healthy
-      bob:
-        condition: service_healthy
 
   tests:
     container_name: juggernaut
