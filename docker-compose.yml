@@ -91,6 +91,7 @@ services:
   tunnel-alice:
     image: dbluhm/agent-tunnel
     command: -s alice:3000 -p 4040 -h ${AGENT_TUNNEL_HOST}
+    
 
   tunnel-bob:
     image: dbluhm/agent-tunnel
@@ -130,6 +131,10 @@ services:
     image: shkoliar/ngrok:latest
     command: -s tails:6543 -p 4040 -h ${AGENT_TUNNEL_HOST}
         
+  tunnel-tails:
+    image: wernight/ngrok
+    command: ngrok http tails:6543 --bind-tls false --log stdout
+    
   tails:
     image: ghcr.io/bcgov/tails-server:latest
     ports:
@@ -142,6 +147,9 @@ services:
       --port 6543
       --storage-path /tmp/tails-files
       --log-level INFO
+    depends_on:
+      tunnel-tails:
+        condition: service_started
 
   tests:
     container_name: juggernaut
