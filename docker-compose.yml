@@ -10,6 +10,12 @@ services:
     #     acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
     ports:
       - "3001:3001"
+    volumes:
+      - ./acapy-endpoint.sh:/acapy-endpoint.sh:ro,z
+    environment:
+      TUNNEL_ENDPOINT: http://tunnel-alice:4040
+    entrypoint: >
+      /bin/sh -c '/acapy-endpoint.sh aca-py "$$@"' --
     command: >
       start -it http 0.0.0.0 3000
         --label Alice
@@ -35,6 +41,8 @@ services:
         condition: service_healthy
       tails:
         condition: service_started
+      tunnel-alice:
+        condition: service_started
 
   bob:
     image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
@@ -46,6 +54,12 @@ services:
     #     acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
     ports:
       - "3002:3001"
+    volumes:
+      - ./acapy-endpoint.sh:/acapy-endpoint.sh:ro,z
+    environment:
+      TUNNEL_ENDPOINT: http://tunnel-bob:4040
+    entrypoint: >
+      /bin/sh -c '/acapy-endpoint.sh aca-py "$$@"' --
     command: >
       start -it http 0.0.0.0 3000
         --label Bob
@@ -71,6 +85,16 @@ services:
         condition: service_started
       echo:
         condition: service_healthy
+      tunnel-bob:
+        condition: service_started
+
+  tunnel-alice:
+    image: dbluhm/agent-tunnel
+    command: -s alice:3000 -p 4040 -h ${AGENT_TUNNEL_HOST}
+
+  tunnel-bob:
+    image: dbluhm/agent-tunnel
+    command: -s bob:3002 -p 4040 -h ${AGENT_TUNNEL_HOST}
 
   echo:
     image: ghcr.io/indicio-tech/echo-agent:0.1.2
@@ -101,8 +125,11 @@ services:
         condition: service_healthy
       bob:
         condition: service_healthy
-        
-        
+
+  tunnel-tails:
+    image: wernight/ngrok
+    command: ngrok http tails:6543 --bind-tls false --log stdout
+
   tails:
     image: ghcr.io/bcgov/tails-server:latest
     ports:
@@ -115,6 +142,9 @@ services:
       --port 6543
       --storage-path /tmp/tails-files
       --log-level INFO
+    depends_on:
+      tunnel-tails:
+        condition: service_started
 
   tests:
     container_name: juggernaut
@@ -137,27 +167,3 @@ services:
         condition: service_healthy
       bob:
         condition: service_healthy
-        
-  tests:
-    container_name: juggernaut
-    build:
-      context: .
-      args:
-        install_flags: ""
-    environment:
-      - ISSUER=http://alice:3001
-      - HOLDER=http://bob:3001
-      - ECHO_ENDPOINT=http://echo:3002
-    volumes:
-      - ./controller:/usr/src/app/controller:z
-      - ./tests:/usr/src/app/tests:z
-    entrypoint: "poetry run pytest"
-    depends_on:
-      echo:
-        condition: service_healthy
-      alice:
-        condition: service_healthy
-      bob:
-        condition: service_healthy
-
-    
