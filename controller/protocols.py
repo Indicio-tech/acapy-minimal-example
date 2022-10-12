@@ -645,7 +645,7 @@ async def indy_present_proof_v2(
     requested_predicates: Optional[List[Mapping[str, Any]]] = None,
     non_revoked: Optional[Mapping[str, int]] = None,
 ):
-    """Present an Indy credential using present proof v1."""
+    """Present an Indy credential using present proof v2."""
     verifier_pres_ex = await verifier.post(
         "/present-proof-2.0/send-request",
         json=V20PresSendRequestRequest(
@@ -729,3 +729,109 @@ async def indy_present_proof_v2(
     )
 
     return holder_pres_ex, verifier_pres_ex
+
+async def post_method(issuer: Controller,url,rev_reg_id,cred_rev_id,publish=False,notify=True):
+    await issuer.post(url,
+        json={"rev_reg_id": rev_reg_id,
+            "cred_rev_id": cred_rev_id,
+            "publish": publish,
+            "notify": notify},
+        response=None)
+
+async def indy_anoncreds_revoke(
+    issuer: Controller,
+    v10_credential_exchange_object=None,
+    v20_credential_exchange_object=None,
+    publish=False,
+    notify=True):
+    '''
+    Revoking an Indy credential using revocation revoke
+        V1.0: V10CredentialExchange
+        V2.0: VV20CredExRecordDetail
+    '''
+    # Passes in V10CredentialExchange
+    if v10_credential_exchange_object:
+        post_method(url="/revocation/revoke",
+                    rev_reg_id=v10_credential_exchange_object.revoc_reg_id,
+                    cred_rev_id=v10_credential_exchange_object.revocation_id,
+                    publish=publish,
+                    notify=notify)
+    
+    # Passes in V20CredExRecordDetail
+    elif v20_credential_exchange_object:
+        post_method(url="/revocation/revoke",
+                    rev_reg_id=v20_credential_exchange_object.indy.rev_reg_id,
+                    cred_rev_id=v20_credential_exchange_object.indy.cred_rev_id,
+                    publish=publish,
+                    notify=notify)
+        
+    else:
+        raise ValueError("If using V1.0, try passing in a V10CredentialExchange object. If using V2.0, try passing in a V20CredExRecordDetail object.")
+    
+async def indy_anoncreds_publish_revocation(
+    issuer: Controller,
+    v10_credential_exchange_object=None,
+    v20_credential_exchange_object=None,
+    publish=False,
+    notify=True):
+    if v10_credential_exchange_object:
+        await post_method(url="/revocation​/publish-revocations",
+                    rev_reg_id=v10_credential_exchange_object.revoc_reg_id,
+                    cred_rev_id=v10_credential_exchange_object.revocation_id,
+                    publish=publish,
+                    notify=notify)
+        
+    elif v20_credential_exchange_object:
+        await post_method(url="/revocation​/publish-revocations",
+                    rev_reg_id=v20_credential_exchange_object.indy.rev_reg_id,
+                    cred_rev_id=v20_credential_exchange_object.indy.cred_rev_id,
+                    publish=publish,
+                    notify=notify)
+
+    else:
+        raise ValueError("If using V1.0, try passing in a V10CredentialExchange object. If using V2.0, try passing in a V20CredExRecordDetail object.")
+        
+
+async def indy_anoncreds_proof_revocations(issuer: Controller,
+    holder: Controller,
+    issuer_connection_id: str,
+    holder_connection_id: str,
+    cred_def_id: str,
+    v10_credential_exchange_object=None,
+    v20_credential_exchange_object=None,
+    revocation_registry_id = None,
+    requested_attributes: Optional[List[Mapping[str, Any]]] = None,
+    requested_predicates: Optional[List[Mapping[str, Any]]] = None,
+    expiration_date=None):
+    '''
+    Proof of revocation
+    '''
+    if expiration_date==None:
+        publish_revocation_ex = await issuer.post(
+            "/present-proof/send-request",
+            json={
+              "connection_id": issuer_connection_id,
+              "proof_request": {
+                "requested_attributes": requested_attributes,
+                "requested_predicates": requested_predicates,
+                "self_attested_attributes": {}
+              }},response=None)
+        
+    else:
+        publish_revocation_ex = await issuer.post(
+            "/present-proof/send-request",
+            json={
+              "connection_id": issuer_connection_id,
+              "proof_request": {
+                "requested_attributes": requested_attributes,
+                "requested_predicates": requested_predicates,
+                "self_attested_attributes": {},
+                
+                "non_revoked": # Optional, only check revocation if specified
+                {
+                  "from": 0,
+                  "to": expiration_date
+                }
+              }},response=None)
+            
+    return(publish_revocation_ex)
