@@ -5,6 +5,7 @@ import pytest
 import pytest_asyncio
 from controller.controller import Controller
 from controller.models import (
+    DID,
     AdminConfig,
     DIDCreate,
     DIDCreateOptions,
@@ -61,15 +62,15 @@ async def test_mediation_established(mediation_established):
     assert mediation_established
 
 
-@pytest.mark.asyncio
-async def test_public_did_endpoint_has_mediator_info(
+@pytest_asyncio.fixture
+async def public_did_with_mediator(
     alice: Controller,
     mediator: Controller,
     mediation_established: Tuple[MediationRecord, MediationRecord],
     genesis_url: str,
     signed_taa: None,
 ):
-    """Test that a public DID will have mediator info if specified on registration."""
+    """Get a public DID with mediation."""
     _, alice_mediation_record = mediation_established
     did = (
         await alice.post(
@@ -98,4 +99,29 @@ async def test_public_did_endpoint_has_mediator_info(
     assert result.did_document["service"]
     assert (
         result.did_document["service"][0]["serviceEndpoint"] == "http://mediator:3000"
+    )
+    yield did
+
+
+@pytest.mark.asyncio
+async def test_public_did_endpoint_has_mediator_info(public_did_with_mediator: DID):
+    """Test that a public DID will have mediator info if specified on registration."""
+    assert public_did_with_mediator
+
+
+@pytest.mark.asyncio
+async def test_create_oob_invitation(alice: Controller, public_did_with_mediator: DID):
+    """Test creationg of OOB invitation with public DID."""
+    assert public_did_with_mediator
+    await alice.post(
+        "/out-of-band/create-invitation",
+        json={
+            "alias": "Barry",
+            "handshake_protocols": [
+                "did:sov:BzCbsNYhMrjHiqZDTUASHg;spec/didexchange/1.0"
+            ],
+            "metadata": {},
+            "my_label": "Invitation to Barry",
+            "use_public_did": True,
+        },
     )
