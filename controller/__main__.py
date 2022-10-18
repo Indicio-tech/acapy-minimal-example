@@ -25,6 +25,7 @@ import json
 ALICE = getenv("ALICE", "http://alice:3001")
 BOB = getenv("BOB", "http://alice:3001")
 
+
 def summary(self) -> str:
     return "Summary: " + json.dumps(
         {
@@ -32,9 +33,9 @@ def summary(self) -> str:
             "verified": self.verified,
             "presentation_request": self.presentation_request_dict.dict(by_alias=True),
         },
-            indent=2,
-            sort_keys=True,
-        )
+        indent=2,
+        sort_keys=True,
+    )
 
 
 async def main():
@@ -43,11 +44,12 @@ async def main():
         # Connecting
         await connection(alice, bob)
         alice_conn, bob_conn = await didexchange(alice, bob)
-        
+
         # Issuance prep
         await indy_anoncred_onboard(alice)
         schema, cred_def = await indy_anoncred_credential_artifacts(
-            alice, ["firstname", "lastname"],
+            alice,
+            ["firstname", "lastname"],
             support_revocation=True,
         )
 
@@ -61,7 +63,7 @@ async def main():
             {"firstname": "Bob", "lastname": "Builder"},
         )
         print(alice_cred_ex.json(by_alias=True, indent=2))
-        
+
         # Issue the thing again in v2
         alice_cred_ex_v2, bob_cred_ex_v2 = await indy_issue_credential_v2(
             alice,
@@ -73,7 +75,7 @@ async def main():
         )
         print(alice_cred_ex.json(by_alias=True, indent=2))
         non_revoked_time = int(time.time())
-        
+
         # Present the thing
         bob_pres_ex, alice_pres_ex = await indy_present_proof_v1(
             bob,
@@ -83,7 +85,7 @@ async def main():
             requested_attributes=[{"name": "firstname"}],
         )
         print(alice_pres_ex.json(by_alias=True, indent=2))
-        
+
         # Present the thing again in v2
         bob_pres_ex_v2, alice_pres_ex_v2 = await indy_present_proof_v2(
             bob,
@@ -93,10 +95,13 @@ async def main():
             requested_attributes=[{"name": "firstname"}],
         )
         print(alice_pres_ex.json(by_alias=True, indent=2))
-        
+
         # Revoke credential v1
         await indy_anoncreds_revoke(
-            alice, v10_credential_exchange_object=alice_cred_ex, holder_connection_id=alice_cred_ex.connection_id, notify=True
+            alice,
+            v10_credential_exchange_object=alice_cred_ex,
+            holder_connection_id=alice_cred_ex.connection_id,
+            notify=True,
         )
         await indy_anoncreds_publish_revocation(
             alice, v10_credential_exchange_object=alice_cred_ex
@@ -107,7 +112,10 @@ async def main():
         # Request proof from holder again after revoking
         before_revoking_time = non_revoked_time
         revoked_time = int(time.time())
-        bob_pres_ex_v1_entirely_after_int, alice_pres_ex_v1_entirely_after_int = await indy_present_proof_v1(
+        (
+            bob_pres_ex_v1_entirely_after_int,
+            alice_pres_ex_v1_entirely_after_int,
+        ) = await indy_present_proof_v1(
             bob,
             alice,
             bob_conn.connection_id,
@@ -122,12 +130,15 @@ async def main():
             ],
             non_revoked={"from": revoked_time - 1, "to": revoked_time},
         )
-        
-        # Request proof from holder again after revoking, 
+
+        # Request proof from holder again after revoking,
         # using the interval before cred revoked
         # (non_revoked interval/when cred was valid)
         revoked_time = int(time.time())
-        bob_pres_ex_v1_after_revo_using_before_interval, alice_pres_ex_v1_after_revo_using_before_interval = await indy_present_proof_v1(
+        (
+            bob_pres_ex_v1_after_revo_using_before_interval,
+            alice_pres_ex_v1_after_revo_using_before_interval,
+        ) = await indy_present_proof_v1(
             bob,
             alice,
             bob_conn.connection_id,
@@ -142,9 +153,12 @@ async def main():
             ],
             non_revoked={"from": before_revoking_time, "to": before_revoking_time},
         )
-        
+
         # Request proof, no interval
-        bob_pres_ex_v1_after_revo_no_interval, alice_pres_ex_v1_after_revo_no_interval = await indy_present_proof_v1(
+        (
+            bob_pres_ex_v1_after_revo_no_interval,
+            alice_pres_ex_v1_after_revo_no_interval,
+        ) = await indy_present_proof_v1(
             bob,
             alice,
             bob_conn.connection_id,
@@ -156,14 +170,17 @@ async def main():
                         {"cred_def_id": cred_def.credential_definition_id}
                     ],
                 }
-            ]
+            ],
         )
 
-        # Request proof, using invalid/revoked interval but using 
+        # Request proof, using invalid/revoked interval but using
         # local non_revoked override (in requsted attrs)
         # ("LOCAL"-->requested attrs)
-        bob_pres_ex_v1_after_revo_global_invalid_local_override_w_valid, alice_pres_ex_v1_after_revo_global_invalid_local_override_w_valid = await indy_present_proof_v1(
-            bob,    
+        (
+            bob_pres_ex_v1_after_revo_global_invalid_local_override_w_valid,
+            alice_pres_ex_v1_after_revo_global_invalid_local_override_w_valid,
+        ) = await indy_present_proof_v1(
+            bob,
             alice,
             bob_conn.connection_id,
             alice_conn.connection_id,
@@ -179,12 +196,15 @@ async def main():
                     },
                 }
             ],
-            non_revoked={"from": revoked_time-1, "to": revoked_time},
+            non_revoked={"from": revoked_time - 1, "to": revoked_time},
         )
-        
+
         # Request proof, just local invalid interval
-        bob_pres_ex_v1_after_revo_local_invalid, alice_pres_ex_v1__local_invalid = await indy_present_proof_v1(
-            bob,    
+        (
+            bob_pres_ex_v1_after_revo_local_invalid,
+            alice_pres_ex_v1__local_invalid,
+        ) = await indy_present_proof_v1(
+            bob,
             alice,
             bob_conn.connection_id,
             alice_conn.connection_id,
@@ -199,19 +219,21 @@ async def main():
                         "to": revoked_time,
                     },
                 }
-            ]
+            ],
         )
-        
+
         # Query presentations
-        presentations = await alice.get('/present-proof/records', response=V10PresentationExchangeList)
-        
+        presentations = await alice.get(
+            "/present-proof/records", response=V10PresentationExchangeList
+        )
+
         # Presentation summary
         for i, pres in enumerate(presentations.results):
             print(summary(pres))
-            
+
         return presentations
-        
-        
+
+
 if __name__ == "__main__":
     logging_to_stdout()
     asyncio.run(main())
