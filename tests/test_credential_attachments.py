@@ -1,8 +1,7 @@
 from secrets import randbelow
 from typing import List, NamedTuple, Optional
 from uuid import uuid4
-import base64
-from datetime import datetime
+
 import pytest
 import pytest_asyncio
 from controller.controller import Controller
@@ -14,6 +13,7 @@ from controller.models import (
     IndyProofReqAttrSpec,
     IndyProofRequest,
     SchemaSendResult,
+    V20CredBoundOfferRequest,
     V20CredExRecord,
     V20CredExRecordDetail,
     V20CredFilter,
@@ -27,10 +27,23 @@ from controller.models import (
 )
 from controller.protocols import (
     connection,
-    indy_anoncred_onboard,
     indy_anoncred_credential_artifacts,
+    indy_anoncred_onboard,
     indy_auto_select_credentials_for_presentation_request,
 )
+
+
+def strip_unique(list_to_strip: List) -> List:
+    blocklist = ["lastmod_time", "@id", "id", "ref"]
+    new_list = []
+    for obj in list_to_strip:
+        new_obj = {}
+        for key, value in obj.items():
+            if key in blocklist:
+                continue
+            new_obj[key] = value
+        new_list.append(new_obj)
+    return new_list
 
 
 class IssuerHolderInfo(NamedTuple):
@@ -42,7 +55,13 @@ class IssuerHolderInfo(NamedTuple):
 
 
 @pytest_asyncio.fixture
-async def issue_credential_with_attachment(issuer: Controller, holder: Controller):
+async def issue_credential_with_attachment(
+    issuer: Controller,
+    holder: Controller,
+    attributes: dict,
+    supplement: dict,
+    attachment: dict,
+):
     """Test credential issuance with hashlink supplement and attachment."""
     issuer_conn, holder_conn = await connection(issuer, holder)
     await indy_anoncred_onboard(issuer)
@@ -50,29 +69,10 @@ async def issue_credential_with_attachment(issuer: Controller, holder: Controlle
         issuer, ["firstname", "lastname", "age", "image"]
     )
 
-    attributes = {
-        "firstname": "Bob",
-        "lastname": "Builder",
-        "age": "42",
-        "image": "hl:zQmWvQxTqbG2Z9HPJgG57jjwR154cKhbtJenbyYTWkjgF3e",
-    }
+    attributes = attributes
+    supplement = supplement
+    attachment = attachment
 
-    attachment_id = str(uuid4())
-    data = b"Hello World!"
-    supplement = {
-        "type": "hashlink-data",
-        "ref": attachment_id,
-        "attrs": [{"key": "field", "value": "image"}],
-    }
-    attachment = {
-        "@id": attachment_id,
-        "mime-type": "image/jpeg",
-        "filename": "face.png",
-        "byte_count": len(data),
-        "lastmod_time": str(datetime.now()),
-        "description": "A picture of a face",
-        "data": {"base64": base64.urlsafe_b64encode(data).decode()},
-    }
     issuer_cred_ex = await issuer.post(
         "/issue-credential-2.0/send",
         json={
@@ -255,18 +255,6 @@ async def test_presentation_with_attachment(
         state="done",
     )
 
-    def strip_unique(list_to_strip: List) -> List:
-        blocklist = ["lastmod_time", "@id", "id", "ref"]
-        new_list = []
-        for obj in list_to_strip:
-            new_obj = {}
-            for key, value in obj.items():
-                if key in blocklist:
-                    continue
-                new_obj[key] = value
-            new_list.append(new_obj)
-        return new_list
-
     print(verifier_pres_ex.json(by_alias=True, indent=2))
     print(holder_pres_ex.json(by_alias=True, indent=2))
     assert verifier_pres_ex.verified == "true"
@@ -278,5 +266,189 @@ async def test_presentation_with_attachment(
     print(issued_creds.supplements)
     print(verifier_pres_ex.attachments)
     print(issued_creds.attachments)
-    assert strip_unique(verifier_pres_ex.supplements) == strip_unique(issued_creds.supplements)
-    assert strip_unique(verifier_pres_ex.attachments) == strip_unique(issued_creds.attachments)
+    assert strip_unique(verifier_pres_ex.supplements) == strip_unique(
+        issued_creds.supplements
+    )
+    assert strip_unique(verifier_pres_ex.attachments) == strip_unique(
+        issued_creds.attachments
+    )
+
+
+@pytest.mark.asyncio
+async def test_suppl_in_manual_flow(
+    issuer: Controller,
+    holder: Controller,
+    attributes: dict,
+    supplement: dict,
+    attachment: dict,
+):
+    issuer_conn, holder_conn = await connection(issuer, holder)
+    await indy_anoncred_onboard(issuer)
+    schema, cred_def = await indy_anoncred_credential_artifacts(
+        issuer, ["firstname", "lastname", "age", "image"]
+    )
+    attrs = attributes
+    suppl = supplement
+    attach = attachment
+
+    # Send a proposal with supplements and attachments
+    holder_cred_ex = await holder.post(
+        "/issue-credential-2.0/send-proposal",
+        json={
+            **V20CredOfferRequest(
+                auto_issue=False,
+                auto_remove=False,
+                comment="Credential from minimal example",
+                trace=False,
+                connection_id=holder_conn.connection_id,
+                filter=V20CredFilter(  # pyright: ignore
+                    indy=V20CredFilterIndy(  # pyright: ignore
+                        cred_def_id=cred_def.credential_definition_id,
+                    )
+                ),
+                credential_preview=V20CredPreview(
+                    type="issue-credential-2.0/2.0/credential-preview",  # pyright: ignore
+                    attributes=[
+                        CredAttrSpec(
+                            mime_type=None, name=name, value=value  # pyright: ignore
+                        )
+                        for name, value in attrs.items()
+                    ],
+                ),
+            ).dict(by_alias=True, exclude_none=True, exclude_unset=True),
+            "supplements": [suppl],
+            "attachments": [attach],
+        },
+        response=V20CredExRecord,
+    )
+
+    assert holder_cred_ex.supplements
+    for key in suppl.keys():
+        assert holder_cred_ex.supplements[0][key] == suppl[key]
+    assert holder_cred_ex.attachments
+    assert holder_cred_ex.attachments[0] == attach
+
+    issuer_cred_ex = await issuer.record_with_values(
+        topic="issue_credential_v2_0",
+        record_type=V20CredExRecord,
+        connection_id=issuer_conn.connection_id,
+        state="proposal-received",
+    )
+
+    assert issuer_cred_ex
+    issuer_cred_ex_id = issuer_cred_ex.cred_ex_id
+    holder_cred_ex_id = holder_cred_ex.cred_ex_id
+
+    # Send an offer with supplements and attachments, bound to the
+    # existing credential exchange record
+    issuer_cred_ex = await issuer.post(
+        f"/issue-credential-2.0/records/{issuer_cred_ex_id}/send-offer",
+        json={
+            **V20CredBoundOfferRequest(
+                auto_issue=False,
+                auto_remove=False,
+                comment="Credential from minimal example",
+                trace=False,
+                connection_id=issuer_conn.connection_id,
+                filter=V20CredFilter(  # pyright: ignore
+                    indy=V20CredFilterIndy(  # pyright: ignore
+                        cred_def_id=cred_def.credential_definition_id,
+                    )
+                ),
+                counter_preview=V20CredPreview(
+                    type="issue-credential-2.0/2.0/credential-preview",  # pyright: ignore
+                    attributes=[
+                        CredAttrSpec(
+                            mime_type=None, name=name, value=value  # pyright: ignore
+                        )
+                        for name, value in attrs.items()
+                    ],
+                ),
+            ).dict(by_alias=True, exclude_none=True, exclude_unset=True),
+            "supplements": [suppl],
+            "attachments": [attach],
+        },
+        response=V20CredExRecord,
+    )
+
+    assert issuer_cred_ex.supplements
+    for key in suppl.keys():
+        assert issuer_cred_ex.supplements[0][key] == suppl[key]
+    assert issuer_cred_ex.attachments
+    assert issuer_cred_ex.attachments[0] == attach
+
+    holder_cred_ex = await holder.record_with_values(
+        topic="issue_credential_v2_0",
+        record_type=V20CredExRecord,
+        connection_id=holder_conn.connection_id,
+        state="offer-received",
+    )
+
+    holder_cred_ex = await holder.post(
+        f"/issue-credential-2.0/records/{holder_cred_ex_id}/send-request",
+        response=V20CredExRecord,
+    )
+
+    assert holder_cred_ex.supplements
+    for key in suppl.keys():
+        assert holder_cred_ex.supplements[0][key] == suppl[key]
+    assert holder_cred_ex.attachments
+    assert holder_cred_ex.attachments[0] == attach
+
+    issuer_cred_ex = await issuer.record_with_values(
+        topic="issue_credential_v2_0",
+        record_type=V20CredExRecord,
+        connection_id=issuer_conn.connection_id,
+        state="request-received",
+    )
+
+    print(holder_cred_ex.state)
+    print(issuer_cred_ex.state)
+
+    issuer_cred_ex_detail = await issuer.post(
+        f"/issue-credential-2.0/records/{issuer_cred_ex_id}/issue",
+        json={},
+        response=V20CredExRecordDetail,
+    )
+    issuer_cred_ex = issuer_cred_ex_detail.cred_ex_record
+
+    assert issuer_cred_ex.supplements
+    for key in suppl.keys():
+        assert issuer_cred_ex.supplements[0][key] == suppl[key]
+    assert issuer_cred_ex.attachments
+    assert issuer_cred_ex.attachments[0] == attach
+
+    print(holder_cred_ex.state)
+    print(issuer_cred_ex.state)
+
+    holder_cred_ex = await holder.record_with_values(
+        topic="issue_credential_v2_0",
+        record_type=V20CredExRecord,
+        connection_id=holder_conn.connection_id,
+        state="credential-received",
+    )
+
+    holder_cred_ex_detail = await holder.post(
+        f"/issue-credential-2.0/records/{holder_cred_ex_id}/store",
+        json={},
+        response=V20CredExRecordDetail,
+    )
+
+    holder_cred_ex = holder_cred_ex_detail.cred_ex_record
+
+    assert holder_cred_ex.supplements
+    for key in suppl.keys():
+        assert holder_cred_ex.supplements[0][key] == suppl[key]
+    assert holder_cred_ex.attachments
+    assert holder_cred_ex.attachments[0] == attach
+
+    issuer_cred_ex = await issuer.record_with_values(
+        topic="issue_credential_v2_0",
+        record_type=V20CredExRecord,
+        connection_id=issuer_conn.connection_id,
+        state="done",
+    )
+
+    print(holder_cred_ex.state)
+    print(issuer_cred_ex.state)
+    assert False
