@@ -1,8 +1,9 @@
 version: "3"
 services:
   alice:
-    image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
-    # image: acapy-test-image
+    image: bcgovimages/aries-cloudagent:py36-1.16-1_0.7.5
+    #image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
+    #image: acapy-test-image
     # build:
     #   context: .
     #   dockerfile: Dockerfile.acapy
@@ -11,17 +12,16 @@ services:
     ports:
       - "3001:3001"
     volumes:
-      - ./acapy-endpoint.sh:/acapy-endpoint.sh:ro,z
+      - ./tunnel_endpoint.sh:/tunnel_endpoint.sh:ro,z
     environment:
-      TUNNEL_ENDPOINT: http://tunnel-alice:4040
-    entrypoint: >
-      /bin/sh -c '/acapy-endpoint.sh aca-py "$$@"' --
+      AGENT_TUNNEL_ENDPOINT: http://tunnel-alice:4040
+      TAILS_TUNNEL_ENDPOINT: http://tunnel-tails:4040
+    entrypoint: 
+      /bin/sh -c '/tunnel_endpoint.sh aca-py "$$@"' --
     command: >
       start -it http 0.0.0.0 3000
         --label Alice
         -ot http
-        -e http://alice:3000
-        --tails-server-base-url http://tails:6543
         --admin 0.0.0.0 3001 --admin-insecure-mode
         --log-level debug
         --webhook-url http://echo:3002/webhook
@@ -45,8 +45,9 @@ services:
         condition: service_started
 
   bob:
-    image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
-    # image: acapy-test-image
+    image: bcgovimages/aries-cloudagent:py36-1.16-1_0.7.5
+    #image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
+    #image: acapy-test-image
     # build:
     #   context: .
     #   dockerfile: Dockerfile.acapy
@@ -55,17 +56,17 @@ services:
     ports:
       - "3002:3001"
     volumes:
-      - ./acapy-endpoint.sh:/acapy-endpoint.sh:ro,z
+      - ./tunnel_endpoint.sh:/tunnel_endpoint.sh:ro,z
     environment:
-      TUNNEL_ENDPOINT: http://tunnel-bob:4040
+        AGENT_TUNNEL_ENDPOINT: http://tunnel-bob:4040
+        TAILS_TUNNEL_ENDPOINT: http://tunnel-tails:4040
     entrypoint: >
-      /bin/sh -c '/acapy-endpoint.sh aca-py "$$@"' --
+      /bin/sh -c '/tunnel_endpoint.sh aca-py "$$@"' --
     command: >
       start -it http 0.0.0.0 3000
         --label Bob
         -ot http
         -e http://bob:3000
-        --tails-server-base-url http://tails:6543
         --admin 0.0.0.0 3001 --admin-insecure-mode
         --log-level debug
         --webhook-url http://echo:3002/webhook
@@ -111,6 +112,8 @@ services:
   controller:
     container_name: controller
     build:
+      #--build-arg http_proxy=http://myproxy.example
+      #--build-arg https_proxy=http://myproxy.example
       context: .
     environment:
       - ALICE=http://alice:3001
@@ -129,6 +132,7 @@ services:
   tunnel-tails:
     image: wernight/ngrok
     command: ngrok http tails:6543 --bind-tls false --log stdout
+
 
   tails:
     image: ghcr.io/bcgov/tails-server:latest
@@ -153,13 +157,14 @@ services:
       args:
         install_flags: ""
     environment:
-      - ISSUER=http://alice:3001
-      - HOLDER=http://bob:3001
+      - ALICE=http://alice:3001
+      - BOB=http://bob:3001
       - ECHO_ENDPOINT=http://echo:3002
     volumes:
       - ./controller:/usr/src/app/controller:z
       - ./tests:/usr/src/app/tests:z
     entrypoint: "poetry run pytest"
+    #command: "pytest"
     depends_on:
       echo:
         condition: service_healthy
@@ -167,3 +172,4 @@ services:
         condition: service_healthy
       bob:
         condition: service_healthy
+    
