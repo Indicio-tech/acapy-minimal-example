@@ -1,6 +1,6 @@
 FROM bcgovimages/von-image:py36-1.16-1
 
-ARG acapy_url
-RUN pip install "git+${acapy_url}#egg=aries_cloudagent[indy,askar,bbs]"
+RUN pip install "aries_cloudagent[indy,askar,bbs]"
+RUN pip install "git+https://github.com/Indicio-tech/acapy-plugin-pickup.git#egg=acapy_plugin_pickup"
 
 ENTRYPOINT ["/bin/bash", "-c", "aca-py \"$@\"", "--"]

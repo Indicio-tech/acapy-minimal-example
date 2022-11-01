@@ -1,59 +1,23 @@
 version: "3"
 services:
-  alice:
-    image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
-    # image: acapy-test-image
-    # build:
-    #   context: .
-    #   dockerfile: Dockerfile.acapy
-    #   args:
-    #     acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
+  mediator:
+    image: acapy-test-image
+    build:
+      context: .
+      dockerfile: Dockerfile.acapy
     ports:
       - "3001:3001"
     command: >
-      start -it http 0.0.0.0 3000
-        --label Alice
+      start -it http 0.0.0.0 3000 -it ws 0.0.0.0 3002
+        --label Mediator
         -ot http
-        -e http://alice:3000
+        -e http://mediator:3000
         --admin 0.0.0.0 3001 --admin-insecure-mode
         --log-level debug
         --webhook-url http://echo:3002/webhook
-        --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_demonet_genesis
+        --no-ledger
         --wallet-type askar
-        --wallet-name alice
-        --wallet-key insecure
-        --auto-provision
-    healthcheck:
-      test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3001/status/live" | grep "200" > /dev/null
-      start_period: 30s
-      interval: 3s
-      timeout: 5s
-      retries: 5
-    depends_on:
-      echo:
-        condition: service_healthy
-
-  bob:
-    image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
-    # image: acapy-test-image
-    # build:
-    #   context: .
-    #   dockerfile: Dockerfile.acapy
-    #   args:
-    #     acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
-    ports:
-      - "3002:3001"
-    command: >
-      start -it http 0.0.0.0 3000
-        --label Bob
-        -ot http
-        -e http://bob:3000
-        --admin 0.0.0.0 3001 --admin-insecure-mode
-        --log-level debug
-        --webhook-url http://echo:3002/webhook
-        --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_demonet_genesis
-        --wallet-type askar
-        --wallet-name bob
+        --wallet-name mediator
         --wallet-key insecure
         --auto-provision
     healthcheck:
@@ -67,34 +31,16 @@ services:
         condition: service_healthy
 
   echo:
-    image: ghcr.io/indicio-tech/echo-agent:0.1.2
+    image: ghcr.io/indicio-tech/echo-agent:0.2.1
     ports:
-      - "3003:3002"
+      - "3002:3002"
     command: --host 0.0.0.0 --port 3002 --log-level debug
     healthcheck:
-      test: nc -z localhost 3002
+      test: python -m echo_agent.alive 0.0.0.0 3002
       start_period: 5s
       interval: 1s
       timeout: 5s
       retries: 5
-
-  controller:
-    container_name: controller
-    build:
-      context: .
-    environment:
-      - ALICE=http://alice:3001
-      - BOB=http://bob:3001
-      - ECHO_ENDPOINT=http://echo:3002
-    volumes:
-      - ./controller:/usr/src/app/controller:z
-    depends_on:
-      echo:
-        condition: service_healthy
-      alice:
-        condition: service_healthy
-      bob:
-        condition: service_healthy
 
   tests:
     container_name: juggernaut
@@ -103,17 +49,15 @@ services:
       args:
         install_flags: ""
     environment:
-      - ISSUER=http://alice:3001
-      - HOLDER=http://bob:3001
-      - ECHO_ENDPOINT=http://echo:3002
+      - MEDIATOR=http://mediator:3001
+      - MEDIATOR_WS=http://mediator:3002
+      - ECHO=http://echo:3002
     volumes:
       - ./controller:/usr/src/app/controller:z
       - ./tests:/usr/src/app/tests:z
     entrypoint: "poetry run pytest"
     depends_on:
+      mediator:
+        condition: service_healthy
       echo:
-        condition: service_healthy
-      alice:
-        condition: service_healthy
-      bob:
         condition: service_healthy
