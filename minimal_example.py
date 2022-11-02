@@ -14,12 +14,7 @@ from controller.models import DIDResult
 from controller.protocols import (
     connection,
     didexchange,
-    indy_anoncred_credential_artifacts,
     indy_anoncred_onboard,
-    indy_issue_credential_v1,
-    indy_issue_credential_v2,
-    indy_present_proof_v1,
-    indy_present_proof_v2,
     jsonld_issue_credential,
     jsonld_present_proof,
 )
@@ -51,30 +46,28 @@ async def main():
             credential={
                 "@context": [
                     "https://www.w3.org/2018/credentials/v1",
-                    "https://www.w3.org/2018/credentials/examples/v1",
+                    "https://w3id.org/citizenship/v1",
                 ],
-                "type": ["VerifiableCredential", "UniversityDegreeCredential"],
+                "type": ["VerifiableCredential", "PermanentResident"],
                 "issuer": "did:sov:" + public_did.did,
                 "issuanceDate": str(date.today()),
                 "credentialSubject": {
+                    "type": ["PermanentResident"],
                     "id": bob_did.did,
                     "givenName": "Bob",
                     "familyName": "Builder",
-                    "degree": {
-                        "type": "BachelorDegree",
-                        "degreeType": "Undergraduate",
-                        "name": "Bachelor of Science and Arts",
-                    },
-                    "college": "Faber College",
+                    "gender": "Female",
+                    "birthCountry": "Bahamas",
+                    "birthDate": "1958-07-17",
                 },
             },
             options={"proofType": "Ed25519Signature2018"},
         )
-        await jsonld_present_proof(
-            bob,
+        alice_pres_ex, bob_pres_ex = await jsonld_present_proof(
             alice,
-            bob_conn.connection_id,
+            bob,
             alice_conn.connection_id,
+            bob_conn.connection_id,
             presentation_definition={
                 "input_descriptors": [
                     {
@@ -114,46 +107,6 @@ async def main():
                 "format": {"ldp_vp": {"proof_type": ["Ed25519Signature2018"]}},
             },
             domain="test-degree",
-        )
-        return
-
-        schema, cred_def = await indy_anoncred_credential_artifacts(
-            alice, ["firstname", "lastname"]
-        )
-
-        alice_cred_ex, bob_cred_ex = await indy_issue_credential_v1(
-            alice,
-            bob,
-            alice_conn.connection_id,
-            bob_conn.connection_id,
-            cred_def.credential_definition_id,
-            {"firstname": "Bob", "lastname": "Builder"},
-        )
-        print(alice_cred_ex.json(by_alias=True, indent=2))
-        alice_cred_ex, bob_cred_ex = await indy_issue_credential_v2(
-            alice,
-            bob,
-            alice_conn.connection_id,
-            bob_conn.connection_id,
-            cred_def.credential_definition_id,
-            {"firstname": "Bob", "lastname": "Builder"},
-        )
-        print(alice_cred_ex.json(by_alias=True, indent=2))
-
-        bob_pres_ex, alice_pres_ex = await indy_present_proof_v1(
-            bob,
-            alice,
-            bob_conn.connection_id,
-            alice_conn.connection_id,
-            requested_attributes=[{"name": "firstname"}],
-        )
-        print(alice_pres_ex.json(by_alias=True, indent=2))
-        bob_pres_ex, alice_pres_ex = await indy_present_proof_v2(
-            bob,
-            alice,
-            bob_conn.connection_id,
-            alice_conn.connection_id,
-            requested_attributes=[{"name": "firstname"}],
         )
         print(alice_pres_ex.json(by_alias=True, indent=2))
 

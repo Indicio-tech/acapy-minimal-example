@@ -757,7 +757,7 @@ async def jsonld_issue_credential(
         else LDProofVCDetailOptions.parse_obj(options)
     )
     issuer_cred_ex = await issuer.post(
-        "/issue-credential-2.0/send",
+        "/issue-credential-2.0/send-offer",
         json=V20CredOfferRequest(
             auto_issue=False,
             auto_remove=False,
@@ -829,19 +829,14 @@ async def jsonld_issue_credential(
 
 
 async def jsonld_present_proof(
-    holder: Controller,
     verifier: Controller,
-    holder_connection_id: str,
+    holder: Controller,
     verifier_connection_id: str,
+    holder_connection_id: str,
     presentation_definition: Union[Mapping[str, Any], PresentationDefinition],
     domain: str,
     *,
-    name: Optional[str] = None,
-    version: Optional[str] = None,
     comment: Optional[str] = None,
-    requested_attributes: Optional[List[Mapping[str, Any]]] = None,
-    requested_predicates: Optional[List[Mapping[str, Any]]] = None,
-    non_revoked: Optional[Mapping[str, int]] = None,
 ):
     """Present an Indy credential using present proof v1."""
     presentation_definition = (
@@ -874,23 +869,21 @@ async def jsonld_present_proof(
         state="request-received",
     )
     assert holder_pres_ex.pres_request
+    assert holder_pres_ex.pres_request.request_presentations_attach
+    assert holder_pres_ex.pres_request.request_presentations_attach[0].data
+    assert holder_pres_ex.pres_request.request_presentations_attach[0].data.json_
     holder_pres_ex_id = holder_pres_ex.pres_ex_id
 
-    relevant_creds = await holder.get(
-        f"/present-proof-2.0/records/{holder_pres_ex_id}/credentials",
-    )
-    print(json.dumps(relevant_creds, indent=2, sort_keys=True))
-    return
-    assert holder_pres_ex.by_format.pres_request
-    indy_proof_request = holder_pres_ex.by_format.pres_request["indy"]
-    pres_spec = indy_auto_select_credentials_for_presentation_request(
-        indy_proof_request, relevant_creds
-    )
     holder_pres_ex = await holder.post(
         f"/present-proof-2.0/records/{holder_pres_ex_id}/send-presentation",
-        json=V20PresSpecByFormatRequest(  # pyright: ignore
-            indy=pres_spec,
-            trace=False,
+        json=V20PresRequestByFormat(
+            dif=DIFProofRequest(  # pyright: ignore
+                presentation_definition=(
+                    holder_pres_ex.pres_request.request_presentations_attach[
+                        0
+                    ].data.json_["presentation_definition"]
+                )
+            )
         ),
         response=V20PresExRecord,
     )
@@ -920,4 +913,4 @@ async def jsonld_present_proof(
         state="done",
     )
 
-    return holder_pres_ex, verifier_pres_ex
+    return verifier_pres_ex, holder_pres_ex
