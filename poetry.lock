@@ -93,14 +93,6 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 six = "*"
 
 [[package]]
-name = "certifi"
-version = "2022.9.24"
-description = "Python package for providing Mozilla's CA Bundle."
-category = "main"
-optional = false
-python-versions = ">=3.6"
-
-[[package]]
 name = "cfgv"
 version = "3.3.1"
 description = "Validate configuration and produce human readable error messages."
@@ -155,19 +147,15 @@ optional = false
 python-versions = "^3.7"
 develop = false
 
-[package.dependencies]
-async-selective-queue = "^0.1.0"
-httpx = {version = "^0.15.4", optional = true}
-
 [package.extras]
 client = ["httpx (>=0.15.4,<0.16.0)"]
 server = ["fastapi (>=0.79.0,<0.80.0)", "aries-staticagent @ git+https://github.com/hyperledger/aries-staticagent-python@1f27f85cf72cc6a2e10a6495c85f2b21462362cd", "aiohttp (>=3.8.0,<4.0.0)", "pydantic (>=1.9.1,<2.0.0)"]
 
 [package.source]
 type = "git"
-url = "https://github.com/Indicio-tech/echo-agent"
-reference = "8f2d76806cf5028a793b612d8ddf483e06b34bc4"
-resolved_reference = "8f2d76806cf5028a793b612d8ddf483e06b34bc4"
+url = "https://github.com/indicio-tech/echo-agent"
+reference = "v0.2.0"
+resolved_reference = "c305746b2e263f1d5d4aa3e6a8cc0e98f4b75417"
 
 [[package]]
 name = "filelock"
@@ -201,47 +189,6 @@ description = "A list-like structure which implements collections.abc.MutableSeq
 category = "main"
 optional = false
 python-versions = ">=3.7"
-
-[[package]]
-name = "h11"
-version = "0.9.0"
-description = "A pure-Python, bring-your-own-I/O implementation of HTTP/1.1"
-category = "main"
-optional = false
-python-versions = "*"
-
-[[package]]
-name = "httpcore"
-version = "0.11.1"
-description = "A minimal low-level HTTP client."
-category = "main"
-optional = false
-python-versions = ">=3.6"
-
-[package.dependencies]
-h11 = ">=0.8,<0.10"
-sniffio = ">=1.0.0,<2.0.0"
-
-[package.extras]
-http2 = ["h2 (>=3.0.0,<4.0.0)"]
-
-[[package]]
-name = "httpx"
-version = "0.15.5"
-description = "The next generation HTTP client."
-category = "main"
-optional = false
-python-versions = ">=3.6"
-
-[package.dependencies]
-certifi = "*"
-httpcore = ">=0.11.0,<0.12.0"
-rfc3986 = {version = ">=1.3,<2", extras = ["idna2008"]}
-sniffio = "*"
-
-[package.extras]
-brotli = ["brotlipy (>=0.7.0,<0.8.0)"]
-http2 = ["h2 (>=3.0.0,<4.0.0)"]
 
 [[package]]
 name = "identify"
@@ -454,34 +401,12 @@ optional = false
 python-versions = ">=3.6"
 
 [[package]]
-name = "rfc3986"
-version = "1.5.0"
-description = "Validating URI References per RFC 3986"
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-idna = {version = "*", optional = true, markers = "extra == \"idna2008\""}
-
-[package.extras]
-idna2008 = ["idna"]
-
-[[package]]
 name = "six"
 version = "1.16.0"
 description = "Python 2 and 3 compatibility utilities"
 category = "main"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*"
-
-[[package]]
-name = "sniffio"
-version = "1.3.0"
-description = "Sniff out which async library your code is running under"
-category = "main"
-optional = false
-python-versions = ">=3.7"
 
 [[package]]
 name = "toml"
@@ -539,7 +464,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "d4e75f164ddd21e668cee6f2a29c428fb6d2de6b826f45df43298928597c89fc"
+content-hash = "593702fde6592c6f6d399939bc27bc190f1880cc4a3e38a07409acf200a584ea"
 
 [metadata.files]
 aiohttp = []
@@ -549,7 +474,6 @@ async-timeout = []
 attrs = []
 black = []
 blessings = []
-certifi = []
 cfgv = []
 charset-normalizer = []
 click = []
@@ -559,9 +483,6 @@ echo-agent = []
 filelock = []
 flake8 = []
 frozenlist = []
-h11 = []
-httpcore = []
-httpx = []
 identify = []
 idna = []
 iniconfig = []
@@ -582,9 +503,7 @@ pyparsing = []
 pytest = []
 pytest-asyncio = []
 pyyaml = []
-rfc3986 = []
 six = []
-sniffio = []
 toml = []
 tomli = []
 typing-extensions = []

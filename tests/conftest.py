@@ -101,11 +101,12 @@ async def mediation_granted(
 ):
     """Mediation granted to echo agent."""
     async with echo.session(mediator_connection, mediator_ws_endpoint) as session:
-        await session.send_message(
+        await echo.send_message_to_session(
+            session,
             {
                 "@type": "https://didcomm.org/coordinate-mediation/1.0/mediate-request",
                 "~transport": {"return_route": "all"},
-            }
+            },
         )
         mediation_record = await mediator.record_with_values(
             topic="mediation",
@@ -113,14 +114,12 @@ async def mediation_granted(
             state="request",
             record_type=MediationRecord,
         )
-        await mediator.post(
-            f"/mediation/requests/{mediation_record.mediation_id}/grant"
-        )
         mediation_record = await mediator.record_with_values(
             topic="mediation",
             connection_id=echo_connection_id,
             state="granted",
             record_type=MediationRecord,
         )
-        grant = await session.get_message()
+        grant = await echo.get_message(mediator_connection, session=session)
         assert "mediate-grant" in grant["@type"]
+        yield mediation_record

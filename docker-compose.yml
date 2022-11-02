@@ -20,6 +20,8 @@ services:
         --wallet-name mediator
         --wallet-key insecure
         --auto-provision
+        --enable-undelivered-queue
+        --open-mediation
     healthcheck:
       test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3001/status/live" | grep "200" > /dev/null
       start_period: 30s
@@ -28,19 +30,19 @@ services:
       retries: 5
     depends_on:
       echo:
-        condition: service_healthy
+        condition: service_started
 
   echo:
-    image: ghcr.io/indicio-tech/echo-agent:0.2.1
+    image: ghcr.io/indicio-tech/echo-agent:0.2.0
     ports:
       - "3002:3002"
     command: --host 0.0.0.0 --port 3002 --log-level debug
-    healthcheck:
-      test: python -m echo_agent.alive 0.0.0.0 3002
-      start_period: 5s
-      interval: 1s
-      timeout: 5s
-      retries: 5
+      # healthcheck:
+      #   test: nc -z localhost 3002
+      #   start_period: 5s
+      #   interval: 1s
+      #   timeout: 5s
+      #   retries: 5
 
   tests:
     container_name: juggernaut
@@ -60,4 +62,4 @@ services:
       mediator:
         condition: service_healthy
       echo:
-        condition: service_healthy
+        condition: service_started
