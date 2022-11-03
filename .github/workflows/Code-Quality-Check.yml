@@ -7,7 +7,7 @@ name: Code Quality Check
     branches:
       - main
       - feat/revocation
-      - patch/fixing-code-quality-actions
+      - test/code-quality-control
   pull_request:
     branches:
       - main
