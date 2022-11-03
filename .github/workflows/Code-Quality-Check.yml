@@ -6,12 +6,12 @@ name: Code Quality Check
   push: 
     branches:
       - main
-      - feat/revocation
+      - feature/revocation
       - test/code-quality-control
   pull_request:
     branches:
       - main
-      - feat/revocation
+      - feature/revocation
 
 env:
   FLAKE8_VERSION: 3.9.2
