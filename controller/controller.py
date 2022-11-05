@@ -1,5 +1,6 @@
 """ACA-Py Controller."""
 
+import asyncio
 from dataclasses import asdict, is_dataclass
 import logging
 from json import dumps
@@ -111,14 +112,30 @@ class Controller:
     def __init__(
         self,
         base_url: str,
+        *,
         label: Optional[str] = None,
+        wallet_id: Optional[str] = None,
+        subwallet_token: Optional[str] = None,
         headers: Optional[Mapping[str, str]] = None,
     ):
         self.base_url = base_url
         self.label = label or "ACA-Py"
-        self.headers = headers
+        self.headers = dict(headers or {})
+
+        if wallet_id and not subwallet_token:
+            raise ValueError("subwallet_token required when wallet_id is set")
+        self.wallet_id = wallet_id
+        self.subwallet_token = subwallet_token
+        if subwallet_token:
+            self.headers["Authorization"] = f"Bearer {subwallet_token}"
+
         self._event_queue: Optional[Queue[Event]] = None
         self._event_queue_context: Optional[AsyncContextManager] = None
+
+    @property
+    def is_subwallet(self) -> bool:
+        """Return whether this controller is for a subwallet."""
+        return self.subwallet_token is not None
 
     @property
     def event_queue(self) -> Queue[Event]:
@@ -146,8 +163,15 @@ class Controller:
         self._event_queue = await self._event_queue_context.__aenter__()
 
         # Get settings event
-        settings = await self._event_queue.get(lambda event: event.topic == "settings")
-        self.label = settings.payload["label"]
+        try:
+            settings = await self._event_queue.get(
+                lambda event: event.topic == "settings"
+            )
+            self.label = settings.payload["label"]
+        except asyncio.TimeoutError:
+            raise ControllerError(
+                "Failed to receive settings from agent; is it running?"
+            )
 
         return self
 
@@ -163,18 +187,35 @@ class Controller:
         data: Optional[bytes] = None,
         json: Optional[Mapping[str, Any]] = None,
     ) -> Mapping[str, Any]:
+        def _header_filter(headers: Mapping[str, str]):
+            return {
+                key: value
+                for key, value in headers.items()
+                if key.lower()
+                not in {
+                    "host",
+                    "accept",
+                    "accept-encoding",
+                    "user-agent",
+                    "content-length",
+                    "content-type",
+                }
+            }
+
         if data or json:
             LOGGER.info(
-                "Request to %s %s %s %s",
+                "Request to %s%s %s %s %s",
                 self.label,
+                _header_filter(resp.request_info.headers) or "",
                 resp.method,
                 resp.url.path_qs,
                 data or dumps(json, sort_keys=True, indent=2),
             )
         else:
             LOGGER.info(
-                "Request to %s %s %s",
+                "Request to %s%s %s %s",
                 self.label,
+                _header_filter(resp.request_info.headers) or "",
                 resp.method,
                 resp.url.path_qs,
             )
@@ -236,8 +277,58 @@ class Controller:
         response: Optional[Type[T]] = None,
     ) -> Union[T, Mapping[str, Any]]:
         """HTTP Get."""
+        headers = dict(headers or {})
+        headers.update(self.headers)
         async with ClientSession(base_url=self.base_url, headers=headers) as session:
             async with session.get(url, params=params) as resp:
+                body = await self._handle_response(resp)
+                return _deserialize(body, response)
+
+    @overload
+    async def delete(
+        self,
+        url: str,
+        *,
+        params: Optional[Mapping[str, Any]] = None,
+        headers: Optional[Mapping[str, str]] = None,
+    ) -> Mapping[str, Any]:
+        ...
+
+    @overload
+    async def delete(
+        self,
+        url: str,
+        *,
+        params: Optional[Mapping[str, Any]] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        response: None,
+    ) -> Mapping[str, Any]:
+        ...
+
+    @overload
+    async def delete(
+        self,
+        url: str,
+        *,
+        params: Optional[Mapping[str, Any]] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        response: Type[T],
+    ) -> T:
+        ...
+
+    async def delete(
+        self,
+        url: str,
+        *,
+        params: Optional[Mapping[str, Any]] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        response: Optional[Type[T]] = None,
+    ) -> Union[T, Mapping[str, Any]]:
+        """HTTP Delete."""
+        headers = dict(headers or {})
+        headers.update(self.headers)
+        async with ClientSession(base_url=self.base_url, headers=headers) as session:
+            async with session.delete(url, params=params) as resp:
                 body = await self._handle_response(resp)
                 return _deserialize(body, response)
 
@@ -293,9 +384,79 @@ class Controller:
         response: Optional[Type[T]] = None,
     ) -> Union[T, Mapping[str, Any]]:
         """HTTP POST."""
+        headers = dict(headers or {})
+        headers.update(self.headers)
         async with ClientSession(base_url=self.base_url, headers=headers) as session:
             json_ = _serialize(json)
+
+            if not data and not json_:
+                json_ = {}
+
             async with session.post(url, data=data, json=json_, params=params) as resp:
+                body = await self._handle_response(resp, data=data, json=json_)
+                return _deserialize(body, response)
+
+    @overload
+    async def put(
+        self,
+        url: str,
+        *,
+        data: Optional[bytes] = None,
+        json: Optional[Serializable] = None,
+        params: Optional[Mapping[str, Any]] = None,
+        headers: Optional[Mapping[str, str]] = None,
+    ) -> Mapping[str, Any]:
+        """HTTP Put and return json."""
+        ...
+
+    @overload
+    async def put(
+        self,
+        url: str,
+        *,
+        data: Optional[bytes] = None,
+        json: Optional[Serializable] = None,
+        params: Optional[Mapping[str, Any]] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        response: None,
+    ) -> Mapping[str, Any]:
+        """HTTP Put and return json."""
+        ...
+
+    @overload
+    async def put(
+        self,
+        url: str,
+        *,
+        data: Optional[bytes] = None,
+        json: Optional[Serializable] = None,
+        params: Optional[Mapping[str, Any]] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        response: Type[T],
+    ) -> T:
+        """HTTP Put and parse returned json as type T."""
+        ...
+
+    async def put(
+        self,
+        url: str,
+        *,
+        data: Optional[bytes] = None,
+        json: Optional[Serializable] = None,
+        params: Optional[Mapping[str, Any]] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        response: Optional[Type[T]] = None,
+    ) -> Union[T, Mapping[str, Any]]:
+        """HTTP Put."""
+        headers = dict(headers or {})
+        headers.update(self.headers)
+        async with ClientSession(base_url=self.base_url, headers=headers) as session:
+            json_ = _serialize(json)
+
+            if not data and not json_:
+                json_ = {}
+
+            async with session.put(url, data=data, json=json_, params=params) as resp:
                 body = await self._handle_response(resp, data=data, json=json_)
                 return _deserialize(body, response)
 
@@ -335,9 +496,15 @@ class Controller:
         record_type: Optional[Type[T]] = None,
     ) -> Union[T, Mapping[str, Any]]:
         """Get a record from an event."""
-        event = await self.event_queue.get(
-            lambda event: event.topic == topic and (select(event) if select else True)
-        )
+        try:
+            event = await self.event_queue.get(
+                lambda event: event.topic == topic
+                and (select(event) if select else True)
+            )
+        except asyncio.TimeoutError:
+            raise ControllerError(
+                f"Record with topic {topic} not received before timeout"
+            )
         return _deserialize(event.payload, record_type)
 
     @overload
@@ -376,10 +543,14 @@ class Controller:
         **values,
     ) -> Union[T, Mapping[str, Any]]:
         """Get a record from an event with values matching those passed in."""
-        return await self.record(
-            topic,
-            select=lambda event: all(
-                [event.payload[key] == value for key, value in values.items()]
-            ),
-            record_type=record_type,
-        )
+        try:
+            event = await self.event_queue.get(
+                lambda event: event.topic == topic
+                and all([event.payload[key] == value for key, value in values.items()])
+            )
+        except asyncio.TimeoutError:
+            raise ControllerError(
+                f"Record with topic {topic} and values {values} "
+                "not received before timeout"
+            )
+        return _deserialize(event.payload, record_type)

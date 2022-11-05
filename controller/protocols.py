@@ -29,6 +29,7 @@ from .models import (
     InvitationMessage,
     InvitationRecord,
     InvitationResult,
+    MediationRecord,
     PingRequest,
     ReceiveInvitationRequest,
     SchemaSendRequest,
@@ -246,6 +247,40 @@ async def didexchange(
         )
 
     return alice_conn, bob_conn
+
+
+async def request_mediation_v1(
+    mediator: Controller,
+    client: Controller,
+    mediator_connection_id: str,
+    client_connection_id: str,
+):
+    """Request mediation and await mediation granted."""
+    client_record = await client.post(
+        f"/mediation/request/{client_connection_id}",
+        response=MediationRecord,
+    )
+    mediator_record = await mediator.record_with_values(
+        topic="mediation",
+        connection_id=mediator_connection_id,
+        record_type=MediationRecord,
+    )
+    await mediator.post(f"/mediation/requests/{mediator_record.mediation_id}/grant")
+    client_record = await client.record_with_values(
+        topic="mediation",
+        connection_id=client_connection_id,
+        mediation_id=client_record.mediation_id,
+        state="granted",
+        record_type=MediationRecord,
+    )
+    mediator_record = await mediator.record_with_values(
+        topic="mediation",
+        connection_id=mediator_connection_id,
+        mediation_id=mediator_record.mediation_id,
+        state="granted",
+        record_type=MediationRecord,
+    )
+    return mediator_record, client_record
 
 
 async def indy_anoncred_onboard(agent: Controller):
