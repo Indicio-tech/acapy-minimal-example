@@ -1,21 +1,18 @@
-# Authored by Alexandra N. Walker <alex.walker@indicio.tech> ☀️
-
 name: Code Quality Check
 
 "on":
-  push: 
+  push:
     branches:
       - main
-      - feature/revocation
-      - test/code-quality-control
+      - 'feature/**'
   pull_request:
     branches:
       - main
-      - feature/revocation
+      - 'feature/**'
 
 env:
-  FLAKE8_VERSION: 3.9.2
-  BLACK_VERSION: 21.8b0
+  FLAKE8_VERSION: 5.0.4
+  BLACK_VERSION: 22.6.0
 
 jobs:
   lint:
@@ -26,7 +23,7 @@ jobs:
       - uses: actions/setup-python@v2
       - name: Black Code Formatter Check
         uses: psf/black@stable
-        
+
   format:
     name: Format and Lint Check
     runs-on: ubuntu-latest
@@ -35,13 +32,16 @@ jobs:
       - name: Set up Python 3.6
         uses: actions/setup-python@v2
         with:
-            python-version: 3.6
+          python-version: 3.6
       - name: Cache python environment
         id: cache-env
         uses: actions/cache@v2
         with:
-            path: env
-            key: ${{ runner.os }}-format-lint-${{ env.FLAKE8_VERSION }}-${{ env.BLACK_VERSION }}-${{ hashFiles('.github/workflows/code-quality-check.yml') }}
+          path: env
+          key: >
+            ${{ runner.os }}-format-lint-
+            ${{ env.FLAKE8_VERSION }}-${{ env.BLACK_VERSION }}-
+            ${{ hashFiles('.github/workflows/code-quality-check.yml') }}
       - name: create virtual environment
         if: steps.cache-env.outputs.cache-hit != 'true'
         run: |
