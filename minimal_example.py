@@ -1,10 +1,14 @@
-"""Controller."""
+"""Minimal reproducible example script.
+
+This script is for you to use to reproduce a bug or demonstrate a feature.
+"""
+
 import asyncio
 from os import getenv
 
-from .controller import Controller
-from .logging import logging_to_stdout
-from .protocols import (
+from controller import Controller
+from controller.logging import logging_to_stdout
+from controller.protocols import (
     connection,
     didexchange,
     indy_anoncred_credential_artifacts,

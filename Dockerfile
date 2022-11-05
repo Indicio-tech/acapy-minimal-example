@@ -16,4 +16,4 @@ RUN poetry install ${install_flags}
 
 COPY controller/ controller/
 
-ENTRYPOINT ["poetry", "run", "python", "-m", "controller"]
+ENTRYPOINT ["poetry", "run"]
