@@ -19,8 +19,8 @@ retrieve_endpoint () {
         done
 }
 
-retrieve_endpoint AGENT_TUNNEL_ENDPOINT
-retrieve_endpoint TAILS_TUNNEL_ENDPOINT
+retrieve_endpoint ${AGENT_TUNNEL_ENDPOINT}
+retrieve_endpoint ${TAILS_TUNNEL_ENDPOINT}
 
 ACAPY_ENDPOINT=$(curl --silent "${AGENT_TUNNEL_ENDPOINT}/url" | python -c "import sys, json; print(json.load(sys.stdin)['url'])")
 ACAPY_TAILS_SERVER_BASE_URL=$(curl --silent "${TAILS_TUNNEL_ENDPOINT}/api/tunnels" | python -c "import sys, json; print(json.load(sys.stdin)['tunnels'][0]['public_url'])")
