@@ -283,9 +283,8 @@ async def request_mediation_v1(
     return mediator_record, client_record
 
 
-async def indy_anoncred_onboard(agent: Controller):
-    """Onboard agent for indy anoncred operations."""
-
+async def indy_taa(agent: Controller):
+    """Accept TAA."""
     config = (await agent.get("/status/config", response=AdminConfig)).config
     genesis_url = config.get("ledger.genesis_url")
 
@@ -303,6 +302,14 @@ async def indy_anoncred_onboard(agent: Controller):
                 version=taa.taa_record.version,
             ),
         )
+
+    return genesis_url
+
+
+async def indy_anoncred_onboard(agent: Controller):
+    """Onboard agent for indy anoncred operations."""
+
+    genesis_url = await indy_taa(agent)
 
     public_did = (await agent.get("/wallet/did/public", response=DIDResult)).result
     if not public_did:

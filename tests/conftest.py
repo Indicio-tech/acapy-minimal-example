@@ -1,3 +1,4 @@
+import asyncio
 from os import getenv
 
 import pytest
@@ -13,20 +14,31 @@ def getenv_or_raise(var: str) -> str:
     return value
 
 
-@pytest_asyncio.fixture
-async def holder():
-    controller = await Controller(getenv_or_raise("HOLDER")).setup()
+@pytest.fixture(scope="session")
+def event_loop():
+    """Get session scoped event."""
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
+    yield loop
+    loop.close()
+
+
+@pytest_asyncio.fixture(scope="session")
+async def endorser():
+    controller = await Controller(getenv_or_raise("ENDORSER")).setup()
     yield controller
     await controller.shutdown()
 
 
-@pytest_asyncio.fixture
-async def issuer():
-    controller = await Controller(getenv_or_raise("ISSUER")).setup()
+@pytest_asyncio.fixture(scope="session")
+async def alice():
+    controller = await Controller(getenv_or_raise("ALICE")).setup()
     yield controller
     await controller.shutdown()
 
 
-@pytest.fixture
-def verifier(issuer):
-    yield issuer
+@pytest_asyncio.fixture(scope="session")
+async def bob():
+    controller = await Controller(getenv_or_raise("BOB")).setup()
+    yield controller
+    await controller.shutdown()
