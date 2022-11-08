@@ -1979,7 +1979,7 @@ class RevRegsCreated(BaseModel):
     class Config:
         allow_population_by_field_name = True
 
-    rev_reg_ids: Optional[List[RevRegId]] = None
+    rev_reg_ids: List[RevRegId]
 
 
 class RevocationModuleResponse(ActionMenuModulesResult):
@@ -2302,9 +2302,9 @@ class TxnOrCredentialDefinitionSendResult(BaseModel):
         extra = Extra.forbid
         allow_population_by_field_name = True
 
-    sent: Optional[CredentialDefinitionSendResult] = None
-    txn: Optional[TransactionRecord] = Field(
-        None, description="Credential definition transaction to endorse"
+    sent: CredentialDefinitionSendResult
+    txn: TransactionRecord = Field(
+        ..., description="Credential definition transaction to endorse"
     )
 
 
@@ -2314,8 +2314,8 @@ class TxnOrPublishRevocationsResult(BaseModel):
         allow_population_by_field_name = True
 
     sent: Optional[PublishRevocations] = None
-    txn: Optional[TransactionRecord] = Field(
-        None, description="Revocation registry revocations transaction to endorse"
+    txn: TransactionRecord = Field(
+        ..., description="Revocation registry revocations transaction to endorse"
     )
 
 

@@ -18,7 +18,7 @@ services:
         --admin 0.0.0.0 3001 --admin-insecure-mode
         --log-level debug
         --webhook-url http://echo:3002/webhook
-        --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_testnet_genesis
+        --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_demonet_genesis
         --wallet-type askar
         --wallet-name endorser
         --wallet-key insecure
@@ -52,7 +52,7 @@ services:
         --admin 0.0.0.0 3001 --admin-insecure-mode
         --log-level debug
         --webhook-url http://echo:3002/webhook
-        --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_testnet_genesis
+        --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_demonet_genesis
         --tails-server-base-url http://tails:6543
         --auto-create-revocation-transactions
         --wallet-type askar
@@ -90,7 +90,7 @@ services:
         --admin 0.0.0.0 3001 --admin-insecure-mode
         --log-level debug
         --webhook-url http://echo:3002/webhook
-        --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_testnet_genesis
+        --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_demonet_genesis
         --wallet-type askar
         --wallet-name bob
         --wallet-key insecure
@@ -112,7 +112,7 @@ services:
     ports:
       - 6543:6543
     environment:
-      - GENESIS_URL=https://raw.githubusercontent.com/Indicio-tech/indicio-network/master/genesis_files/pool_transactions_testnet_genesis
+      - GENESIS_URL=https://raw.githubusercontent.com/Indicio-tech/indicio-network/master/genesis_files/pool_transactions_demonet_genesis
     command: >
       tails-server
       --host 0.0.0.0
@@ -137,6 +137,7 @@ services:
     build:
       context: .
     environment:
+      - ENDORSER=http://endorser:3001
       - ALICE=http://alice:3001
       - BOB=http://bob:3001
       - ECHO_ENDPOINT=http://echo:3002
@@ -146,6 +147,8 @@ services:
     command: python -m minimal_example
     depends_on:
       echo:
+        condition: service_healthy
+      endorser:
         condition: service_healthy
       alice:
         condition: service_healthy

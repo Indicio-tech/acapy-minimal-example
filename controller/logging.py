@@ -1,6 +1,8 @@
 import logging
-from os import getenv
+from os import getenv, get_terminal_size
 import sys
+from contextlib import contextmanager
+from typing import Optional, TextIO
 
 
 from blessings import Terminal
@@ -45,3 +47,25 @@ def logging_to_stdout():
         logging.getLogger("controller").setLevel(LOG_LEVEL.upper())
 
     LOGGING_SET = True
+
+
+@contextmanager
+def section(
+    title: str,
+    character: str = "=",
+    close: Optional[str] = None,
+    file: TextIO = sys.stdout,
+):
+    """Mark a section in output."""
+    if file == sys.stdout and sys.stdout.isatty():
+        term = Terminal()
+        size = get_terminal_size()
+        left = character * (int(size.columns / 2) - int((len(title) + 1) / 2))
+        right = character * (size.columns - (len(left) + len(title) + 2))
+        print(f"{term.blue}{term.bold}{left} {title} {right}{term.normal}")
+        yield
+        if close:
+            print(f"{term.blue}{close * size.columns}{term.normal}")
+    else:
+        print(title, file=file)
+        yield

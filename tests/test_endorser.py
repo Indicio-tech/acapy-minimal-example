@@ -165,7 +165,7 @@ async def indy_anoncred_credential_artifacts_through_endorser(
     await process_pending_txn(endorser, agent)
     # When automatically sending revocation txns, we need to process them here
     if support_revocation:
-        for _ in range(0, 2):
+        for _ in range(0, 3):
             await process_pending_txn(endorser, agent)
 
     return schema_txn.sent, cred_def_txn.sent
@@ -208,7 +208,6 @@ async def test_issue_credential(
     bob: Controller,
     endorser_alice_connection: Tuple[ConnRecord, ConnRecord],
 ):
-    logging_to_stdout()
     _, alice_conn = endorser_alice_connection
     schema, cred_def = await indy_anoncred_credential_artifacts_through_endorser(
         alice,
@@ -239,6 +238,7 @@ async def test_issue_revocable_credential(
     bob: Controller,
     endorser_alice_connection: Tuple[ConnRecord, ConnRecord],
 ):
+    logging_to_stdout()
     _, alice_conn = endorser_alice_connection
     schema, cred_def = await indy_anoncred_credential_artifacts_through_endorser(
         alice,
@@ -268,3 +268,4 @@ async def test_issue_revocable_credential(
         attributes={"firstname": "Bob", "lastname": "Builder", "age": "42"},
     )
     assert bob_cred_ex.state == "credential_acked"
+    assert False
