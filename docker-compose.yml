@@ -2,12 +2,6 @@ version: "3"
 services:
   endorser:
     image: bcgovimages/aries-cloudagent:py36-1.16-1_0.7.5
-    # image: acapy-test-image
-    # build:
-    #   context: .
-    #   dockerfile: Dockerfile.acapy
-    #   args:
-    #     acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
     ports:
       - "3001:3001"
     command: >
@@ -17,7 +11,6 @@ services:
         -e http://endorser:3000
         --admin 0.0.0.0 3001 --admin-insecure-mode
         --log-level debug
-        --webhook-url http://echo:3002/webhook
         --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_demonet_genesis
         --wallet-type askar
         --wallet-name endorser
@@ -30,18 +23,9 @@ services:
       interval: 3s
       timeout: 5s
       retries: 5
-    depends_on:
-      echo:
-        condition: service_healthy
 
   alice:
     image: bcgovimages/aries-cloudagent:py36-1.16-1_0.7.5
-    # image: acapy-test-image
-    # build:
-    #   context: .
-    #   dockerfile: Dockerfile.acapy
-    #   args:
-    #     acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
     ports:
       - "3002:3001"
     command: >
@@ -51,15 +35,14 @@ services:
         -e http://alice:3000
         --admin 0.0.0.0 3001 --admin-insecure-mode
         --log-level debug
-        --webhook-url http://echo:3002/webhook
         --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_demonet_genesis
         --tails-server-base-url http://tails:6543
-        --auto-create-revocation-transactions
         --wallet-type askar
         --wallet-name alice
         --wallet-key insecure
         --auto-provision
         --endorser-protocol-role author
+        --auto-create-revocation-transactions
     healthcheck:
       test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3001/status/live" | grep "200" > /dev/null
       start_period: 30s
@@ -67,19 +50,11 @@ services:
       timeout: 5s
       retries: 5
     depends_on:
-      echo:
-        condition: service_healthy
       tails:
         condition: service_started
 
   bob:
     image: bcgovimages/aries-cloudagent:py36-1.16-1_0.7.5
-    # image: acapy-test-image
-    # build:
-    #   context: .
-    #   dockerfile: Dockerfile.acapy
-    #   args:
-    #     acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
     ports:
       - "3003:3001"
     command: >
@@ -89,7 +64,6 @@ services:
         -e http://bob:3000
         --admin 0.0.0.0 3001 --admin-insecure-mode
         --log-level debug
-        --webhook-url http://echo:3002/webhook
         --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_demonet_genesis
         --wallet-type askar
         --wallet-name bob
@@ -102,8 +76,6 @@ services:
       timeout: 5s
       retries: 5
     depends_on:
-      echo:
-        condition: service_healthy
       tails:
         condition: service_started
 
@@ -120,18 +92,6 @@ services:
       --storage-path /tmp/tails-files
       --log-level INFO
 
-  echo:
-    image: ghcr.io/indicio-tech/echo-agent:0.1.2
-    ports:
-      - "3004:3002"
-    command: --host 0.0.0.0 --port 3002 --log-level debug
-    healthcheck:
-      test: nc -z localhost 3002
-      start_period: 5s
-      interval: 1s
-      timeout: 5s
-      retries: 5
-
   example:
     container_name: controller
     build:
@@ -140,14 +100,11 @@ services:
       - ENDORSER=http://endorser:3001
       - ALICE=http://alice:3001
       - BOB=http://bob:3001
-      - ECHO_ENDPOINT=http://echo:3002
     volumes:
       - ./controller:/usr/src/app/controller:ro,z
       - ./minimal_example.py:/usr/src/app/minimal_example.py:ro,z
     command: python -m minimal_example
     depends_on:
-      echo:
-        condition: service_healthy
       endorser:
         condition: service_healthy
       alice:
@@ -165,14 +122,11 @@ services:
       - ENDORSER=http://endorser:3001
       - ALICE=http://alice:3001
       - BOB=http://bob:3001
-      - ECHO_ENDPOINT=http://echo:3002
     volumes:
       - ./controller:/usr/src/app/controller:z
       - ./tests:/usr/src/app/tests:z
     entrypoint: "poetry run pytest"
     depends_on:
-      echo:
-        condition: service_healthy
       endorser:
         condition: service_healthy
       alice:
