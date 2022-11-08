@@ -2,7 +2,7 @@ from os import getenv
 from secrets import token_hex
 from typing import Tuple
 
-from echo_agent import EchoClient
+from echo_agent.client import EchoClient
 from echo_agent.models import ConnectionInfo
 import pytest
 import pytest_asyncio
@@ -33,6 +33,14 @@ async def echo():
     """Get echo client."""
     client = EchoClient(getenv_or_raise("ECHO"))
     async with client as session:
+        yield session
+
+
+@pytest_asyncio.fixture
+async def agent():
+    """Get agent."""
+    agent = await Controller(getenv_or_raise("AGENT"))
+    async with agent as session:
         yield session
 
 
