@@ -15,7 +15,7 @@ async-selective-queue = "^0.1.0"
 aiohttp = "^3.8.1"
 pydantic = "^1.10.2"
 blessings = "^1.7"
-echo-agent = {git = "https://github.com/indicio-tech/echo-agent", rev = "v0.2.0"}
+echo-agent = {git = "https://github.com/indicio-tech/echo-agent", rev = "v0.2.0", extras = ["client"]}
 
 [tool.poetry.dev-dependencies]
 black = "^22.6.0"
