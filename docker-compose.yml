@@ -32,6 +32,23 @@ services:
       echo:
         condition: service_started
 
+  agent:
+    image: acapy-test-image
+    build:
+      context: .
+      dockerfile: Dockerfile.acapy
+    ports:
+      - "4003:4003"
+    command: >
+      start -it http 0.0.0.0 4000 -it ws 0.0.0.0 4002
+        --label Agent
+        -ot http
+        -e http://agent:4000
+        --admin 0.0.0.0 4001 --admin-insecure-mode
+        --log-level debug
+        --no-ledger
+        --auto-provision
+
   echo:
     image: ghcr.io/indicio-tech/echo-agent:0.2.0
     ports:
@@ -54,6 +71,8 @@ services:
       - MEDIATOR=http://mediator:3001
       - MEDIATOR_WS=http://mediator:3002
       - ECHO=http://echo:3002
+      - AGENT=http://agent:4001
+      - AGENT_WS=http://agent:4002
     volumes:
       - ./controller:/usr/src/app/controller:z
       - ./tests:/usr/src/app/tests:z
