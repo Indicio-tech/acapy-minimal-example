@@ -12,7 +12,7 @@ services:
     ports:
       - "3001:3001"
     volumes:
-      - ./tunnel-endpoint.sh:/tunnel-endpoint.sh:ro,z
+      - ./tunnel_endpoint.sh:/tunnel_endpoint.sh:ro,z
     environment:
         AGENT_TUNNEL_ENDPOINT: http://tunnel-bob:4040
         TAILS_TUNNEL_ENDPOINT: http://tunnel-tails:4040
@@ -58,7 +58,7 @@ services:
     ports:
       - "3002:3001"
     volumes:
-      - ./tunnel-endpoint.sh:/tunnel-endpoint.sh:ro,z
+      - ./tunnel_endpoint.sh:/tunnel_endpoint.sh:ro,z
     environment:
       AGENT_TUNNEL_ENDPOINT: http://tunnel-alice:4040
       TAILS_TUNNEL_ENDPOINT: http://tunnel-tails:4040
