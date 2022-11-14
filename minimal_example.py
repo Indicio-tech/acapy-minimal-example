@@ -20,7 +20,7 @@ from controller.protocols import (
 )
 
 ALICE = getenv("ALICE", "http://alice:3001")
-BOB = getenv("BOB", "http://alice:3001")
+BOB = getenv("BOB", "http://bob:3001")
 
 
 async def main():
