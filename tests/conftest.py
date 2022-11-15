@@ -24,3 +24,8 @@ async def bob():
     controller = await Controller(getenv_or_raise("BOB")).setup()
     yield controller
     await controller.shutdown()
+
+
+@pytest_asyncio.fixture
+def faber(bob):
+    yield bob
