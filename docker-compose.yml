@@ -7,7 +7,7 @@ services:
     #   context: .
     #   dockerfile: Dockerfile.acapy
     #   args:
-    #     acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
+    #     acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@3bdce76cbc17fad73a6de531d060ea8414a6293d
     ports:
       - "3001:3001"
     command: >
@@ -40,7 +40,7 @@ services:
     #   context: .
     #   dockerfile: Dockerfile.acapy
     #   args:
-    #     acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
+    #     acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@3bdce76cbc17fad73a6de531d060ea8414a6293d
     ports:
       - "3002:3001"
     command: >
@@ -56,6 +56,7 @@ services:
         --wallet-name bob
         --wallet-key insecure
         --auto-provision
+        --public-invites
     healthcheck:
       test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3001/status/live" | grep "200" > /dev/null
       start_period: 30s
