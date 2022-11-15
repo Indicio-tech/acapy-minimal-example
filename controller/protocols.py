@@ -75,62 +75,62 @@ def _make_params(**kwargs) -> Mapping[str, Any]:
     }
 
 
-async def connection(alice: Controller, bob: Controller):
+async def connection(inviter: Controller, invitee: Controller):
     """Connect two agents."""
 
-    invitation = await alice.post(
+    invitation = await inviter.post(
         "/connections/create-invitation", json={}, response=InvitationResult
     )
-    alice_conn = await alice.get(
+    inviter_conn = await inviter.get(
         f"/connections/{invitation.connection_id}",
         response=ConnRecord,
     )
 
-    bob_conn = await bob.post(
+    invitee_conn = await invitee.post(
         "/connections/receive-invitation",
         json=ReceiveInvitationRequest.parse_obj(invitation.invitation.dict()),
         response=ConnRecord,
     )
 
-    await bob.post(
-        f"/connections/{bob_conn.connection_id}/accept-invitation",
+    await invitee.post(
+        f"/connections/{invitee_conn.connection_id}/accept-invitation",
     )
 
-    await alice.record_with_values(
+    await inviter.record_with_values(
         topic="connections",
-        connection_id=alice_conn.connection_id,
+        connection_id=inviter_conn.connection_id,
         rfc23_state="request-received",
     )
 
-    alice_conn = await alice.post(
-        f"/connections/{alice_conn.connection_id}/accept-request",
+    inviter_conn = await inviter.post(
+        f"/connections/{inviter_conn.connection_id}/accept-request",
         response=ConnRecord,
     )
 
-    await bob.record_with_values(
+    await invitee.record_with_values(
         topic="connections",
-        connection_id=bob_conn.connection_id,
+        connection_id=invitee_conn.connection_id,
         rfc23_state="response-received",
     )
-    await bob.post(
-        f"/connections/{bob_conn.connection_id}/send-ping",
+    await invitee.post(
+        f"/connections/{invitee_conn.connection_id}/send-ping",
         json=PingRequest(comment="Making connection active"),
     )
 
-    alice_conn = await alice.record_with_values(
+    inviter_conn = await inviter.record_with_values(
         topic="connections",
         record_type=ConnRecord,
-        connection_id=alice_conn.connection_id,
+        connection_id=inviter_conn.connection_id,
         rfc23_state="completed",
     )
-    bob_conn = await bob.record_with_values(
+    invitee_conn = await invitee.record_with_values(
         topic="connections",
         record_type=ConnRecord,
-        connection_id=bob_conn.connection_id,
+        connection_id=invitee_conn.connection_id,
         rfc23_state="completed",
     )
 
-    return alice_conn, bob_conn
+    return inviter_conn, invitee_conn
 
 
 # TODO No model for OOBRecord in ACA-Py OpenAPI...
@@ -151,8 +151,8 @@ class OOBRecord:
 
 
 async def didexchange(
-    alice: Controller,
-    bob: Controller,
+    inviter: Controller,
+    invitee: Controller,
     *,
     invite: Optional[InvitationMessage] = None,
     use_public_did: bool = False,
@@ -162,7 +162,7 @@ async def didexchange(
 ):
     """Connect two agents using did exchange protocol."""
     if not invite:
-        invite_record = await alice.post(
+        invite_record = await inviter.post(
             "/out-of-band/create-invitation",
             json=InvitationCreateRequest(
                 handshake_protocols=["https://didcomm.org/didexchange/1.0"],
@@ -176,15 +176,15 @@ async def didexchange(
         )
         invite = invite_record.invitation
 
-    alice_conn = (
-        await alice.get(
+    inviter_conn = (
+        await inviter.get(
             "/connections",
             params={"invitation_msg_id": invite.id},
             response=ConnectionList,
         )
     ).results[0]
 
-    bob_oob_record = await bob.post(
+    invitee_oob_record = await invitee.post(
         "/out-of-band/receive-invitation",
         json=invite,
         params=_make_params(
@@ -193,60 +193,60 @@ async def didexchange(
         response=OOBRecord,
     )
 
-    if use_existing_connection and bob_oob_record == "reuse-accepted":
-        alice_oob_record = await alice.record_with_values(
+    if use_existing_connection and invitee_oob_record == "reuse-accepted":
+        inviter_oob_record = await inviter.record_with_values(
             topic="out_of_band",
             record_type=OOBRecord,
             invi_msg_id=invite.id,
         )
-        alice_conn = await alice.get(
-            f"/connections/{alice_oob_record.connection_id}",
+        inviter_conn = await inviter.get(
+            f"/connections/{inviter_oob_record.connection_id}",
             response=ConnRecord,
         )
-        bob_conn = await bob.get(
-            f"/connections/{bob_oob_record.connection_id}",
+        invitee_conn = await invitee.get(
+            f"/connections/{invitee_oob_record.connection_id}",
             response=ConnRecord,
         )
-        return alice_conn, bob_conn
+        return inviter_conn, invitee_conn
 
     if not auto_accept:
-        bob_conn = await bob.post(
-            f"/didexchange/{bob_oob_record.connection_id}/accept-invitation",
+        invitee_conn = await invitee.post(
+            f"/didexchange/{invitee_oob_record.connection_id}/accept-invitation",
             response=ConnRecord,
         )
-        alice_oob_record = await alice.record_with_values(
+        inviter_oob_record = await inviter.record_with_values(
             topic="out_of_band",
             record_type=OOBRecord,
-            connection_id=alice_conn.connection_id,
+            connection_id=inviter_conn.connection_id,
             state="done",
         )
-        alice_conn = await alice.post(
-            f"/didexchange/{alice_oob_record.connection_id}/accept-request",
+        inviter_conn = await inviter.post(
+            f"/didexchange/{inviter_oob_record.connection_id}/accept-request",
             response=ConnRecord,
         )
 
-        await bob.record_with_values(
+        await invitee.record_with_values(
             topic="connections",
-            connection_id=bob_conn.connection_id,
+            connection_id=invitee_conn.connection_id,
             rfc23_state="response-received",
         )
-        await bob.record_with_values(
+        invitee_conn = await invitee.record_with_values(
             topic="connections",
-            connection_id=bob_conn.connection_id,
+            connection_id=invitee_conn.connection_id,
             rfc23_state="completed",
         )
-        await alice.record_with_values(
+        inviter_conn = await inviter.record_with_values(
             topic="connections",
-            connection_id=alice_conn.connection_id,
+            connection_id=inviter_conn.connection_id,
             rfc23_state="completed",
         )
     else:
-        bob_conn = await bob.get(
-            f"/connections/{bob_oob_record.connection_id}",
+        invitee_conn = await invitee.get(
+            f"/connections/{invitee_oob_record.connection_id}",
             response=ConnRecord,
         )
 
-    return alice_conn, bob_conn
+    return inviter_conn, invitee_conn
 
 
 async def request_mediation_v1(
