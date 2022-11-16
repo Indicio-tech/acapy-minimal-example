@@ -7,10 +7,18 @@ WAIT_INTERVAL=${WAIT_INTERVAL:-3}
 WAIT_ATTEMPTS=${WAIT_ATTEMPTS:-10}
 
 liveliness_check () {
+	CURRENT_ATTEMPT=0
         for _ in $(seq 1 "$WAIT_ATTEMPTS"); do
                 #TODO If wait attempts exceeded and we still haven't successfully gotten an endpoint, exit with status 1
                 if ! curl -s -o /dev/null -w '%{http_code}' "${1}" | grep "200" > /dev/null; then
-                        echo "Waiting for tunnel..." 1>&2
+			CURRENT_ATTEMPT=$((CURRENT_ATTEMPT+1))
+			if [[ $CURRENT_ATTEMPT -gt $WAIT_ATTEMPT ]]
+			then
+				echo "Still haven't been able to reach the server. Please check your configurations or try again later"
+				exit 1
+			fi
+			
+			echo "Waiting for tunnel..." 1>&2
                         sleep "$WAIT_INTERVAL" &
                         wait $!
                 else
