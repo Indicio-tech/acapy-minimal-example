@@ -14,7 +14,7 @@ services:
     volumes:
       - ./tunnel_endpoint.sh:/tunnel_endpoint.sh:ro,z
     environment:
-        AGENT_TUNNEL_ENDPOINT: http://tunnel-bob:4040
+        AGENT_TUNNEL_ENDPOINT: http://tunnel-alice:4040
         TAILS_TUNNEL_ENDPOINT: http://tunnel-tails:4040
     entrypoint: >
       /bin/sh -c '/tunnel_endpoint.sh aca-py "$$@"' --
@@ -60,7 +60,7 @@ services:
     volumes:
       - ./tunnel_endpoint.sh:/tunnel_endpoint.sh:ro,z
     environment:
-      AGENT_TUNNEL_ENDPOINT: http://tunnel-alice:4040
+      AGENT_TUNNEL_ENDPOINT: http://tunnel-bob:4040
       TAILS_TUNNEL_ENDPOINT: http://tunnel-tails:4040
     entrypoint: 
       /bin/sh -c '/tunnel_endpoint.sh aca-py "$$@"' --
