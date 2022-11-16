@@ -1,8 +1,9 @@
 version: "3"
 services:
   alice:
+    image: bcgovimages/aries-cloudagent:py36-1.16-1_0.7.5
     # image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
-    image: acapy-cred-attachments
+    # image: acapy-cred-attachments
     build:
       context: .
       dockerfile: Dockerfile.acapy
@@ -10,6 +11,9 @@ services:
         acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
     ports:
       - "3001:3001"
+    environment:
+        AGENT_TUNNEL_ENDPOINT: http://tunnel-bob:4040
+        TAILS_TUNNEL_ENDPOINT: http://tunnel-tails:4040
     command: >
       start -it http 0.0.0.0 3000
         --label Alice
@@ -19,7 +23,7 @@ services:
         --log-level debug
         --webhook-url http://echo:3002/webhook
         --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_demonet_genesis
-        --wallet-type askar
+        --wallet-type indy
         --wallet-name alice
         --wallet-key insecure
         --auto-provision
@@ -34,8 +38,9 @@ services:
         condition: service_healthy
 
   bob:
+    image: bcgovimages/aries-cloudagent:py36-1.16-1_0.7.5
     # image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
-    image: acapy-cred-attachments
+    # image: acapy-cred-attachments
     build:
       context: .
       dockerfile: Dockerfile.acapy
@@ -43,6 +48,9 @@ services:
         acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
     ports:
       - "3002:3001"
+    environment:
+      AGENT_TUNNEL_ENDPOINT: http://tunnel-alice:4040
+      TAILS_TUNNEL_ENDPOINT: http://tunnel-tails:4040
     command: >
       start -it http 0.0.0.0 3000
         --label Bob
@@ -52,7 +60,7 @@ services:
         --log-level debug
         --webhook-url http://echo:3002/webhook
         --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_demonet_genesis
-        --wallet-type askar
+        --wallet-type indy
         --wallet-name bob
         --wallet-key insecure
         --auto-provision
