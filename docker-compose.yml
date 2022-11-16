@@ -78,7 +78,7 @@ services:
       timeout: 5s
       retries: 5
 
-  controller:
+  example:
     container_name: controller
     build:
       context: .
@@ -87,7 +87,9 @@ services:
       - BOB=http://bob:3001
       - ECHO_ENDPOINT=http://echo:3002
     volumes:
-      - ./controller:/usr/src/app/controller:z
+      - ./controller:/usr/src/app/controller:ro,z
+      - ./minimal_example.py:/usr/src/app/minimal_example.py:ro,z
+    command: python -m minimal_example
     depends_on:
       echo:
         condition: service_healthy
@@ -103,8 +105,8 @@ services:
       args:
         install_flags: ""
     environment:
-      - ISSUER=http://alice:3001
-      - HOLDER=http://bob:3001
+      - ALICE=http://alice:3001
+      - BOB=http://bob:3001
       - ECHO_ENDPOINT=http://echo:3002
     volumes:
       - ./controller:/usr/src/app/controller:z
