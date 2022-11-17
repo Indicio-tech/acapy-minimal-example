@@ -157,8 +157,8 @@ services:
       args:
         install_flags: ""
     environment:
-      - ISSUER=http://alice:3001
-      - HOLDER=http://bob:3001
+      - ALICE=http://alice:3001
+      - BOB=http://bob:3001
       - ECHO_ENDPOINT=http://echo:3002
     volumes:
       - ./controller:/usr/src/app/controller:z
