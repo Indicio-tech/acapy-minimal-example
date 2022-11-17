@@ -5,7 +5,6 @@ name: tests
   push:
     branches: 
       - main
-      - test/tests
   pull_request:
     branches:
       - main
