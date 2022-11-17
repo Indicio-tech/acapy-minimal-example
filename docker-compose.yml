@@ -1,70 +1,104 @@
 version: "3"
 services:
   alice:
-    # image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
-    image: acapy-cred-attachments
-    build:
-      context: .
-      dockerfile: Dockerfile.acapy
-      args:
-        acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
+    image: bcgovimages/aries-cloudagent:py36-1.16-1_0.7.5
+    #image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
+    # image: acapy-test-image
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile.acapy
+    #   args:
+    #     acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
     ports:
       - "3001:3001"
+    volumes:
+      - ./tunnel_endpoint.sh:/tunnel_endpoint.sh:ro,z
+    environment:
+        AGENT_TUNNEL_ENDPOINT: http://tunnel-alice:4040
+        TAILS_TUNNEL_ENDPOINT: http://tunnel-tails:4040
+    entrypoint: >
+      /bin/sh -c '/tunnel_endpoint.sh aca-py "$$@"' --
     command: >
       start -it http 0.0.0.0 3000
         --label Alice
         -ot http
         -e http://alice:3000
+        --tails-server-base-url http://tails:6543
         --admin 0.0.0.0 3001 --admin-insecure-mode
         --log-level debug
         --webhook-url http://echo:3002/webhook
         --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_demonet_genesis
-        --wallet-type askar
+        --wallet-type indy
         --wallet-name alice
         --wallet-key insecure
         --auto-provision
     healthcheck:
       test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3001/status/live" | grep "200" > /dev/null
       start_period: 30s
-      interval: 3s
+      interval: 7s
       timeout: 5s
       retries: 5
     depends_on:
       echo:
         condition: service_healthy
+      tails:
+        condition: service_started
+      tunnel-alice:
+        condition: service_started
 
   bob:
-    # image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
-    image: acapy-cred-attachments
-    build:
-      context: .
-      dockerfile: Dockerfile.acapy
-      args:
-        acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
+    image: bcgovimages/aries-cloudagent:py36-1.16-1_0.7.5
+    #image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
+    # image: acapy-test-image
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile.acapy
+    #   args:
+    #     acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
     ports:
       - "3002:3001"
+    volumes:
+      - ./tunnel_endpoint.sh:/tunnel_endpoint.sh:ro,z
+    environment:
+      AGENT_TUNNEL_ENDPOINT: http://tunnel-bob:4040
+      TAILS_TUNNEL_ENDPOINT: http://tunnel-tails:4040
+    entrypoint: 
+      /bin/sh -c '/tunnel_endpoint.sh aca-py "$$@"' --
     command: >
       start -it http 0.0.0.0 3000
         --label Bob
         -ot http
         -e http://bob:3000
+        --tails-server-base-url http://tails:6543
         --admin 0.0.0.0 3001 --admin-insecure-mode
         --log-level debug
         --webhook-url http://echo:3002/webhook
         --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_demonet_genesis
-        --wallet-type askar
+        --wallet-type indy
         --wallet-name bob
         --wallet-key insecure
         --auto-provision
     healthcheck:
       test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3001/status/live" | grep "200" > /dev/null
       start_period: 30s
-      interval: 3s
+      interval: 7s
       timeout: 5s
       retries: 5
     depends_on:
+      tails:
+        condition: service_started
       echo:
         condition: service_healthy
+      tunnel-bob:
+        condition: service_started
+
+  tunnel-alice:
+    image: dbluhm/agent-tunnel
+    command: -s alice:3000 -p 4040 -h ${AGENT_TUNNEL_HOST}
+
+  tunnel-bob:
+    image: dbluhm/agent-tunnel
+    command: -s bob:3002 -p 4040 -h ${AGENT_TUNNEL_HOST}
 
   echo:
     image: ghcr.io/indicio-tech/echo-agent:0.1.2
@@ -74,7 +108,7 @@ services:
     healthcheck:
       test: nc -z localhost 3002
       start_period: 5s
-      interval: 1s
+      interval: 7s
       timeout: 5s
       retries: 5
 
@@ -96,6 +130,26 @@ services:
       bob:
         condition: service_healthy
 
+  tunnel-tails:
+    image: wernight/ngrok
+    command: ngrok http tails:6543 --bind-tls false --log stdout
+
+  tails:
+    image: ghcr.io/bcgov/tails-server:latest
+    ports:
+      - 6543:6543
+    environment:
+      - GENESIS_URL=https://raw.githubusercontent.com/Indicio-tech/indicio-network/master/genesis_files/pool_transactions_testnet_genesis
+    command: >
+      tails-server
+      --host 0.0.0.0
+      --port 6543
+      --storage-path /tmp/tails-files
+      --log-level INFO
+    depends_on:
+      tunnel-tails:
+        condition: service_started
+
   tests:
     container_name: juggernaut
     build:
@@ -103,8 +157,8 @@ services:
       args:
         install_flags: ""
     environment:
-      - ISSUER=http://alice:3001
-      - HOLDER=http://bob:3001
+      - ALICE=http://alice:3001
+      - BOB=http://bob:3001
       - ECHO_ENDPOINT=http://echo:3002
     volumes:
       - ./controller:/usr/src/app/controller:z
