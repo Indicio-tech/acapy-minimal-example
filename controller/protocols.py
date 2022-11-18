@@ -220,8 +220,15 @@ async def didexchange(
             connection_id=inviter_conn.connection_id,
             state="done",
         )
+        # Overwrite multiuse invitation connection with actual connection
+        inviter_conn = await inviter.record_with_values(
+            topic="connections",
+            record_type=ConnRecord,
+            rfc23_state="request-received",
+            invitation_key=inviter_oob_record.our_recipient_key,
+        )
         inviter_conn = await inviter.post(
-            f"/didexchange/{inviter_oob_record.connection_id}/accept-request",
+            f"/didexchange/{inviter_conn.connection_id}/accept-request",
             response=ConnRecord,
         )
 
@@ -234,11 +241,13 @@ async def didexchange(
             topic="connections",
             connection_id=invitee_conn.connection_id,
             rfc23_state="completed",
+            record_type=ConnRecord,
         )
         inviter_conn = await inviter.record_with_values(
             topic="connections",
             connection_id=inviter_conn.connection_id,
             rfc23_state="completed",
+            record_type=ConnRecord,
         )
     else:
         invitee_conn = await invitee.get(
