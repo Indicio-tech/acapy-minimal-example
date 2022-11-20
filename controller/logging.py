@@ -2,28 +2,15 @@
 
 from contextlib import contextmanager
 import logging
-from os import getenv, get_terminal_size
+from os import get_terminal_size, getenv
 import sys
+from typing import Optional, TextIO
 
 from blessings import Terminal
 
 
 LOG_LEVEL = getenv("LOG_LEVEL", "debug")
 LOGGING_SET = False
-
-
-@contextmanager
-def section(title: str):
-    """Mark a section of output."""
-    if sys.stdout.isatty():
-        term = Terminal()
-        size = get_terminal_size()
-        left = "=" * (int(size.columns / 2) - int((len(title) + 1) / 2))
-        right = "=" * (size.columns - (len(left) + len(title) + 2))
-        print(f"{term.blue}{term.bold}{left} {title} {right}{term.normal}")
-    else:
-        print(title)
-    yield
 
 
 class ColorFormatter(logging.Formatter):
@@ -67,3 +54,25 @@ def logging_to_stdout():
         logging.getLogger("controller").setLevel(LOG_LEVEL.upper())
 
     LOGGING_SET = True
+
+
+@contextmanager
+def section(
+    title: str,
+    character: str = "=",
+    close: Optional[str] = None,
+    file: TextIO = sys.stdout,
+):
+    """Mark a section in output."""
+    if file == sys.stdout and sys.stdout.isatty():
+        term = Terminal()
+        size = get_terminal_size()
+        left = character * (int(size.columns / 2) - int((len(title) + 1) / 2))
+        right = character * (size.columns - (len(left) + len(title) + 2))
+        print(f"{term.blue}{term.bold}{left} {title} {right}{term.normal}")
+        yield
+        if close:
+            print(f"{term.blue}{close * size.columns}{term.normal}")
+    else:
+        print(title, file=file)
+        yield

@@ -1906,7 +1906,7 @@ class ResolutionResult(BaseModel):
     class Config:
         allow_population_by_field_name = True
 
-    did_doc: Dict[str, Any] = Field(..., description="DID Document")
+    did_document: Dict[str, Any] = Field(..., description="DID Document")
     metadata: Dict[str, Any] = Field(..., description="Resolution metadata")
 
 
