@@ -546,7 +546,9 @@ class Controller:
         try:
             event = await self.event_queue.get(
                 lambda event: event.topic == topic
-                and all([event.payload[key] == value for key, value in values.items()])
+                and all(
+                    [event.payload.get(key) == value for key, value in values.items()]
+                )
             )
         except asyncio.TimeoutError:
             raise ControllerError(
