@@ -25,7 +25,7 @@ from aiohttp import ClientResponse, ClientSession
 from async_selective_queue import Select
 from pydantic import BaseModel, parse_obj_as
 
-from .events import Event, EventQueue, Queue
+from .events import Event, EventQueue, EventQueueConfig, Queue
 
 
 LOGGER = logging.getLogger(__name__)
@@ -161,11 +161,22 @@ class Controller:
         """Async context exit."""
         await self.shutdown((exc_type, exc_value, traceback))
 
+    @property
+    def event_queue_config(self):
+        return EventQueueConfig(
+            label=self.label,
+            # TODO don't make assumptions about the /ws endpoint?
+            url=f"{self.base_url}/ws",
+            wallet_id=self.wallet_id,
+        )
+
     async def setup(self) -> "Controller":
         """Set up the controller."""
         self._stack = await AsyncExitStack().__aenter__()
         if not self._event_queue:
-            self._event_queue = await self._stack.enter_async_context(EventQueue(self))
+            self._event_queue = await self._stack.enter_async_context(
+                EventQueue(self.event_queue_config)
+            )
         if not self._session:
             self._session = await self._stack.enter_async_context(
                 ClientSession(base_url=self.base_url, headers=self.headers)
