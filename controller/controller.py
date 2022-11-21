@@ -1,13 +1,13 @@
 """ACA-Py Controller."""
 
 import asyncio
+from contextlib import AsyncExitStack
 from dataclasses import asdict, is_dataclass
 import logging
 from json import dumps
 from types import TracebackType
 from typing import (
     Any,
-    AsyncContextManager,
     Mapping,
     Optional,
     Protocol,
@@ -117,6 +117,8 @@ class Controller:
         wallet_id: Optional[str] = None,
         subwallet_token: Optional[str] = None,
         headers: Optional[Mapping[str, str]] = None,
+        event_queue: Optional[Queue[Event]] = None,
+        session: Optional[ClientSession] = None,
     ):
         self.base_url = base_url
         self.label = label or "ACA-Py"
@@ -129,8 +131,10 @@ class Controller:
         if subwallet_token:
             self.headers["Authorization"] = f"Bearer {subwallet_token}"
 
-        self._event_queue: Optional[Queue[Event]] = None
-        self._event_queue_context: Optional[AsyncContextManager] = None
+        self._event_queue: Optional[Queue[Event]] = event_queue
+        self._session: Optional[ClientSession] = session
+
+        self._stack: Optional[AsyncExitStack] = None
 
     @property
     def is_subwallet(self) -> bool:
@@ -159,27 +163,19 @@ class Controller:
 
     async def setup(self) -> "Controller":
         """Set up the controller."""
-        self._event_queue_context = EventQueue(self)
-        self._event_queue = await self._event_queue_context.__aenter__()
-
-        # Get settings event
-        try:
-            settings = await self._event_queue.get(
-                lambda event: event.topic == "settings"
+        self._stack = await AsyncExitStack().__aenter__()
+        if not self._event_queue:
+            self._event_queue = await self._stack.enter_async_context(EventQueue(self))
+        if not self._session:
+            self._session = await self._stack.enter_async_context(
+                ClientSession(base_url=self.base_url, headers=self.headers)
             )
-            self.label = settings.payload["label"]
-        except asyncio.TimeoutError:
-            raise ControllerError(
-                "Failed to receive settings from agent; is it running?"
-            )
-
         return self
 
     async def shutdown(self, exc_info: Optional[Tuple] = None):
         """Shutdown the controller."""
-        if self._event_queue_context is None:
-            raise ControllerError("Cannont shutdown controller that has not be set up")
-        await self._event_queue_context.__aexit__(*(exc_info or (None, None, None)))
+        if self._stack:
+            await self._stack.__aexit__(*(exc_info or (None, None, None)))
 
     async def _handle_response(
         self,
@@ -277,12 +273,16 @@ class Controller:
         response: Optional[Type[T]] = None,
     ) -> Union[T, Mapping[str, Any]]:
         """HTTP Get."""
+        if not self._session:
+            raise ControllerError(
+                "Controller is missing client session; call setup or enter async context"
+            )
+
         headers = dict(headers or {})
         headers.update(self.headers)
-        async with ClientSession(base_url=self.base_url, headers=headers) as session:
-            async with session.get(url, params=params) as resp:
-                body = await self._handle_response(resp)
-                return _deserialize(body, response)
+        async with self._session.get(url, params=params, headers=headers) as resp:
+            body = await self._handle_response(resp)
+            return _deserialize(body, response)
 
     @overload
     async def delete(
@@ -325,12 +325,16 @@ class Controller:
         response: Optional[Type[T]] = None,
     ) -> Union[T, Mapping[str, Any]]:
         """HTTP Delete."""
+        if not self._session:
+            raise ControllerError(
+                "Controller is missing client session; call setup or enter async context"
+            )
+
         headers = dict(headers or {})
         headers.update(self.headers)
-        async with ClientSession(base_url=self.base_url, headers=headers) as session:
-            async with session.delete(url, params=params) as resp:
-                body = await self._handle_response(resp)
-                return _deserialize(body, response)
+        async with self._session.delete(url, params=params) as resp:
+            body = await self._handle_response(resp)
+            return _deserialize(body, response)
 
     @overload
     async def post(
@@ -384,17 +388,22 @@ class Controller:
         response: Optional[Type[T]] = None,
     ) -> Union[T, Mapping[str, Any]]:
         """HTTP POST."""
+        if not self._session:
+            raise ControllerError(
+                "Controller is missing client session; call setup or enter async context"
+            )
+
         headers = dict(headers or {})
         headers.update(self.headers)
-        async with ClientSession(base_url=self.base_url, headers=headers) as session:
-            json_ = _serialize(json)
+        json_ = _serialize(json)
+        if not data and not json_:
+            json_ = {}
 
-            if not data and not json_:
-                json_ = {}
-
-            async with session.post(url, data=data, json=json_, params=params) as resp:
-                body = await self._handle_response(resp, data=data, json=json_)
-                return _deserialize(body, response)
+        async with self._session.post(
+            url, data=data, json=json_, params=params
+        ) as resp:
+            body = await self._handle_response(resp, data=data, json=json_)
+            return _deserialize(body, response)
 
     @overload
     async def put(
@@ -448,17 +457,20 @@ class Controller:
         response: Optional[Type[T]] = None,
     ) -> Union[T, Mapping[str, Any]]:
         """HTTP Put."""
+        if not self._session:
+            raise ControllerError(
+                "Controller is missing client session; call setup or enter async context"
+            )
+
         headers = dict(headers or {})
         headers.update(self.headers)
-        async with ClientSession(base_url=self.base_url, headers=headers) as session:
-            json_ = _serialize(json)
+        json_ = _serialize(json)
+        if not data and not json_:
+            json_ = {}
 
-            if not data and not json_:
-                json_ = {}
-
-            async with session.put(url, data=data, json=json_, params=params) as resp:
-                body = await self._handle_response(resp, data=data, json=json_)
-                return _deserialize(body, response)
+        async with self._session.put(url, data=data, json=json_, params=params) as resp:
+            body = await self._handle_response(resp, data=data, json=json_)
+            return _deserialize(body, response)
 
     @overload
     async def record(
