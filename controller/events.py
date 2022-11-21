@@ -27,7 +27,7 @@ class EventQueueConfig:
 
     label: str
     url: str
-    wallet_id: Optional[str]
+    wallet_id: Optional[str] = None
 
     @property
     def is_subwallet(self) -> bool:
