@@ -765,7 +765,6 @@ class DID(BaseModel):
         ...,
         description="Public verification key",
         example="H3C2AVvLMv6gmMNam3uVAjZpfkcJCwDwnZn6z3wXmqPV",
-        regex="^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{43,44}$",
     )
 
 

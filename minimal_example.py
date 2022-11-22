@@ -110,6 +110,149 @@ async def main():
         )
         print(alice_pres_ex.json(by_alias=True, indent=2))
 
+        issuer_cred_ex, holder_cred_ex = await jsonld_issue_credential(
+            alice,
+            bob,
+            alice_conn.connection_id,
+            bob_conn.connection_id,
+            credential={
+                "@context": [
+                    "https://www.w3.org/2018/credentials/v1",
+                    {
+                        "ex": "https://example.com/examples#",
+                        "TableTennisTournamentWin": "ex:TableTennisTournamentWin",
+                        "dateWon": "ex:dateWon",
+                    },
+                ],
+                "type": ["VerifiableCredential", "TableTennisTournamentWin"],
+                "issuer": "did:sov:" + public_did.did,
+                "issuanceDate": str(date.today()),
+                "credentialSubject": {"id": bob_did.did, "dateWon": str(date.today())},
+            },
+            options={"proofType": "Ed25519Signature2018"},
+        )
+        alice_pres_ex, bob_pres_ex = await jsonld_present_proof(
+            alice,
+            bob,
+            alice_conn.connection_id,
+            bob_conn.connection_id,
+            presentation_definition={
+                "input_descriptors": [
+                    {
+                        "id": "ttt_win_input_1",
+                        "name": "TableTennisTournamentWin",
+                        "schema": [
+                            {
+                                "uri": "https://www.w3.org/2018/credentials#VerifiableCredential"  # noqa: E501
+                            },
+                            {
+                                "uri": "https://example.com/examples#TableTennisTournamentWin"  # noqa: E501
+                            },
+                        ],
+                        "constraints": {
+                            "is_holder": [
+                                {
+                                    "directive": "required",
+                                    "field_id": [
+                                        "1f44d55f-f161-4938-a659-f8026467f126"
+                                    ],
+                                }
+                            ],
+                            "fields": [
+                                {
+                                    "id": "1f44d55f-f161-4938-a659-f8026467f126",
+                                    "path": ["$.credentialSubject.dateWon"],
+                                    "purpose": "Get proof of win on date",  # noqa: E501
+                                },
+                            ],
+                        },
+                    }
+                ],
+                "id": str(uuid4()),
+                "format": {"ldp_vp": {"proof_type": ["Ed25519Signature2018"]}},
+            },
+            domain="test-degree",
+        )
+        print(alice_pres_ex.json(by_alias=True, indent=2))
+
+        alice_did = (
+            await alice.post(
+                "/wallet/did/create",
+                json={"method": "key", "options": {"key_type": "bls12381g2"}},
+                response=DIDResult,
+            )
+        ).result
+        assert alice_did
+
+        issuer_cred_ex, holder_cred_ex = await jsonld_issue_credential(
+            alice,
+            bob,
+            alice_conn.connection_id,
+            bob_conn.connection_id,
+            credential={
+                "@context": [
+                    "https://www.w3.org/2018/credentials/v1",
+                    {
+                        "ex": "https://example.com/examples#",
+                        "Employment": "ex:Employment",
+                        "dateHired": "ex:dateHired",
+                        "clearance": "ex:clearance",
+                    },
+                ],
+                "type": ["VerifiableCredential", "Employment"],
+                "issuer": alice_did.did,
+                "issuanceDate": str(date.today()),
+                "credentialSubject": {
+                    "id": bob_did.did,
+                    "dateHired": str(date.today()),
+                    "clearance": 1,
+                },
+            },
+            options={"proofType": "BbsBlsSignature2020"},
+        )
+        alice_pres_ex, bob_pres_ex = await jsonld_present_proof(
+            alice,
+            bob,
+            alice_conn.connection_id,
+            bob_conn.connection_id,
+            presentation_definition={
+                "input_descriptors": [
+                    {
+                        "id": "building_access_1",
+                        "name": "BuildingAccess",
+                        "schema": [
+                            {
+                                "uri": "https://www.w3.org/2018/credentials#VerifiableCredential"  # noqa: E501
+                            },
+                            # {"uri": "https://example.com/examples#Employment"},
+                        ],
+                        "constraints": {
+                            # "limit_disclosure": "required",
+                            "is_holder": [
+                                {
+                                    "directive": "required",
+                                    "field_id": [
+                                        "1f44d55f-f161-4938-a659-f8026467f126"
+                                    ],
+                                }
+                            ],
+                            "fields": [
+                                {
+                                    "id": "1f44d55f-f161-4938-a659-f8026467f126",
+                                    "path": ["$.credentialSubject.clearance"],
+                                    "purpose": "Get clearance",  # noqa: E501
+                                },
+                            ],
+                        },
+                    }
+                ],
+                "id": str(uuid4()),
+                "format": {"ldp_vp": {"proof_type": ["BbsBlsSignature2020"]}},
+            },
+            domain="building-access",
+        )
+        print(alice_pres_ex.json(by_alias=True, indent=2))
+
 
 if __name__ == "__main__":
     logging_to_stdout()
