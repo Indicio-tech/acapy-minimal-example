@@ -1,13 +1,13 @@
 version: "3"
 services:
   alice:
-    image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
-    # image: acapy-test-image
-    # build:
-    #   context: .
-    #   dockerfile: Dockerfile.acapy
-    #   args:
-    #     acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@3bdce76cbc17fad73a6de531d060ea8414a6293d
+    # image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
+    image: acapy-test-image
+    build:
+      context: .
+      dockerfile: Dockerfile.acapy
+      args:
+        acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@93cbd2a22ccb5ca9b34735ef8744f4ab6a7bd756
     ports:
       - "3001:3001"
     command: >
@@ -34,13 +34,13 @@ services:
         condition: service_healthy
 
   bob:
-    image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
-    # image: acapy-test-image
-    # build:
-    #   context: .
-    #   dockerfile: Dockerfile.acapy
-    #   args:
-    #     acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@3bdce76cbc17fad73a6de531d060ea8414a6293d
+    # image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
+    image: acapy-test-image
+    build:
+      context: .
+      dockerfile: Dockerfile.acapy
+      args:
+        acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@93cbd2a22ccb5ca9b34735ef8744f4ab6a7bd756
     ports:
       - "3002:3001"
     command: >
