@@ -220,7 +220,7 @@ class Controller:
         if resp.ok and resp.content_type == "application/json":
             body = await resp.json()
             response_out = dumps(body, indent=2, sort_keys=True)
-            if response_out.count("\n") > 50:
+            if response_out.count("\n") > 200:
                 response_out = dumps(body, sort_keys=True)
             LOGGER.info("Response: %s", response_out)
             return body
