@@ -76,3 +76,11 @@ def section(
     else:
         print(title, file=file)
         yield
+
+
+def pause_for_input(prompt: Optional[str] = None):
+    term = Terminal()
+    prompt = prompt or "Press Enter to continue..."
+    print(f"{term.blue}{term.bold}", end="")
+    input(prompt)
+    print(f"{term.normal}", end="")
