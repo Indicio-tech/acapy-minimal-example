@@ -778,21 +778,29 @@ async def indy_anoncreds_revoke(
     holder_connection_id: Optional[str] = None,
     publish: bool = False,
     notify: bool = True,
+    notify_version: str = "v1_0"
 ):
     """Revoking an Indy credential using revocation revoke.
     V1.0: V10CredentialExchange
     V2.0: V20CredExRecordDetail
     """
+    if notify==True and holder_connection_id is None:
+        return(
+            "If you are going to set notify to True,"
+            "then holder_connection_id cannot be empty."
+            )
+
     # Passes in V10CredentialExchange
     if isinstance(cred_ex, V10CredentialExchange):
         await issuer.post(
             url="/revocation/revoke",
             json={
-                "connection id":holder_connection_id,
+                "connection_id":holder_connection_id,
                 "rev_reg_id":cred_ex.revoc_reg_id,
                 "cred_rev_id":cred_ex.revocation_id,
                 "publish":publish,
-                "notify":notify
+                "notify":notify,
+                "notify_version":notify_version
             }
         )
 
@@ -801,11 +809,12 @@ async def indy_anoncreds_revoke(
         await issuer.post(
             url="/revocation/revoke",
             json={
-                "connection id":holder_connection_id,
+                "connection_id":holder_connection_id,
                 "rev_reg_id":cred_ex.indy.rev_reg_id,
                 "cred_rev_id":cred_ex.indy.cred_rev_id,
                 "publish":publish,
-                "notify":notify
+                "notify":notify,
+                "notify_version":notify_version
             }
         )
         
