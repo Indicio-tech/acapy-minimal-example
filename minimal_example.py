@@ -234,8 +234,7 @@ async def main():
         for i, pres in enumerate(presentations.results):
             print(summary(pres))
         return presentations
-
-
+    
 
         # Version 2.0
         # Revoke credential v2
@@ -366,18 +365,9 @@ async def main():
         )
 
         # Query presentations
-        print("###########")
-        print("Grabbing presentations now")
         presentations = await alice.get(
             "/present-proof-2.0/records"
         )
-        print("here's ur type yo")
-        print(type(presentations))
-        print(presentations)
-        print('un')
-        print(presentations[0])
-        
-
 
         # Presentation summary
         for i, pres in enumerate(presentations.results):
