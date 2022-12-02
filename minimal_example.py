@@ -106,9 +106,7 @@ async def main():
             holder_connection_id=alice_cred_ex.connection_id,
             notify=True,
         )
-        await indy_anoncreds_publish_revocation(
-            alice, cred_ex=alice_cred_ex
-        )
+        await indy_anoncreds_publish_revocation(alice, cred_ex=alice_cred_ex)
         # TODO: Make this into a helper in protocols.py?
         await bob.record(topic="revocation-notification")
 
@@ -234,7 +232,6 @@ async def main():
         for i, pres in enumerate(presentations.results):
             print(summary(pres))
         return presentations
-    
 
         # Version 2.0
         # Revoke credential v2
@@ -243,11 +240,9 @@ async def main():
             cred_ex=alice_cred_ex_v2,
             holder_connection_id=alice_cred_ex_v2.connection_id,
             notify=True,
-            notify_version="v2_0"
+            notify_version="v2_0",
         )
-        await indy_anoncreds_publish_revocation(
-            alice, cred_ex=alice_cred_ex_v2
-        )
+        await indy_anoncreds_publish_revocation(alice, cred_ex=alice_cred_ex_v2)
         # Record again
         await bob.record(topic="revocation-notification")
 
@@ -365,9 +360,7 @@ async def main():
         )
 
         # Query presentations
-        presentations = await alice.get(
-            "/present-proof-2.0/records"
-        )
+        presentations = await alice.get("/present-proof-2.0/records")
 
         # Presentation summary
         for i, pres in enumerate(presentations.results):
