@@ -61,7 +61,8 @@ services:
     environment:
       AGENT_TUNNEL_ENDPOINT: http://tunnel-bob:4040
       TAILS_TUNNEL_ENDPOINT: http://tunnel-tails:4040
-    entrypoint: /bin/sh -c '/tunnel_endpoint.sh aca-py "$$@"' --
+    entrypoint: >
+      /bin/sh -c '/tunnel_endpoint.sh aca-py "$$@"' --
     command: >
       start -it http 0.0.0.0 3000
         --label Bob
@@ -97,7 +98,6 @@ services:
   tunnel-bob:
     image: dbluhm/agent-tunnel
     command: -s bob:3000 -p 4040 -h ${AGENT_TUNNEL_HOST}
-
   echo:
     image: ghcr.io/indicio-tech/echo-agent:0.1.2
     ports:
