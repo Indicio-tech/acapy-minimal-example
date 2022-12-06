@@ -82,3 +82,5 @@ services:
         condition: service_healthy
       echo:
         condition: service_started
+      agent: 
+        condition: service_started

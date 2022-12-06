@@ -39,9 +39,10 @@ async def echo():
 @pytest_asyncio.fixture
 async def agent():
     """Get agent."""
-    agent = await Controller(getenv_or_raise("AGENT"))
+    agent = await Controller(getenv_or_raise("AGENT")).setup()
     async with agent as session:
         yield session
+        await session.shutdown()
 
 
 @pytest_asyncio.fixture

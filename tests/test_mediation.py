@@ -46,6 +46,7 @@ async def test_with_agent(
     agent: Controller,
     echo: EchoClient,
     mediator_connection: ConnectionInfo,
+    mediator_ws_endpoint: str,
 ):
     """"""
 
@@ -57,3 +58,21 @@ async def test_with_agent(
     )
 
     echo.new_connection(seed=echo_seed, endpoint=invitation.invitation.service_endpoint)
+
+    print(invitation)
+
+    async with echo.session(mediator_connection, mediator_ws_endpoint) as session:
+        await echo.send_message_to_session(
+            session,
+            {
+                "@type": "/https://didcomm.org/coordinate-mediation/1.0/keylist-update",
+                "updates": [
+                    {
+                        "recipient_key": "",
+                        "action": "add",
+                    }
+                ],
+            },
+        )
+
+    assert False
