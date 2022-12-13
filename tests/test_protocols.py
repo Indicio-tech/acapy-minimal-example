@@ -2,9 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Fri Oct 21 12:16:49 2022
-
 @author: Alexandra N. Walker
-
 Testing methods from protocols.py
 """
 from controller.protocols import (
@@ -17,26 +15,17 @@ from controller.protocols import (
     indy_present_proof_v1,
     indy_present_proof_v2,
     indy_anoncreds_revoke,
-    indy_anoncreds_publish_revocation,
-    indy_anoncreds_proof_revocations
+    indy_anoncreds_publish_revocation
     )
-from tests.conftest import getenv_or_raise
+from tests.conftest import (
+    getenv_or_raise,
+    alice,
+    bob
+)
 from controller.controller import Controller
 import pytest
 import pytest_asyncio
 from os import getenv
-
-@pytest_asyncio.fixture
-async def alice():
-    alice = await Controller(getenv_or_raise("ALICE")).setup()
-    yield alice
-    await alice.shutdown()
-
-@pytest_asyncio.fixture
-async def bob():
-    bob = await Controller(getenv_or_raise("BOB")).setup()
-    yield bob
-    await bob.shutdown()
 
 @pytest.mark.asyncio
 async def test_connection_established(alice,bob):
@@ -47,9 +36,17 @@ async def test_connection_established(alice,bob):
     yield alice_conn, bob_conn
     
 @pytest.mark.asyncio
-async def test_did_exchanged(alice,bob):
+async def test_did_exchange(alice,bob):
     """Testing that dids are exchanged successfully."""
     alice_conn, bob_conn = await didexchange(alice, bob)
+    assert alice_conn
+    assert bob_conn
+    yield alice_conn, bob_conn
+
+@pytest.mark.asyncio
+async def test_did_exchange_with_multiuse(alice,bob):
+    """Testing that dids are exchanged successfully."""
+    alice_conn, bob_conn = await didexchange(alice, bob, multi_use=True)
     assert alice_conn
     assert bob_conn
     yield alice_conn, bob_conn
@@ -227,7 +224,7 @@ async def test_indy_anoncreds_revoke(alice,alice_cred_ex,bob_cred_ex):
     """
     test_revoke_cred_either_version = await indy_anoncreds_revoke(
             alice,
-            v10_credential_exchange_object=alice_cred_ex,
+            cred_ex=alice_cred_ex,
             holder_connection_id=bob_cred_ex.connection_id,
             notify=True,
         )
@@ -240,7 +237,7 @@ async def test_indy_anoncreds_revoke_v2(alice,alice_cred_ex_v2,bob_cred_ex_v2):
     """
     test_revoke_cred_either_version = await indy_anoncreds_revoke(
             alice,
-            v10_credential_exchange_object=alice_cred_ex_v2,
+            cred_ex=alice_cred_ex_v2,
             holder_connection_id=bob_cred_ex_v2.connection_id,
             notify=True,
         )
@@ -253,7 +250,7 @@ async def test_indy_anoncreds_publish_revocation(alice,alice_cred_ex):
     Testing publishing revocation
     """
     test_publish_revocation_either_version = await indy_anoncreds_publish_revocation(
-            alice, v10_credential_exchange_object=alice_cred_ex
+            alice, cred_ex=alice_cred_ex
         )
     assert test_publish_revocation_either_version
     yield test_publish_revocation_either_version
@@ -264,20 +261,7 @@ async def test_indy_anoncreds_publish_revocation_v2(alice,alice_cred_ex_v2):
     Testing publishing revocation
     """
     test_publish_revocation_either_version = await indy_anoncreds_publish_revocation(
-            alice, v10_credential_exchange_object=alice_cred_ex_v2
+            alice, cred_ex=alice_cred_ex_v2
         )
     assert test_publish_revocation_either_version
     yield test_publish_revocation_either_version
-    
-@pytest.mark.asyncio
-async def test_indy_anoncreds_proof_revocations(alice,alice_conn):
-    """
-    Testing proof of revocation
-    """
-    test_proof_revocation = await indy_anoncreds_proof_revocations(alice,
-                                        issuer_connection_id=alice_conn.connection_id,
-                                        requested_attributes=[{"name": "firstname"}],
-                                        requested_predicates=None
-                                           )
-    assert test_proof_revocation
-    yield test_proof_revocation
