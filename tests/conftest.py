@@ -129,6 +129,7 @@ async def mediation_granted(
             state="granted",
             record_type=MediationRecord,
         )
+        assert mediation_record
         grant = await echo.get_message(mediator_connection, session=session)
         assert "mediate-grant" in grant["@type"]
-        yield mediation_record
+        yield grant
