@@ -13,6 +13,12 @@ services:
       - "3001:3001"
     volumes:
       - ./configs:/configs:ro,z
+      - ./tunnel_endpoint.sh:/tunnel_endpoint.sh:ro,z
+    environment:
+      AGENT_TUNNEL_ENDPOINT: http://tunnel-alice:4040
+      TAILS_TUNNEL_ENDPOINT: http://tunnel-tails:4040
+    entrypoint: >
+      /bin/sh -c '/tunnel_endpoint.sh aca-py "$$@"' --
     command: >
       start --arg-file /configs/alice.yml
     healthcheck:
@@ -25,6 +31,8 @@ services:
       echo:
         condition: service_healthy
       tails:
+        condition: service_started
+      tunnel-alice:
         condition: service_started
 
   bob:
@@ -72,6 +80,10 @@ services:
         condition: service_healthy
       tunnel-bob:
         condition: service_started
+
+  tunnel-alice:
+    image: dbluhm/agent-tunnel
+    command: -s alice:3000 -p 4040 -h ${AGENT_TUNNEL_HOST}
 
   tunnel-bob:
     image: dbluhm/agent-tunnel
