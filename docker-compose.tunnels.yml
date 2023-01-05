@@ -54,19 +54,7 @@ services:
     entrypoint: >
       /bin/sh -c '/tunnel_endpoint.sh aca-py "$$@"' --
     command: >
-      start -it http 0.0.0.0 3000
-        --label Bob
-        -ot http
-        -e http://bob:3000
-        --admin 0.0.0.0 3001 --admin-insecure-mode
-        --log-level debug
-        --webhook-url http://echo:3002/webhook
-        --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_testnet_genesis
-        --wallet-type indy
-        --wallet-name bob
-        --wallet-key insecure
-        --auto-provision
-        --monitor-revocation-notification
+      start --arg-file /configs/bob.yml
     healthcheck:
       test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3001/status/live" | grep "200" > /dev/null
       start_period: 30s
