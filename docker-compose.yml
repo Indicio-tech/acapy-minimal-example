@@ -13,6 +13,8 @@ services:
       - "3001:3001"
     volumes:
       - ./configs:/configs:ro,z
+    environment:
+      ACAPY_TAILS_SERVER_BASE_URL: http://tails:6543
     command: >
       start --arg-file /configs/alice.yml
     healthcheck:
@@ -39,12 +41,7 @@ services:
     ports:
       - "3002:3001"
     volumes:
-      - ./tunnel_endpoint.sh:/tunnel_endpoint.sh:ro,z
-    environment:
-      AGENT_TUNNEL_ENDPOINT: http://tunnel-bob:4040
-      TAILS_TUNNEL_ENDPOINT: http://tunnel-tails:4040
-    entrypoint: >
-      /bin/sh -c '/tunnel_endpoint.sh aca-py "$$@"' --
+      - ./configs:/configs:ro,z
     command: >
       start --arg-file /configs/bob.yml
     healthcheck:
@@ -123,3 +120,9 @@ services:
         condition: service_healthy
       bob:
         condition: service_healthy
+
+configs:
+  alice-config:
+    file: ./configs/alice.yml
+  bob-config:
+    file: ./configs/bob.yml

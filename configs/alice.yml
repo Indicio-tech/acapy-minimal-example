@@ -1,4 +1,5 @@
-inbound-transport: [http, 0.0.0.0, 3000]
+inbound-transport:
+  - [http, 0.0.0.0, 3000]
 label: Alice
 outbound-transport: http
 endpoint: http://alice:3000
@@ -11,4 +12,3 @@ wallet-type: indy
 wallet-name: alice
 wallet-key: insecure
 auto-provision: true
-monitor-revocation-notification: true

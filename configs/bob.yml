@@ -1,4 +1,5 @@
-inbound-transport: [http, 0.0.0.0, 3000]
+inbound-transport:
+  - [http, 0.0.0.0, 3000]
 label: Bob
 outbound-transport: http
 endpoint: http://bob:3000
@@ -11,4 +12,3 @@ wallet-type: indy
 wallet-name: bob
 wallet-key: insecure
 auto-provision: true
-monitor-revocation-notification: true
