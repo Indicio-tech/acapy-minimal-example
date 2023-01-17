@@ -13,6 +13,12 @@ services:
       - "3001:3001"
     volumes:
       - ./configs:/configs:ro,z
+      - ./tunnel_endpoint.sh:/tunnel_endpoint.sh:ro,z
+    environment:
+      AGENT_TUNNEL_ENDPOINT: http://tunnel-alice:4040
+      TAILS_TUNNEL_ENDPOINT: http://tunnel-tails:4040
+    entrypoint: >
+      /bin/sh -c '/tunnel_endpoint.sh aca-py "$$@"' --
     command: >
       start --arg-file /configs/alice.yml
     healthcheck:
@@ -25,6 +31,8 @@ services:
       echo:
         condition: service_healthy
       tails:
+        condition: service_started
+      tunnel-alice:
         condition: service_started
 
   bob:
@@ -39,7 +47,12 @@ services:
     ports:
       - "3002:3001"
     volumes:
-      - ./configs:/configs:ro,z
+      - ./tunnel_endpoint.sh:/tunnel_endpoint.sh:ro,z
+    environment:
+      AGENT_TUNNEL_ENDPOINT: http://tunnel-bob:4040
+      TAILS_TUNNEL_ENDPOINT: http://tunnel-tails:4040
+    entrypoint: >
+      /bin/sh -c '/tunnel_endpoint.sh aca-py "$$@"' --
     command: >
       start --arg-file /configs/bob.yml
     healthcheck:
@@ -49,8 +62,20 @@ services:
       timeout: 5s
       retries: 5
     depends_on:
+      tails:
+        condition: service_started
       echo:
         condition: service_healthy
+      tunnel-bob:
+        condition: service_started
+
+  tunnel-alice:
+    image: dbluhm/agent-tunnel
+    command: -s alice:3000 -p 4040 -h ${AGENT_TUNNEL_HOST}
+
+  tunnel-bob:
+    image: dbluhm/agent-tunnel
+    command: -s bob:3000 -p 4040 -h ${AGENT_TUNNEL_HOST}
 
   echo:
     image: ghcr.io/indicio-tech/echo-agent:0.1.2
@@ -84,6 +109,10 @@ services:
       bob:
         condition: service_healthy
 
+  tunnel-tails:
+    image: wernight/ngrok
+    command: ngrok http tails:6543 --bind-tls false --log stdout
+
   tails:
     image: ghcr.io/bcgov/tails-server:latest
     ports:
@@ -96,6 +125,9 @@ services:
       --port 6543
       --storage-path /tmp/tails-files
       --log-level INFO
+    depends_on:
+      tunnel-tails:
+        condition: service_started
 
   tests:
     container_name: juggernaut
@@ -118,9 +150,3 @@ services:
         condition: service_healthy
       bob:
         condition: service_healthy
-
-configs:
-  alice-config:
-    file: ./configs/alice.yml
-  bob-config:
-    file: ./configs/bob.yml
