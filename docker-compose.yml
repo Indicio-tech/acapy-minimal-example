@@ -13,8 +13,6 @@ services:
       - "3001:3001"
     volumes:
       - ./configs:/configs:ro,z
-    environment:
-      ACAPY_TAILS_SERVER_BASE_URL: http://tails:6543
     command: >
       start --arg-file /configs/alice.yml
     healthcheck:
