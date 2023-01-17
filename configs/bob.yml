@@ -13,3 +13,4 @@ wallet-name: bob
 wallet-key: insecure
 auto-provision: true
 tails-server-base-url: http://tails:6543
+monitor-revocation-notification: true
