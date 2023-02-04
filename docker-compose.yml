@@ -14,7 +14,9 @@ services:
     volumes:
       - ./configs:/configs:ro,z
     command: >
-      start --arg-file /configs/alice.yml
+      start
+        --arg-file /configs/alice.yml
+        --webhook-url http://webhook-listener:8080
     healthcheck:
       test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3001/status/live" | grep "200" > /dev/null
       start_period: 30s
@@ -22,8 +24,8 @@ services:
       timeout: 5s
       retries: 5
     depends_on:
-      echo:
-        condition: service_healthy
+      webhook-listener:
+        condition: service_started
       tails:
         condition: service_started
 
@@ -41,7 +43,9 @@ services:
     volumes:
       - ./configs:/configs:ro,z
     command: >
-      start --arg-file /configs/bob.yml
+      start
+        --arg-file /configs/bob.yml
+        --webhook-url http://webhook-listener:8080
     healthcheck:
       test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3001/status/live" | grep "200" > /dev/null
       start_period: 30s
@@ -49,20 +53,8 @@ services:
       timeout: 5s
       retries: 5
     depends_on:
-      echo:
-        condition: service_healthy
-
-  echo:
-    image: ghcr.io/indicio-tech/echo-agent:0.1.2
-    ports:
-      - "3003:3002"
-    command: --host 0.0.0.0 --port 3002 --log-level debug
-    healthcheck:
-      test: nc -z 0.0.0.0 3002
-      start_period: 5s
-      interval: 7s
-      timeout: 5s
-      retries: 5
+      webhook-listener:
+        condition: service_started
 
   example:
     container_name: controller
@@ -71,18 +63,20 @@ services:
     environment:
       - ALICE=http://alice:3001
       - BOB=http://bob:3001
-      - ECHO_ENDPOINT=http://echo:3002
     volumes:
       - ./controller:/usr/src/app/controller:ro,z
       - ./minimal_example.py:/usr/src/app/minimal_example.py:ro,z
     command: python -m minimal_example
     depends_on:
-      echo:
-        condition: service_healthy
       alice:
         condition: service_healthy
       bob:
         condition: service_healthy
+
+  webhook-listener:
+    image: mendhak/http-https-echo:18
+    environment:
+      - HTTP_PORT=8080
 
   tails:
     image: ghcr.io/bcgov/tails-server:latest
@@ -106,14 +100,11 @@ services:
     environment:
       - ALICE=http://alice:3001
       - BOB=http://bob:3001
-      - ECHO_ENDPOINT=http://echo:3002
     volumes:
       - ./controller:/usr/src/app/controller:z
       - ./tests:/usr/src/app/tests:z
     entrypoint: "poetry run pytest"
     depends_on:
-      echo:
-        condition: service_healthy
       alice:
         condition: service_healthy
       bob:
