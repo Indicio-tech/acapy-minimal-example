@@ -166,6 +166,10 @@ class Controller:
         self._stack = await AsyncExitStack().__aenter__()
         if not self._event_queue:
             self._event_queue = await self._stack.enter_async_context(EventQueue(self))
+            settings_event = await self.event_queue.get(
+                lambda event: event.topic == "settings"
+            )
+            self.label = settings_event.payload["label"]
         if not self._session:
             self._session = await self._stack.enter_async_context(
                 ClientSession(base_url=self.base_url, headers=self.headers)

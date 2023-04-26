@@ -1,0 +1,31 @@
+upstream agent {
+    server alice0:3000;
+    server alice1:3000;
+}
+upstream admin {
+    server alice0:3001;
+    server alice1:3001;
+}
+
+server {
+    listen 3000;
+    location / {
+        proxy_pass http://agent;
+    }
+}
+
+server {
+    listen 3001;
+    location / {
+        proxy_pass http://admin;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+    location /ws {
+        proxy_pass http://webhook-relay:8080/ws;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}

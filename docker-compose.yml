@@ -1,23 +1,50 @@
 version: "3"
 services:
   alice:
-    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-indy-1.16.0-0.8.1-rc2
-    #image: bcgovimages/aries-cloudagent:py36-1.16-1_0.7.5
-    #image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - 3000:3000
+      - 3001:3001
+    volumes:
+      - ./alice.conf.template:/etc/nginx/templates/default.conf.template:z
+    depends_on:
+      - alice0
+      - alice1
+      - webhook-relay
+
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: mysecretpassword
+    container_name: postgres
+    image: postgres:12-alpine
+    # build: ./postgres
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 10s
+      timeout: 60s
+      retries: 5
+      start_period: 10s
+
+  alice0:
+    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-indy-1.16.0-0.8.1
     # image: acapy-test-image
     # build:
     #   context: .
     #   dockerfile: Dockerfile.acapy
     #   args:
     #     acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
-    ports:
-      - "3001:3001"
     volumes:
       - ./configs:/configs:ro,z
     command: >
       start
         --arg-file /configs/alice.yml
-        --webhook-url http://webhook-listener:8080
+        --webhook-url http://webhook-relay:8080
+        --wallet-storage-type postgres_storage
+        --wallet-storage-config '{"url":"postgres:5432","max_connections":5}'
+        --wallet-storage-creds '{"account":"postgres","password":"mysecretpassword","admin_account":"postgres","admin_password":"mysecretpassword"}'
     healthcheck:
       test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3001/status/live" | grep "200" > /dev/null
       start_period: 30s
@@ -25,15 +52,60 @@ services:
       timeout: 5s
       retries: 5
     depends_on:
+      postgres:
+        condition: service_healthy
       webhook-listener:
         condition: service_started
       tails:
         condition: service_started
 
+  alice1:
+    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-indy-1.16.0-0.8.1
+    # image: acapy-test-image
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile.acapy
+    #   args:
+    #     acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
+    volumes:
+      - ./configs:/configs:ro,z
+    command: >
+      start
+        --arg-file /configs/alice.yml
+        --webhook-url http://webhook-relay:8080
+        --wallet-storage-type postgres_storage
+        --wallet-storage-config '{"url":"postgres:5432","max_connections":5}'
+        --wallet-storage-creds '{"account":"postgres","password":"mysecretpassword","admin_account":"postgres","admin_password":"mysecretpassword"}'
+    healthcheck:
+      test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3001/status/live" | grep "200" > /dev/null
+      start_period: 30s
+      interval: 7s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      alice0:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      webhook-listener:
+        condition: service_started
+      tails:
+        condition: service_started
+
+  webhook-relay:
+    image: webhook-relay
+    build:
+      context: ./webhook_listener
+    volumes:
+      - ./webhook_listener/listener:/usr/src/app/listener:z
+    environment:
+      ADMIN_URL: http://alice:3001
+    depends_on:
+      alice0:
+        condition: service_healthy
+
   bob:
-    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-indy-1.16.0-0.8.1-rc2
-    #image: bcgovimages/aries-cloudagent:py36-1.16-1_0.7.5
-    #image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
+    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-indy-1.16.0-0.8.1
     # image: acapy-test-image
     # build:
     #   context: .
@@ -71,6 +143,10 @@ services:
     command: python -m minimal_example
     depends_on:
       alice:
+        condition: service_started
+      alice0:
+        condition: service_healthy
+      alice1:
         condition: service_healthy
       bob:
         condition: service_healthy
@@ -107,13 +183,9 @@ services:
       - ./tests:/usr/src/app/tests:z
     entrypoint: "poetry run pytest"
     depends_on:
-      alice:
+      alice0:
+        condition: service_healthy
+      alice1:
         condition: service_healthy
       bob:
         condition: service_healthy
-
-configs:
-  alice-config:
-    file: ./configs/alice.yml
-  bob-config:
-    file: ./configs/bob.yml

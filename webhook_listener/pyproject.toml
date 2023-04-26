@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "webhook-listener"
+version = "0.1.0"
+description = "Webhook to websocket relay"
+authors = ["Daniel Bluhm <dbluhm@pm.me>"]
+license = "Apache-2.0"
+readme = "README.md"
+packages = [{include = "listener"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+aiohttp = "^3.8.4"
+
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.3.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
