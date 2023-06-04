@@ -4,368 +4,204 @@ This script is for you to use to reproduce a bug or demonstrate a feature.
 
 import asyncio
 from os import getenv
-import time
-from typing import List
-
-from controller.models import V10PresentationExchangeList
+from typing import Mapping, Tuple
+from contextlib import AsyncExitStack
 
 from controller import Controller
 from controller.logging import logging_to_stdout
+from controller.models import (
+    ConnRecord,
+    CredAttrSpec,
+    V20CredExRecord,
+    V20CredExRecordDetail,
+    V20CredFilter,
+    V20CredFilterIndy,
+    V20CredOfferRequest,
+    V20CredPreview,
+)
 from controller.protocols import (
-    connection,
-    didexchange,
+    _make_params,
     indy_anoncred_credential_artifacts,
     indy_anoncred_onboard,
-    indy_anoncreds_publish_revocation,
-    indy_anoncreds_revoke,
-    indy_issue_credential_v1,
-    indy_issue_credential_v2,
-    indy_present_proof_v1,
-    indy_present_proof_v2,
 )
-import json
 
 ALICE = getenv("ALICE", "http://alice:3001")
+ALICE0 = getenv("ALICE0", "http://alice0:3001")
+ALICE1 = getenv("ALICE1", "http://alice1:3001")
 BOB = getenv("BOB", "http://bob:3001")
 
 
-def summary(self) -> str:
-    return "Summary: " + json.dumps(
-        {
-            "state": self.state,
-            "verified": self.verified,
-            "presentation_request": self.presentation_request_dict.dict(by_alias=True),
-        },
-        indent=2,
-        sort_keys=True,
+async def didexchange(
+    inviter: Controller,
+    invitee: Controller,
+    public_did: str,
+):
+    """Connect two agents using did exchange protocol."""
+    invitee_conn = await invitee.post(
+        "/didexchange/create-request",
+        params=_make_params(
+            their_public_did=public_did,
+            # use_public_did=True,
+        ),
+        response=ConnRecord,
     )
+
+    inviter_conn = await inviter.record_with_values(
+        topic="connections",
+        record_type=ConnRecord,
+        rfc23_state="request-received",
+    )
+    await asyncio.sleep(3)
+    inviter_conn = await inviter.post(
+        f"/didexchange/{inviter_conn.connection_id}/accept-request",
+        response=ConnRecord,
+    )
+
+    await invitee.record_with_values(
+        topic="connections",
+        connection_id=invitee_conn.connection_id,
+        rfc23_state="response-received",
+    )
+    invitee_conn = await invitee.record_with_values(
+        topic="connections",
+        connection_id=invitee_conn.connection_id,
+        rfc23_state="completed",
+        record_type=ConnRecord,
+    )
+    inviter_conn = await inviter.record_with_values(
+        topic="connections",
+        connection_id=inviter_conn.connection_id,
+        rfc23_state="completed",
+        record_type=ConnRecord,
+    )
+
+    return inviter_conn, invitee_conn
+
+
+async def indy_issue_credential_v2(
+    issuer: Controller,
+    holder: Controller,
+    issuer_connection_id: str,
+    holder_connection_id: str,
+    cred_def_id: str,
+    attributes: Mapping[str, str],
+) -> Tuple[V20CredExRecord, V20CredExRecord]:
+    """Issue an indy credential using issue-credential/2.0.
+    Issuer and holder should already be connected.
+    """
+
+    issuer_cred_ex = await issuer.post(
+        "/issue-credential-2.0/send",
+        json=V20CredOfferRequest(
+            auto_issue=True,
+            auto_remove=False,
+            comment="Credential from minimal example",
+            trace=False,
+            connection_id=issuer_connection_id,
+            filter=V20CredFilter(  # pyright: ignore
+                indy=V20CredFilterIndy(  # pyright: ignore
+                    cred_def_id=cred_def_id,
+                )
+            ),
+            credential_preview=V20CredPreview(
+                type="issue-credential-2.0/2.0/credential-preview",  # pyright: ignore
+                attributes=[
+                    CredAttrSpec(
+                        mime_type=None, name=name, value=value  # pyright: ignore
+                    )
+                    for name, value in attributes.items()
+                ],
+            ),
+        ),
+        response=V20CredExRecord,
+    )
+    issuer_cred_ex_id = issuer_cred_ex.cred_ex_id
+
+    holder_cred_ex = await holder.record_with_values(
+        topic="issue_credential_v2_0",
+        record_type=V20CredExRecord,
+        connection_id=holder_connection_id,
+        state="offer-received",
+    )
+    holder_cred_ex_id = holder_cred_ex.cred_ex_id
+
+    holder_cred_ex = await holder.post(
+        f"/issue-credential-2.0/records/{holder_cred_ex_id}/send-request",
+        response=V20CredExRecord,
+    )
+
+    await issuer.record_with_values(
+        topic="issue_credential_v2_0",
+        cred_ex_id=issuer_cred_ex_id,
+        state="request-received",
+    )
+
+    # issuer_cred_ex = await issuer.post(
+    #     f"/issue-credential-2.0/records/{issuer_cred_ex_id}/issue",
+    #     json={},
+    #     response=V20CredExRecordDetail,
+    # )
+
+    await holder.record_with_values(
+        topic="issue_credential_v2_0",
+        cred_ex_id=holder_cred_ex_id,
+        state="credential-received",
+    )
+
+    holder_cred_ex = await holder.post(
+        f"/issue-credential-2.0/records/{holder_cred_ex_id}/store",
+        json={},
+        response=V20CredExRecordDetail,
+    )
+    issuer_cred_ex = await issuer.record_with_values(
+        topic="issue_credential_v2_0",
+        record_type=V20CredExRecord,
+        cred_ex_id=issuer_cred_ex_id,
+        state="done",
+    )
+
+    holder_cred_ex = await holder.record_with_values(
+        topic="issue_credential_v2_0",
+        record_type=V20CredExRecord,
+        cred_ex_id=holder_cred_ex_id,
+        state="done",
+    )
+
+    return issuer_cred_ex, holder_cred_ex
 
 
 async def main():
     """Test Controller protocols."""
-    async with Controller(base_url=ALICE) as alice, Controller(base_url=BOB) as bob:
+    async with AsyncExitStack() as stack:
+        alice = await stack.enter_async_context(Controller(base_url=ALICE))
+        alice0 = await stack.enter_async_context(
+            Controller(base_url=ALICE0, event_queue=alice.event_queue)
+        )
+        alice1 = await stack.enter_async_context(
+            Controller(base_url=ALICE1, event_queue=alice.event_queue)
+        )
+        bob = await stack.enter_async_context(Controller(base_url=BOB))
+
+        # setup public did
+        alice_did, bob_did = await asyncio.gather(
+            indy_anoncred_onboard(alice),
+            indy_anoncred_onboard(bob),
+        )
+
         # Connecting
-        await connection(alice, bob)
-        alice_conn, bob_conn = await didexchange(alice, bob)
+        bob_conn, alice_conn = await didexchange(bob, alice, bob_did.did)
 
-        # Issuance prep
-        await indy_anoncred_onboard(alice)
         schema, cred_def = await indy_anoncred_credential_artifacts(
-            alice,
-            ["firstname", "lastname"],
-            support_revocation=True,
+            alice, ["firstname", "lastname"]
         )
-
-        # Issue the thing
-        alice_cred_ex, bob_cred_ex = await indy_issue_credential_v1(
-            alice,
+        await indy_issue_credential_v2(
+            alice1,
             bob,
             alice_conn.connection_id,
             bob_conn.connection_id,
             cred_def.credential_definition_id,
-            {"firstname": "Bob", "lastname": "Builder"},
+            {"firstname": "bob", "lastname": "builder"},
         )
-        print(alice_cred_ex.json(by_alias=True, indent=2))
-
-        # Issue the thing again in v2
-        alice_cred_ex_v2, bob_cred_ex_v2 = await indy_issue_credential_v2(
-            alice,
-            bob,
-            alice_conn.connection_id,
-            bob_conn.connection_id,
-            cred_def.credential_definition_id,
-            {"firstname": "Bob", "lastname": "Builder"},
-        )
-        print(alice_cred_ex.json(by_alias=True, indent=2))
-        non_revoked_time = int(time.time())
-
-        # Present the thing
-        bob_pres_ex, alice_pres_ex = await indy_present_proof_v1(
-            bob,
-            alice,
-            bob_conn.connection_id,
-            alice_conn.connection_id,
-            requested_attributes=[{"name": "firstname"}],
-        )
-        print(alice_pres_ex.json(by_alias=True, indent=2))
-
-        # Present the thing again in v2
-        bob_pres_ex_v2, alice_pres_ex_v2 = await indy_present_proof_v2(
-            bob,
-            alice,
-            bob_conn.connection_id,
-            alice_conn.connection_id,
-            requested_attributes=[{"name": "firstname"}],
-        )
-        print(alice_pres_ex.json(by_alias=True, indent=2))
-
-        # Revoke credential v1
-        await indy_anoncreds_revoke(
-            alice,
-            cred_ex=alice_cred_ex,
-            holder_connection_id=alice_cred_ex.connection_id,
-            notify=True,
-        )
-        await indy_anoncreds_publish_revocation(alice, cred_ex=alice_cred_ex)
-        # TODO: Make this into a helper in protocols.py?
-        await bob.record(topic="revocation-notification")
-
-        # Request proof from holder again after revoking
-        before_revoking_time = non_revoked_time
-        revoked_time = int(time.time())
-        (
-            bob_pres_ex_v1_entirely_after_int,
-            alice_pres_ex_v1_entirely_after_int,
-        ) = await indy_present_proof_v1(
-            bob,
-            alice,
-            bob_conn.connection_id,
-            alice_conn.connection_id,
-            requested_attributes=[
-                {
-                    "name": "firstname",
-                    "restrictions": [
-                        {"cred_def_id": cred_def.credential_definition_id}
-                    ],
-                }
-            ],
-            non_revoked={"from": revoked_time - 1, "to": revoked_time},
-        )
-
-        # Request proof from holder again after revoking,
-        # using the interval before cred revoked
-        # (non_revoked interval/when cred was valid)
-        revoked_time = int(time.time())
-        (
-            bob_pres_ex_v1_after_revo_using_before_interval,
-            alice_pres_ex_v1_after_revo_using_before_interval,
-        ) = await indy_present_proof_v1(
-            bob,
-            alice,
-            bob_conn.connection_id,
-            alice_conn.connection_id,
-            requested_attributes=[
-                {
-                    "name": "firstname",
-                    "restrictions": [
-                        {"cred_def_id": cred_def.credential_definition_id}
-                    ],
-                }
-            ],
-            non_revoked={"from": before_revoking_time, "to": before_revoking_time},
-        )
-
-        # Request proof, no interval
-        (
-            bob_pres_ex_v1_after_revo_no_interval,
-            alice_pres_ex_v1_after_revo_no_interval,
-        ) = await indy_present_proof_v1(
-            bob,
-            alice,
-            bob_conn.connection_id,
-            alice_conn.connection_id,
-            requested_attributes=[
-                {
-                    "name": "firstname",
-                    "restrictions": [
-                        {"cred_def_id": cred_def.credential_definition_id}
-                    ],
-                }
-            ],
-        )
-
-        # Request proof, using invalid/revoked interval but using
-        # local non_revoked override (in requsted attrs)
-        # ("LOCAL"-->requested attrs)
-        (
-            bob_pres_ex_v1_after_revo_global_invalid_local_override_w_valid,
-            alice_pres_ex_v1_after_revo_global_invalid_local_override_w_valid,
-        ) = await indy_present_proof_v1(
-            bob,
-            alice,
-            bob_conn.connection_id,
-            alice_conn.connection_id,
-            requested_attributes=[
-                {
-                    "name": "firstname",
-                    "restrictions": [
-                        {"cred_def_id": cred_def.credential_definition_id}
-                    ],
-                    "non_revoked": {
-                        "from": before_revoking_time - 1,
-                        "to": before_revoking_time,
-                    },
-                }
-            ],
-            non_revoked={"from": revoked_time - 1, "to": revoked_time},
-        )
-
-        # Request proof, just local invalid interval
-        (
-            bob_pres_ex_v1_after_revo_local_invalid,
-            alice_pres_ex_v1__local_invalid,
-        ) = await indy_present_proof_v1(
-            bob,
-            alice,
-            bob_conn.connection_id,
-            alice_conn.connection_id,
-            requested_attributes=[
-                {
-                    "name": "firstname",
-                    "restrictions": [
-                        {"cred_def_id": cred_def.credential_definition_id}
-                    ],
-                    "non_revoked": {
-                        "from": revoked_time,
-                        "to": revoked_time,
-                    },
-                }
-            ],
-        )
-
-        # Query presentations
-        presentations = await alice.get(
-            "/present-proof/records", response=V10PresentationExchangeList
-        )
-
-        # Presentation summary
-        for i, pres in enumerate(presentations.results):
-            print(summary(pres))
-        return presentations
-
-        # Version 2.0
-        # Revoke credential v2
-        await indy_anoncreds_revoke(
-            alice,
-            cred_ex=alice_cred_ex_v2,
-            holder_connection_id=alice_cred_ex_v2.connection_id,
-            notify=True,
-            notify_version="v2_0",
-        )
-        await indy_anoncreds_publish_revocation(alice, cred_ex=alice_cred_ex_v2)
-        # Record again
-        await bob.record(topic="revocation-notification")
-
-        # Request proof from holder again after revoking
-        before_revoking_time = non_revoked_time
-        revoked_time = int(time.time())
-        (
-            bob_pres_ex_v2_entirely_after_int,
-            alice_pres_ex_v2_entirely_after_int,
-        ) = await indy_present_proof_v1(
-            bob,
-            alice,
-            bob_conn.connection_id,
-            alice_conn.connection_id,
-            requested_attributes=[
-                {
-                    "name": "firstname",
-                    "restrictions": [
-                        {"cred_def_id": cred_def.credential_definition_id}
-                    ],
-                }
-            ],
-            non_revoked={"from": revoked_time - 1, "to": revoked_time},
-        )
-
-        # Request proof from holder again after revoking,
-        # using the interval before cred revoked
-        # (non_revoked interval/when cred was valid)
-        revoked_time = int(time.time())
-        (
-            bob_pres_ex_v2_after_revo_using_before_interval,
-            alice_pres_ex_v2_after_revo_using_before_interval,
-        ) = await indy_present_proof_v2(
-            bob,
-            alice,
-            bob_conn.connection_id,
-            alice_conn.connection_id,
-            requested_attributes=[
-                {
-                    "name": "firstname",
-                    "restrictions": [
-                        {"cred_def_id": cred_def.credential_definition_id}
-                    ],
-                }
-            ],
-            non_revoked={"from": before_revoking_time, "to": before_revoking_time},
-        )
-
-        # Request proof, no interval
-        (
-            bob_pres_ex_v2_after_revo_no_interval,
-            alice_pres_ex_v2_after_revo_no_interval,
-        ) = await indy_present_proof_v2(
-            bob,
-            alice,
-            bob_conn.connection_id,
-            alice_conn.connection_id,
-            requested_attributes=[
-                {
-                    "name": "firstname",
-                    "restrictions": [
-                        {"cred_def_id": cred_def.credential_definition_id}
-                    ],
-                }
-            ],
-        )
-
-        # Request proof, using invalid/revoked interval but using
-        # local non_revoked override (in requsted attrs)
-        # ("LOCAL"-->requested attrs)
-        (
-            bob_pres_ex_v2_after_revo_global_invalid_local_override_w_valid,
-            alice_pres_ex_v2_after_revo_global_invalid_local_override_w_valid,
-        ) = await indy_present_proof_v2(
-            bob,
-            alice,
-            bob_conn.connection_id,
-            alice_conn.connection_id,
-            requested_attributes=[
-                {
-                    "name": "firstname",
-                    "restrictions": [
-                        {"cred_def_id": cred_def.credential_definition_id}
-                    ],
-                    "non_revoked": {
-                        "from": before_revoking_time - 1,
-                        "to": before_revoking_time,
-                    },
-                }
-            ],
-            non_revoked={"from": revoked_time - 1, "to": revoked_time},
-        )
-
-        # Request proof, just local invalid interval
-        (
-            bob_pres_ex_v2_after_revo_local_invalid,
-            alice_pres_ex_v2_local_invalid,
-        ) = await indy_present_proof_v2(
-            bob,
-            alice,
-            bob_conn.connection_id,
-            alice_conn.connection_id,
-            requested_attributes=[
-                {
-                    "name": "firstname",
-                    "restrictions": [
-                        {"cred_def_id": cred_def.credential_definition_id}
-                    ],
-                    "non_revoked": {
-                        "from": revoked_time,
-                        "to": revoked_time,
-                    },
-                }
-            ],
-        )
-
-        # Query presentations
-        presentations = await alice.get("/present-proof-2.0/records")
-
-        # Presentation summary
-        for i, pres in enumerate(presentations.results):
-            print(summary(pres))
-        return presentations
 
 
 if __name__ == "__main__":

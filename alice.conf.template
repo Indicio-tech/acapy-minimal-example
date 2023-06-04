@@ -1,9 +1,9 @@
 upstream agent {
     server alice0:3000;
-    server alice1:3000;
+    server alice1:3000 weight=2;
 }
 upstream admin {
-    server alice0:3001;
+    server alice0:3001 weight=2;
     server alice1:3001;
 }
 

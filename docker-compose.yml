@@ -29,15 +29,20 @@ services:
       start_period: 10s
 
   alice0:
-    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-indy-1.16.0-0.8.1
+    # image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-indy-1.16.0-0.8.1
+    image: ghcr.io/sicpa-dlab/aries-cloudagent-python:py3.9-fix-did-exchange-cache
     # image: acapy-test-image
     # build:
     #   context: .
     #   dockerfile: Dockerfile.acapy
     #   args:
-    #     acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
+    #     acapy_url: https://github.com/sicpa-dlab/aries-cloudagent-python@fa29cdc5c8529cf0fdb0021709c1f7983f567cd4
+    user: 0:0
     volumes:
       - ./configs:/configs:ro,z
+      - ./vdr:/home/aries/.aries_cloudagent/vdr:z
+      - ./healthcheck.py:/healthcheck.py:z
+      - ./noop_cache:/usr/lib/python3.9/site-packages/noop_cache:z
     command: >
       start
         --arg-file /configs/alice.yml
@@ -45,8 +50,9 @@ services:
         --wallet-storage-type postgres_storage
         --wallet-storage-config '{"url":"postgres:5432","max_connections":5}'
         --wallet-storage-creds '{"account":"postgres","password":"mysecretpassword","admin_account":"postgres","admin_password":"mysecretpassword"}'
+        --plugin noop_cache.v1_0
     healthcheck:
-      test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3001/status/live" | grep "200" > /dev/null
+      test: ["CMD-SHELL", "python3", "/healthcheck.py", "http://localhost:3001/status/live"]
       start_period: 30s
       interval: 7s
       timeout: 5s
@@ -60,15 +66,20 @@ services:
         condition: service_started
 
   alice1:
-    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-indy-1.16.0-0.8.1
+    # image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-indy-1.16.0-0.8.1
+    image: ghcr.io/sicpa-dlab/aries-cloudagent-python:py3.9-fix-did-exchange-cache
     # image: acapy-test-image
     # build:
     #   context: .
     #   dockerfile: Dockerfile.acapy
     #   args:
-    #     acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
+    #     acapy_url: https://github.com/sicpa-dlab/aries-cloudagent-python@fa29cdc5c8529cf0fdb0021709c1f7983f567cd4
+    user: 0:0
     volumes:
       - ./configs:/configs:ro,z
+      - ./vdr:/home/aries/.aries_cloudagent/vdr:z
+      - ./healthcheck.py:/healthcheck.py:z
+      - ./noop_cache:/usr/lib/python3.9/site-packages/noop_cache:z
     command: >
       start
         --arg-file /configs/alice.yml
@@ -76,8 +87,9 @@ services:
         --wallet-storage-type postgres_storage
         --wallet-storage-config '{"url":"postgres:5432","max_connections":5}'
         --wallet-storage-creds '{"account":"postgres","password":"mysecretpassword","admin_account":"postgres","admin_password":"mysecretpassword"}'
+        --plugin noop_cache.v1_0
     healthcheck:
-      test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3001/status/live" | grep "200" > /dev/null
+      test: ["CMD-SHELL", "python3", "/healthcheck.py", "http://localhost:3001/status/live"]
       start_period: 30s
       interval: 7s
       timeout: 5s
@@ -105,23 +117,32 @@ services:
         condition: service_healthy
 
   bob:
-    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-indy-1.16.0-0.8.1
+    # image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-indy-1.16.0-0.8.1
+    image: ghcr.io/sicpa-dlab/aries-cloudagent-python:py3.9-fix-did-exchange-cache
     # image: acapy-test-image
     # build:
     #   context: .
     #   dockerfile: Dockerfile.acapy
     #   args:
-    #     acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
+    #     acapy_url: https://github.com/sicpa-dlab/aries-cloudagent-python@fa29cdc5c8529cf0fdb0021709c1f7983f567cd4
     ports:
       - "3002:3001"
+    user: 0:0
     volumes:
       - ./configs:/configs:ro,z
+      - ./vdr:/home/aries/.aries_cloudagent/vdr:z
+      - ./healthcheck.py:/healthcheck.py:z
+      - ./noop_cache:/usr/lib/python3.9/site-packages/noop_cache:z
     command: >
       start
         --arg-file /configs/bob.yml
         --webhook-url http://webhook-listener:8080
+        --wallet-storage-type postgres_storage
+        --wallet-storage-config '{"url":"postgres:5432","max_connections":5}'
+        --wallet-storage-creds '{"account":"postgres","password":"mysecretpassword","admin_account":"postgres","admin_password":"mysecretpassword"}'
+        --plugin noop_cache.v1_0
     healthcheck:
-      test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3001/status/live" | grep "200" > /dev/null
+      test: ["CMD-SHELL", "python3", "/healthcheck.py", "http://localhost:3001/status/live"]
       start_period: 30s
       interval: 7s
       timeout: 5s
@@ -177,6 +198,8 @@ services:
         install_flags: ""
     environment:
       - ALICE=http://alice:3001
+      - ALICE0=http://alice0:3001
+      - ALICE1=http://alice1:3001
       - BOB=http://bob:3001
     volumes:
       - ./controller:/usr/src/app/controller:z

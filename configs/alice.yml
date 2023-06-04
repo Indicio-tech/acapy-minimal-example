@@ -13,3 +13,5 @@ wallet-key: insecure
 auto-provision: true
 tails-server-base-url: http://tails:6543
 debug-webhooks: true
+public-invites: true
+requests-through-public-did: true
