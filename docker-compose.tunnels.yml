@@ -103,7 +103,11 @@ services:
 
   tunnel-tails:
     image: ngrok/ngrok
-    command: ngrok http tails:6543 --bind-tls false --log stdout
+    command: start --all 
+    environment:
+      - NGROK_CONFIG=/etc/ngrok.yml
+    volumes:
+      - ./ngrok.yml:/etc/ngrok.yml
 
   tails:
     image: ghcr.io/bcgov/tails-server:latest
@@ -112,8 +116,8 @@ services:
     environment:
       - GENESIS_URL=https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_testnet_genesis
     command: >
-      tails-server
-      --host 0.0.0.0
+      tails
+       --host 0.0.0.0
       --port 6543
       --storage-path /tmp/tails-files
       --log-level INFO
