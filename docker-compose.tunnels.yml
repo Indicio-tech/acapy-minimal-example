@@ -1,7 +1,7 @@
 version: "3"
 services:
   alice:
-    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-indy-1.16.0-0.8.1-rc2
+    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-indy-1.16.0-0.8.2
     #image: bcgovimages/aries-cloudagent:py36-1.16-1_0.7.5
     #image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
     # image: acapy-test-image
@@ -39,7 +39,7 @@ services:
         condition: service_started
 
   bob:
-    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-indy-1.16.0-0.8.1-rc2
+    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-indy-1.16.0-0.8.2
     #image: bcgovimages/aries-cloudagent:py36-1.16-1_0.7.5
     #image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
     # image: acapy-test-image
@@ -102,8 +102,12 @@ services:
         condition: service_healthy
 
   tunnel-tails:
-    image: wernight/ngrok
-    command: ngrok http tails:6543 --bind-tls false --log stdout
+    image: ngrok/ngrok
+    command: start --all 
+    environment:
+      - NGROK_CONFIG=/etc/ngrok.yml
+    volumes:
+      - ./ngrok.yml:/etc/ngrok.yml
 
   tails:
     image: ghcr.io/bcgov/tails-server:latest
@@ -112,8 +116,8 @@ services:
     environment:
       - GENESIS_URL=https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_testnet_genesis
     command: >
-      tails-server
-      --host 0.0.0.0
+      tails
+       --host 0.0.0.0
       --port 6543
       --storage-path /tmp/tails-files
       --log-level INFO
