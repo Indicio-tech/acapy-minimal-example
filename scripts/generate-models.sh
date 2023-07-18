@@ -5,14 +5,14 @@ cd "$(dirname "$0")" || exit
 
 CONTAINER_RUNTIME=${CONTAINER_RUNTIME:-docker}
 NAME="datamodel-codegen"
-API_URL="https://raw.githubusercontent.com/Indicio-tech/acapy-openapi/0.7.4/openapi.yml"
+API_URL="https://raw.githubusercontent.com/Indicio-tech/acapy-openapi/main/openapi.yml"
 
 ${CONTAINER_RUNTIME} build -t ${NAME} - << DOCKERFILE
 FROM python:3.10
 
 WORKDIR /usr/src/app
 
-RUN pip install datamodel-code-generator[http]
+RUN pip install datamodel-code-generator[http]==0.21.1
 
 ENTRYPOINT ["datamodel-codegen"]
 DOCKERFILE
