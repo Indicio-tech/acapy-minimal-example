@@ -32,7 +32,7 @@ class AdminConfig(BaseModel):
     class Config:
         allow_population_by_field_name = True
 
-    config: Optional[Dict[str, Any]] = Field(None, description="Configuration settings")
+    config: Dict[str, Any] = Field(..., description="Configuration settings")
 
 
 class AdminMediationDeny(BaseModel):
@@ -169,8 +169,8 @@ class ConnRecord(BaseModel):
         description="Optional alias to apply to connection for later use",
         example="Bob, providing quotes",
     )
-    connection_id: Optional[str] = Field(
-        None,
+    connection_id: str = Field(
+        ...,
         description="Connection identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
     )
@@ -327,9 +327,7 @@ class ConnectionList(BaseModel):
     class Config:
         allow_population_by_field_name = True
 
-    results: Optional[List[ConnRecord]] = Field(
-        None, description="List of connection records"
-    )
+    results: List[ConnRecord] = Field(..., description="List of connection records")
 
 
 class ConnectionMetadata(BaseModel):
@@ -742,25 +740,25 @@ class DID(BaseModel):
     class Config:
         allow_population_by_field_name = True
 
-    did: Optional[str] = Field(
-        None,
+    did: str = Field(
+        ...,
         description="DID of interest",
         example="did:peer:WgWxqztrNooG92RXvxSTWv",
         regex="^(did:sov:)?[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{21,22}$|^did:([a-zA-Z0-9_]+):([a-zA-Z0-9_.%-]+(:[a-zA-Z0-9_.%-]+)*)((;[a-zA-Z0-9_.:%-]+=[a-zA-Z0-9_.:%-]*)*)(\\/[^#?]*)?([?][^#]*)?(\\#.*)?$$",
     )
-    key_type: Optional[Literal["ed25519", "bls12381g2"]] = Field(
-        None, description="Key type associated with the DID", example="ed25519"
+    key_type: Literal["ed25519", "bls12381g2"] = Field(
+        ..., description="Key type associated with the DID", example="ed25519"
     )
-    method: Optional[str] = Field(
-        None, description="Did method associated with the DID", example="sov"
+    method: str = Field(
+        ..., description="Did method associated with the DID", example="sov"
     )
-    posture: Optional[Literal["public", "posted", "wallet_only"]] = Field(
-        None,
+    posture: Literal["public", "posted", "wallet_only"] = Field(
+        ...,
         description="Whether DID is current public DID, posted to ledger but not current public DID, or local to the wallet",
         example="wallet_only",
     )
-    verkey: Optional[str] = Field(
-        None,
+    verkey: str = Field(
+        ...,
         description="Public verification key",
         example="H3C2AVvLMv6gmMNam3uVAjZpfkcJCwDwnZn6z3wXmqPV",
         regex="^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{43,44}$",
@@ -1416,14 +1414,14 @@ class InvitationResult(BaseModel):
     class Config:
         allow_population_by_field_name = True
 
-    connection_id: Optional[str] = Field(
-        None,
+    connection_id: str = Field(
+        ...,
         description="Connection identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
     )
-    invitation: Optional[ConnectionInvitation] = None
-    invitation_url: Optional[str] = Field(
-        None,
+    invitation: ConnectionInvitation
+    invitation_url: str = Field(
+        ...,
         description="Invitation URL",
         example="http://192.168.56.101:8020/invite?c_i=eyJAdHlwZSI6Li4ufQ==",
     )
@@ -3334,11 +3332,11 @@ class IndyCredPrecis(BaseModel):
     class Config:
         allow_population_by_field_name = True
 
-    cred_info: Optional[IndyCredInfo] = Field(None, description="Credential info")
+    cred_info: IndyCredInfo = Field(..., description="Credential info")
     interval: Optional[IndyNonRevocationInterval] = Field(
         None, description="Non-revocation interval from presentation request"
     )
-    presentation_referents: Optional[List[str]] = None
+    presentation_referents: List[str]
 
 
 class IndyGEProof(BaseModel):
@@ -4455,14 +4453,14 @@ class InvitationMessage(BaseModel):
     class Config:
         allow_population_by_field_name = True
 
-    id: Optional[str] = Field(
-        None,
+    id: str = Field(
+        ...,
         alias="@id",
         description="Message identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
     )
-    type: Optional[str] = Field(
-        None,
+    type: str = Field(
+        ...,
         alias="@type",
         description="Message type",
         example="https://didcomm.org/my-family/1.0/my-message-type",
@@ -4472,7 +4470,7 @@ class InvitationMessage(BaseModel):
         description="List of mime type in order of preference",
         example=["didcomm/aip1", "didcomm/aip2;env=rfc19"],
     )
-    handshake_protocols: Optional[List[str]] = None
+    handshake_protocols: List[str]
     image_url: Optional[str] = Field(
         None,
         alias="imageUrl",
@@ -4483,8 +4481,8 @@ class InvitationMessage(BaseModel):
     requests_attach: Optional[List[AttachDecorator]] = Field(
         None, alias="requests~attach", description="Optional request attachment"
     )
-    services: Optional[List[Union[Dict[str, Any], str]]] = Field(
-        None,
+    services: List[Union[Dict[str, Any], str]] = Field(
+        ...,
         example=[
             {
                 "did": "WgWxqztrNooG92RXvxSTWv",
@@ -4513,31 +4511,31 @@ class InvitationRecord(BaseModel):
         example="2021-12-31 23:59:59+00:00",
         regex="^\\d{4}-\\d\\d-\\d\\d[T ]\\d\\d:\\d\\d(?:\\:(?:\\d\\d(?:\\.\\d{1,6})?))?(?:[+-]\\d\\d:?\\d\\d|Z|)$",
     )
-    invi_msg_id: Optional[str] = Field(
-        None,
+    invi_msg_id: str = Field(
+        ...,
         description="Invitation message identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
     )
-    invitation: Optional[InvitationMessage] = Field(
-        None, description="Out of band invitation message"
+    invitation: InvitationMessage = Field(
+        ..., description="Out of band invitation message"
     )
-    invitation_id: Optional[str] = Field(
-        None,
+    invitation_id: str = Field(
+        ...,
         description="Invitation record identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
     )
-    invitation_url: Optional[str] = Field(
-        None,
+    invitation_url: str = Field(
+        ...,
         description="Invitation message URL",
         example="https://example.com/endpoint?c_i=eyJAdHlwZSI6ICIuLi4iLCAiLi4uIjogIi4uLiJ9XX0=",
     )
-    oob_id: Optional[str] = Field(
-        None,
+    oob_id: str = Field(
+        ...,
         description="Out of band record identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
     )
-    state: Optional[str] = Field(
-        None, description="Out of band message exchange state", example="await_response"
+    state: str = Field(
+        ..., description="Out of band message exchange state", example="await_response"
     )
     trace: Optional[bool] = Field(
         None, description="Record trace information, based on agent configuration"
@@ -4895,8 +4893,8 @@ class V10PresentationExchange(BaseModel):
     presentation: Optional[IndyProof] = Field(
         None, description="(Indy) presentation (also known as proof)"
     )
-    presentation_exchange_id: Optional[str] = Field(
-        None,
+    presentation_exchange_id: str = Field(
+        ...,
         description="Presentation exchange identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
     )
@@ -5240,8 +5238,8 @@ class V20CredExRecord(BaseModel):
         description="Issuer choice to remove this credential exchange record when complete",
         example=False,
     )
-    by_format: Optional[V20CredExRecordByFormat] = Field(
-        None,
+    by_format: V20CredExRecordByFormat = Field(
+        ...,
         description="Attachment content by format for proposal, offer, request, and issue",
     )
     connection_id: Optional[str] = Field(
@@ -5255,8 +5253,8 @@ class V20CredExRecord(BaseModel):
         example="2021-12-31 23:59:59+00:00",
         regex="^\\d{4}-\\d\\d-\\d\\d[T ]\\d\\d:\\d\\d(?:\\:(?:\\d\\d(?:\\.\\d{1,6})?))?(?:[+-]\\d\\d:?\\d\\d|Z|)$",
     )
-    cred_ex_id: Optional[str] = Field(
-        None,
+    cred_ex_id: str = Field(
+        ...,
         description="Credential exchange identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
     )
