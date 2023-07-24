@@ -12,7 +12,7 @@ FROM python:3.10
 
 WORKDIR /usr/src/app
 
-RUN pip install datamodel-code-generator[http]==0.21.1
+RUN pip install datamodel-code-generator[http]==0.21.2
 
 ENTRYPOINT ["datamodel-codegen"]
 DOCKERFILE

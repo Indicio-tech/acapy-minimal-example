@@ -4519,8 +4519,8 @@ class InvitationRecord(BaseModel):
     invitation: InvitationMessage = Field(
         ..., description="Out of band invitation message"
     )
-    invitation_id: str = Field(
-        ...,
+    invitation_id: Optional[str] = Field(
+        None,
         description="Invitation record identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
     )
@@ -5450,6 +5450,6 @@ class V20PresExRecordList(BaseModel):
     class Config:
         allow_population_by_field_name = True
 
-    results: Optional[List[V20PresExRecord]] = Field(
-        None, description="Presentation exchange records"
+    results: List[V20PresExRecord] = Field(
+        ..., description="Presentation exchange records"
     )

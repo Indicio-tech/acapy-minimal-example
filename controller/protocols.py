@@ -464,7 +464,7 @@ async def indy_issue_credential_v2(
     holder_connection_id: str,
     cred_def_id: str,
     attributes: Mapping[str, str],
-) -> Tuple[V20CredExRecord, V20CredExRecord]:
+) -> Tuple[V20CredExRecordDetail, V20CredExRecordDetail]:
     """Issue an indy credential using issue-credential/2.0.
     Issuer and holder should already be connected.
     """
@@ -772,6 +772,7 @@ async def indy_present_proof_v2(
 
     return holder_pres_ex, verifier_pres_ex
 
+
 async def indy_anoncreds_revoke(
     issuer: Controller,
     cred_ex: Union[V10CredentialExchange, V20CredExRecordDetail],
@@ -784,7 +785,7 @@ async def indy_anoncreds_revoke(
     V1.0: V10CredentialExchange
     V2.0: V20CredExRecordDetail
     """
-    if notify == True and holder_connection_id is None:
+    if notify and holder_connection_id is None:
         return (
             "If you are going to set notify to True,"
             "then holder_connection_id cannot be empty."
@@ -820,7 +821,8 @@ async def indy_anoncreds_revoke(
 
     else:
         raise ValueError(
-            "If using V1.0, try passing in a V10CredentialExchange object. If using V2.0, try passing in a V20CredExRecordDetail object."
+            "If using V1.0, try passing in a V10CredentialExchange object. If "
+            "using V2.0, try passing in a V20CredExRecordDetail object."
         )
 
 
@@ -858,5 +860,6 @@ async def indy_anoncreds_publish_revocation(
 
     else:
         raise ValueError(
-            "If using V1.0, try passing in a V10CredentialExchange object. If using V2.0, try passing in a V20CredExRecordDetail object."
+            "If using V1.0, try passing in a V10CredentialExchange object. If "
+            "using V2.0, try passing in a V20CredExRecordDetail object."
         )
