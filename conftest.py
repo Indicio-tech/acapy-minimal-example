@@ -1,8 +1,6 @@
 from pathlib import Path
 import subprocess
-from typing import Union
 
-from py._path.local import LocalPath
 import pytest
 from pytest import Session
 
@@ -62,7 +60,7 @@ class ExampleRunner:
             self.cleanup()
 
 
-def pytest_collect_file(parent: Session, path: Union[LocalPath, Path]):
+def pytest_collect_file(parent: Session, path):
     """Pytest collection hook.
 
     This will collect the docker-compose.yml files from the examples and create
