@@ -18,8 +18,20 @@ services:
       - ./configs:/configs:ro,z
     command: >
       start
-        --arg-file /configs/alice.yml
+        --inbound-transport http 0.0.0.0 3000
+        --outbound-transport http
+        --endpoint http://alice:3000
+        --admin 0.0.0.0 3001
+        --admin-insecure-mode
         --webhook-url http://webhook-listener:8080
+        --tails-server-base-url http://tails:6543
+        --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_testnet_genesis
+        --wallet-type askar
+        --wallet-name alice
+        --wallet-key insecure
+        --auto-provision
+        --log-level debug
+        --debug-webhooks
     healthcheck:
       test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3001/status/live" | grep "200" > /dev/null
       start_period: 30s
@@ -48,8 +60,22 @@ services:
       - ./configs:/configs:ro,z
     command: >
       start
-        --arg-file /configs/bob.yml
+        --inbound-transport http 0.0.0.0 3000
+        --outbound-transport http
+        --endpoint http://bob:3000
+        --admin 0.0.0.0 3001
+        --admin-insecure-mode
         --webhook-url http://webhook-listener:8080
+        --tails-server-base-url http://tails:6543
+        --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_testnet_genesis
+        --wallet-type askar
+        --wallet-name bob
+        --wallet-key insecure
+        --auto-provision
+        --log-level debug
+        --debug-webhooks
+        --webhook-url http://webhook-listener:8080
+        --monitor-revocation-notification
     healthcheck:
       test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3001/status/live" | grep "200" > /dev/null
       start_period: 30s
