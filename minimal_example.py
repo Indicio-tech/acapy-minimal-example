@@ -60,7 +60,6 @@ async def main():
             cred_def.credential_definition_id,
             {"firstname": "Bob", "lastname": "Builder"},
         )
-        return
         issued_time = int(time.time())
 
         # Present the the credential's attributes
@@ -76,7 +75,7 @@ async def main():
         await indy_anoncreds_revoke(
             alice,
             cred_ex=alice_cred_ex,
-            holder_connection_id=alice_cred_ex.connection_id,
+            holder_connection_id=alice_conn.connection_id,
             notify=True,
         )
         await indy_anoncreds_publish_revocation(alice, cred_ex=alice_cred_ex)
@@ -170,7 +169,6 @@ async def main():
         # Presentation summary
         for i, pres in enumerate(presentations.results):
             print(summary(pres))
-        return presentations
 
 
 if __name__ == "__main__":
