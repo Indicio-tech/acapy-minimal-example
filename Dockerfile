@@ -1,7 +1,7 @@
 FROM python:3.10
 WORKDIR /usr/src/app/
 
-ENV POETRY_VERSION=1.1.11
+ENV POETRY_VERSION=1.5.1
 ENV POETRY_HOME=/opt/poetry
 RUN curl -sSL https://install.python-poetry.org | python -
 
