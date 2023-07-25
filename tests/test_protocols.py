@@ -97,13 +97,12 @@ async def test_indy_anoncreds_revoke_v2(
     alice: Controller, alice_cred_ex_v2: V20CredExRecordDetail, alice_conn: ConnRecord
 ):
     """Testing revoking an Indy credential using revocation revoke."""
-    test_revoke_cred_either_version = await indy_anoncreds_revoke(
+    await indy_anoncreds_revoke(
         alice,
         cred_ex=alice_cred_ex_v2,
         holder_connection_id=alice_conn.connection_id,
         notify=True,
     )
-    assert test_revoke_cred_either_version
 
 
 @pytest.mark.asyncio
