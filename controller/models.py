@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
-from uuid import UUID
 
 from pydantic import BaseModel, Extra, Field
 from typing_extensions import Literal
@@ -1689,8 +1688,8 @@ class MediationIdMatchInfo(BaseModel):
     class Config:
         allow_population_by_field_name = True
 
-    mediation_id: Optional[UUID] = Field(
-        None,
+    mediation_id: str = Field(
+        ...,
         description="Mediation record identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
     )
@@ -2540,7 +2539,7 @@ class V10CredentialFreeOfferRequest(BaseModel):
         description="Whether to remove the credential exchange record on completion (overrides --preserve-exchange-records configuration setting)",
     )
     comment: Optional[str] = Field(None, description="Human-readable comment")
-    connection_id: UUID = Field(
+    connection_id: str = Field(
         ...,
         description="Connection identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -2580,7 +2579,7 @@ class V10CredentialProposalRequestMand(BaseModel):
         description="Whether to remove the credential exchange record on completion (overrides --preserve-exchange-records configuration setting)",
     )
     comment: Optional[str] = Field(None, description="Human-readable comment")
-    connection_id: UUID = Field(
+    connection_id: str = Field(
         ...,
         description="Connection identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -2630,7 +2629,7 @@ class V10CredentialProposalRequestOpt(BaseModel):
         description="Whether to remove the credential exchange record on completion (overrides --preserve-exchange-records configuration setting)",
     )
     comment: Optional[str] = Field(None, description="Human-readable comment")
-    connection_id: UUID = Field(
+    connection_id: str = Field(
         ...,
         description="Connection identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -2695,7 +2694,7 @@ class V10PresentationProposalRequest(BaseModel):
         description="Whether to respond automatically to presentation requests, building and presenting requested proof",
     )
     comment: Optional[str] = Field(None, description="Human-readable comment")
-    connection_id: UUID = Field(
+    connection_id: str = Field(
         ...,
         description="Connection identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -3745,7 +3744,7 @@ class V10PresentationSendRequestRequest(BaseModel):
         example=False,
     )
     comment: Optional[str] = None
-    connection_id: UUID = Field(
+    connection_id: str = Field(
         ...,
         description="Connection identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -3812,7 +3811,7 @@ class V20CredOfferRequest(BaseModel):
         description="Whether to remove the credential exchange record on completion (overrides --preserve-exchange-records configuration setting)",
     )
     comment: Optional[str] = Field(None, description="Human-readable comment")
-    connection_id: UUID = Field(
+    connection_id: str = Field(
         ...,
         description="Connection identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -3835,7 +3834,7 @@ class V20CredRequestFree(BaseModel):
         description="Whether to remove the credential exchange record on completion (overrides --preserve-exchange-records configuration setting)",
     )
     comment: Optional[str] = Field(None, description="Human-readable comment")
-    connection_id: UUID = Field(
+    connection_id: str = Field(
         ...,
         description="Connection identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -4214,7 +4213,7 @@ class V20CredExFree(BaseModel):
         description="Whether to remove the credential exchange record on completion (overrides --preserve-exchange-records configuration setting)",
     )
     comment: Optional[str] = Field(None, description="Human-readable comment")
-    connection_id: UUID = Field(
+    connection_id: str = Field(
         ...,
         description="Connection identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -5131,7 +5130,7 @@ class V20PresProposalRequest(BaseModel):
         description="Whether to respond automatically to presentation requests, building and presenting requested proof",
     )
     comment: Optional[str] = Field(None, description="Human-readable comment")
-    connection_id: UUID = Field(
+    connection_id: str = Field(
         ...,
         description="Connection identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -5192,7 +5191,7 @@ class V20PresSendRequestRequest(BaseModel):
         example=False,
     )
     comment: Optional[str] = None
-    connection_id: UUID = Field(
+    connection_id: str = Field(
         ...,
         description="Connection identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
