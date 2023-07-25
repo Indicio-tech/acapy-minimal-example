@@ -1,6 +1,6 @@
 # Authored by Alexandra N. Walker <alex.walker@indicio.tech> ☀️
 
-name: tests
+name: Tests
 "on":
   push:
     branches: 
@@ -12,7 +12,7 @@ name: tests
       - feat/**
 
 env:
-  POETRY_VERSION: 1.1.11
+  POETRY_VERSION: 1.5.2
 
 jobs:
   test:
@@ -20,7 +20,25 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Test with docker-compose
+    - uses: actions/checkout@v3
+    - name: Run integration tests for protocols
       run: |
-        docker-compose run tests
+        docker-compose run tests tests/
+
+  examples:
+    name: Check examples
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install poetry
+        run: pipx install poetry==${{ env.POETRY_VERSION}}
+      - name: setup python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+          cache: poetry
+      - name: Install dependencies
+        run: poetry install
+      - name: Run examples
+        run: |
+          poetry run pytest -m examples
