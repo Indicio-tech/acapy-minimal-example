@@ -4,11 +4,9 @@ name: Code Quality Check
   push:
     branches:
       - main
-      - 'feature/**'
   pull_request:
     branches:
       - main
-      - 'feature/**'
 
 env:
   FLAKE8_VERSION: 5.0.4

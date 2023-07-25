@@ -8,8 +8,6 @@ name: Tests
   pull_request:
     branches:
       - main
-      - feature/**
-      - feat/**
 
 env:
   POETRY_VERSION: 1.5.1
