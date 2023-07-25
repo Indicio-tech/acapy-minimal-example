@@ -5326,8 +5326,8 @@ class V20CredExRecordDetail(BaseModel):
     class Config:
         allow_population_by_field_name = True
 
-    cred_ex_record: Optional[V20CredExRecord] = Field(
-        None, description="Credential exchange record"
+    cred_ex_record: V20CredExRecord = Field(
+        ..., description="Credential exchange record"
     )
     indy: Optional[V20CredExRecordIndy] = None
     ld_proof: Optional[V20CredExRecordLDProof] = None

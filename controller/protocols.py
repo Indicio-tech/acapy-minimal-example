@@ -36,12 +36,13 @@ from .models import (
     SchemaSendResult,
     TAAAccept,
     TAAResult,
-    V10CredentialConnFreeOfferRequest,
     V10CredentialExchange,
+    V10CredentialFreeOfferRequest,
     V10PresentationExchange,
     V10PresentationSendRequestRequest,
     V20CredExRecord,
     V20CredExRecordDetail,
+    V20CredExRecordIndy,
     V20CredFilter,
     V20CredFilterIndy,
     V20CredOfferRequest,
@@ -383,7 +384,7 @@ async def indy_issue_credential_v1(
     """
     issuer_cred_ex = await issuer.post(
         "/issue-credential/send-offer",
-        json=V10CredentialConnFreeOfferRequest(
+        json=V10CredentialFreeOfferRequest(
             auto_issue=False,
             auto_remove=False,
             comment="Credential from minimal example",
@@ -538,6 +539,10 @@ async def indy_issue_credential_v2(
         cred_ex_id=issuer_cred_ex_id,
         state="done",
     )
+    issuer_indy_record = await issuer.record_with_values(
+        topic="issue_credential_v2_0_indy",
+        record_type=V20CredExRecordIndy,
+    )
 
     holder_cred_ex = await holder.record_with_values(
         topic="issue_credential_v2_0",
@@ -545,8 +550,18 @@ async def indy_issue_credential_v2(
         cred_ex_id=holder_cred_ex_id,
         state="done",
     )
+    holder_indy_record = await holder.record_with_values(
+        topic="issue_credential_v2_0_indy",
+        record_type=V20CredExRecordIndy,
+    )
 
-    return issuer_cred_ex, holder_cred_ex
+    return (
+        V20CredExRecordDetail(cred_ex_record=issuer_cred_ex, indy=issuer_indy_record),
+        V20CredExRecordDetail(
+            cred_ex_record=holder_cred_ex,
+            indy=holder_indy_record,
+        ),
+    )
 
 
 def indy_auto_select_credentials_for_presentation_request(
@@ -820,9 +835,9 @@ async def indy_anoncreds_revoke(
         )
 
     else:
-        raise ValueError(
-            "If using V1.0, try passing in a V10CredentialExchange object. If "
-            "using V2.0, try passing in a V20CredExRecordDetail object."
+        raise TypeError(
+            "Expected cred_ex to be V10CredentialExchange or V20CredExRecordDetail; "
+            f"got {type(cred_ex).__name__}"
         )
 
 
@@ -859,7 +874,7 @@ async def indy_anoncreds_publish_revocation(
         )
 
     else:
-        raise ValueError(
-            "If using V1.0, try passing in a V10CredentialExchange object. If "
-            "using V2.0, try passing in a V20CredExRecordDetail object."
+        raise TypeError(
+            "Expected cred_ex to be V10CredentialExchange or V20CredExRecordDetail; "
+            f"got {type(cred_ex).__name__}"
         )
