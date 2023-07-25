@@ -1,3 +1,5 @@
+# This docker-compose file is used for tests only
+
 version: "3"
 services:
   alice:
@@ -57,28 +59,6 @@ services:
     depends_on:
       webhook-listener:
         condition: service_started
-
-  example:
-    container_name: controller
-    build:
-      context: .
-    environment:
-      - ALICE=http://alice:3001
-      - BOB=http://bob:3001
-    volumes:
-      - ./controller:/usr/src/app/controller:ro,z
-      - ./minimal_example.py:/usr/src/app/minimal_example.py:ro,z
-    command: python -m minimal_example
-    depends_on:
-      alice:
-        condition: service_healthy
-      bob:
-        condition: service_healthy
-
-  webhook-listener:
-    image: mendhak/http-https-echo:18
-    environment:
-      - HTTP_PORT=8080
 
   tails:
     image: ghcr.io/bcgov/tails-server:latest

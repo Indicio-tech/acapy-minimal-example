@@ -66,6 +66,19 @@ This controller differs from these in a few key ways:
 - This controller provides a system for capturing webhooks/events that is well
   suited for a testing or demonstration scenario.
 
+
+## Examples
+
+A number of examples can be found in the [examples](./examples) directory. Each
+of these contains a `docker-compose.yml` and a `example.py`. You can run each
+example by `cd`ing into the directory and running:
+
+```sh
+$ cd examples/example_to_try_out
+$ docker-compose run example
+$ docker-compose down -v
+```
+
 ## Instructions on Running Tests
 
 To run the tests:
