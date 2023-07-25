@@ -99,6 +99,11 @@ services:
       --storage-path /tmp/tails-files
       --log-level INFO
 
+  webhook-listener:
+    image: mendhak/http-https-echo:18
+    environment:
+      - HTTP_PORT=8080
+
   tests:
     container_name: juggernaut
     build:
