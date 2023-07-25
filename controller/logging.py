@@ -78,9 +78,13 @@ def section(
         yield
 
 
-def pause_for_input(prompt: Optional[str] = None):
-    term = Terminal()
-    prompt = prompt or "Press Enter to continue..."
-    print(f"{term.blue}{term.bold}", end="")
-    input(prompt)
-    print(f"{term.normal}", end="")
+def pause_for_input(
+    prompt: Optional[str] = None,
+    file: TextIO = sys.stdout,
+):
+    if file == sys.stdout and sys.stdout.isatty():
+        term = Terminal()
+        prompt = prompt or "Press Enter to continue..."
+        print(f"{term.blue}{term.bold}", end="")
+        input(prompt)
+        print(f"{term.normal}", end="")
