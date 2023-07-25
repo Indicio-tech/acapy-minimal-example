@@ -13,7 +13,6 @@ services:
     ports:
       - "3001:3001"
     volumes:
-      - ./configs:/configs:ro,z
       - ./tunnel_endpoint.sh:/tunnel_endpoint.sh:ro,z
     environment:
       AGENT_TUNNEL_ENDPOINT: http://tunnel-alice:4040
@@ -22,8 +21,19 @@ services:
       /bin/sh -c '/tunnel_endpoint.sh aca-py "$$@"' --
     command: >
       start
-        --arg-file /configs/alice.yml
+        --inbound-transport http 0.0.0.0 3000
+        --outbound-transport http
+        --admin 0.0.0.0 3001
+        --admin-insecure-mode
         --webhook-url http://webhook-listener:8080
+        --tails-server-base-url http://tails:6543
+        --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_testnet_genesis
+        --wallet-type askar
+        --wallet-name alice
+        --wallet-key insecure
+        --auto-provision
+        --log-level debug
+        --debug-webhooks
     healthcheck:
       test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3001/status/live" | grep "200" > /dev/null
       start_period: 30s
@@ -51,7 +61,6 @@ services:
     ports:
       - "3002:3001"
     volumes:
-      - ./configs:/configs:ro,z
       - ./tunnel_endpoint.sh:/tunnel_endpoint.sh:ro,z
     environment:
       AGENT_TUNNEL_ENDPOINT: http://tunnel-bob:4040
@@ -60,8 +69,21 @@ services:
       /bin/sh -c '/tunnel_endpoint.sh aca-py "$$@"' --
     command: >
       start
-        --arg-file /configs/bob.yml
+        --inbound-transport http 0.0.0.0 3000
+        --outbound-transport http
+        --admin 0.0.0.0 3001
+        --admin-insecure-mode
         --webhook-url http://webhook-listener:8080
+        --tails-server-base-url http://tails:6543
+        --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_testnet_genesis
+        --wallet-type askar
+        --wallet-name bob
+        --wallet-key insecure
+        --auto-provision
+        --log-level debug
+        --debug-webhooks
+        --webhook-url http://webhook-listener:8080
+        --monitor-revocation-notification
     healthcheck:
       test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3001/status/live" | grep "200" > /dev/null
       start_period: 30s
@@ -87,14 +109,14 @@ services:
   example:
     container_name: controller
     build:
-      context: .
+      context: ../..
     environment:
       - ALICE=http://alice:3001
       - BOB=http://bob:3001
     volumes:
-      - ./controller:/usr/src/app/controller:ro,z
-      - ./minimal_example.py:/usr/src/app/minimal_example.py:ro,z
-    command: python -m minimal_example
+      - ../../controller:/usr/src/app/controller:ro,z
+      - ./example.py:/usr/src/app/example.py:ro,z
+    command: python -m example
     depends_on:
       alice:
         condition: service_healthy
@@ -129,22 +151,3 @@ services:
     image: mendhak/http-https-echo:18
     environment:
       - HTTP_PORT=8080
-
-  tests:
-    container_name: juggernaut
-    build:
-      context: .
-      args:
-        install_flags: ""
-    environment:
-      - ALICE=http://alice:3001
-      - BOB=http://bob:3001
-    volumes:
-      - ./controller:/usr/src/app/controller:z
-      - ./tests:/usr/src/app/tests:z
-    entrypoint: "poetry run pytest"
-    depends_on:
-      alice:
-        condition: service_healthy
-      bob:
-        condition: service_healthy

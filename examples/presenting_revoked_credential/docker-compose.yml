@@ -1,11 +1,7 @@
-# This docker-compose file is used for tests only
-
 version: "3"
 services:
   alice:
     image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.9.0
-    #image: bcgovimages/aries-cloudagent:py36-1.16-1_0.7.5
-    #image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
     # image: acapy-test-image
     # build:
     #   context: .
@@ -14,8 +10,6 @@ services:
     #     acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
     ports:
       - "3001:3001"
-    volumes:
-      - ./configs:/configs:ro,z
     command: >
       start
         --inbound-transport http 0.0.0.0 3000
@@ -56,8 +50,6 @@ services:
     #     acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
     ports:
       - "3002:3001"
-    volumes:
-      - ./configs:/configs:ro,z
     command: >
       start
         --inbound-transport http 0.0.0.0 3000
@@ -86,6 +78,27 @@ services:
       webhook-listener:
         condition: service_started
 
+  example:
+    container_name: controller
+    build:
+      context: ../..
+    environment:
+      - ALICE=http://alice:3001
+      - BOB=http://bob:3001
+    volumes:
+      - ./example.py:/usr/src/app/example.py:ro,z
+    command: python -m example
+    depends_on:
+      alice:
+        condition: service_healthy
+      bob:
+        condition: service_healthy
+
+  webhook-listener:
+    image: mendhak/http-https-echo:18
+    environment:
+      - HTTP_PORT=8080
+
   tails:
     image: ghcr.io/bcgov/tails-server:latest
     ports:
@@ -98,33 +111,3 @@ services:
       --port 6543
       --storage-path /tmp/tails-files
       --log-level INFO
-
-  webhook-listener:
-    image: mendhak/http-https-echo:18
-    environment:
-      - HTTP_PORT=8080
-
-  tests:
-    container_name: juggernaut
-    build:
-      context: .
-      args:
-        install_flags: ""
-    environment:
-      - ALICE=http://alice:3001
-      - BOB=http://bob:3001
-    volumes:
-      - ./controller:/usr/src/app/controller:z
-      - ./tests:/usr/src/app/tests:z
-    entrypoint: "poetry run pytest"
-    depends_on:
-      alice:
-        condition: service_healthy
-      bob:
-        condition: service_healthy
-
-configs:
-  alice-config:
-    file: ./configs/alice.yml
-  bob-config:
-    file: ./configs/bob.yml

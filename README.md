@@ -66,6 +66,19 @@ This controller differs from these in a few key ways:
 - This controller provides a system for capturing webhooks/events that is well
   suited for a testing or demonstration scenario.
 
+
+## Examples
+
+A number of examples can be found in the [examples](./examples) directory. Each
+of these contains a `docker-compose.yml` and a `example.py`. You can run each
+example by `cd`ing into the directory and running:
+
+```sh
+$ cd examples/example_to_try_out
+$ docker-compose run example
+$ docker-compose down -v
+```
+
 ## Instructions on Running Tests
 
 To run the tests:
@@ -89,6 +102,18 @@ docker-compose down
 > Note: You shouldn't have to run `docker-compose down` between tests the way
 > things are currently set up but doing so should give the cleanest state
 > possible for inspection after the tests complete
+
+## Testing the Examples
+
+Pytest has been configured to run checks on the [examples](./examples). You can
+run these with:
+
+```
+poetry run pytest -m examples
+```
+
+This will run the `example` service of each docker-compose file in each
+directory inside of the `examples` folder.
 
 ### Custom ACA-Py Images/Versions
 
