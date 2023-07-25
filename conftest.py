@@ -69,6 +69,11 @@ class ExampleRunner:
 def pytest_collect_file(parent: Session, path: Union[LocalPath, Path]):
     """Pytest collection hook."""
     file = Path(str(path))
+
+    # Skip certain examples
+    if (file.parent / "__skip__").exists():
+        return
+
     if file.suffix == ".yml" and file.parent.parent == EXAMPLES_DIR:
         return ExampleFile.from_parent(parent, path=file.parent)
 
