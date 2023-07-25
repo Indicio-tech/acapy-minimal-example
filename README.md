@@ -103,6 +103,18 @@ docker-compose down
 > things are currently set up but doing so should give the cleanest state
 > possible for inspection after the tests complete
 
+## Testing the Examples
+
+Pytest has been configured to run checks on the [examples](./examples). You can
+run these with:
+
+```
+poetry run pytest -m examples
+```
+
+This will run the `example` service of each docker-compose file in each
+directory inside of the `examples` folder.
+
 ### Custom ACA-Py Images/Versions
 
 Presently, ACA-Py version 0.7.4 is used. This can be changed by modifying the

@@ -1,6 +1,6 @@
 from pathlib import Path
 import subprocess
-from typing import List, Union
+from typing import Union
 
 from py._path.local import LocalPath
 import pytest
@@ -19,6 +19,8 @@ class ExampleFailedException(Exception):
 
 
 class ExampleRunner:
+    """Run the docker-compose of a given example."""
+
     def __init__(self, compose_file: str):
         self.compose_file = compose_file
 
@@ -44,12 +46,6 @@ class ExampleRunner:
                 f"Cleanup failed with exit status {exit_status}", exit_status
             )
 
-    @staticmethod
-    def _last_lines(output: str, amount: int = 1) -> List[str]:
-        """Extracts the last amount of lines from the provided string"""
-        lines = output.strip().split("\n")
-        return lines[-amount:]
-
     def handle_run(self, *command: str):
         """Handles the run of docker-compose/
 
@@ -67,7 +63,11 @@ class ExampleRunner:
 
 
 def pytest_collect_file(parent: Session, path: Union[LocalPath, Path]):
-    """Pytest collection hook."""
+    """Pytest collection hook.
+
+    This will collect the docker-compose.yml files from the examples and create
+    pytest items to run them.
+    """
     file = Path(str(path))
 
     # Skip certain examples
@@ -92,7 +92,11 @@ class ExampleFile(pytest.File):
 
 
 class ExmapleItem(pytest.Item):
-    """Example item."""
+    """Example item.
+
+    Runs the docker-compose.yml file of the example and reports failure if the
+    exit status is non-zero.
+    """
 
     def __init__(self, name: str, parent: pytest.File, compose_file: str):
         super().__init__(name, parent)
