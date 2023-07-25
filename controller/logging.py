@@ -1,9 +1,10 @@
-import logging
-from os import getenv, get_terminal_size
-import sys
-from contextlib import contextmanager
-from typing import Optional, TextIO
+"""Logging utilities."""
 
+from contextlib import contextmanager
+import logging
+from os import get_terminal_size, getenv
+import sys
+from typing import Optional, TextIO
 
 from blessings import Terminal
 
@@ -13,7 +14,10 @@ LOGGING_SET = False
 
 
 class ColorFormatter(logging.Formatter):
+    """Colorizer for logging output."""
+
     def __init__(self, fmt: str):
+        """Init formatter."""
         self.default = logging.Formatter(fmt)
         term = Terminal()
         self.formats = {
@@ -22,11 +26,14 @@ class ColorFormatter(logging.Formatter):
         }
 
     def format(self, record):
+        """Format log record."""
         formatter = self.formats.get(record.levelno, self.default)
         return formatter.format(record)
 
 
 def logging_to_stdout():
+    """Set up logging to stdout."""
+
     global LOGGING_SET
     if LOGGING_SET:
         return
@@ -69,3 +76,11 @@ def section(
     else:
         print(title, file=file)
         yield
+
+
+def pause_for_input(prompt: Optional[str] = None):
+    term = Terminal()
+    prompt = prompt or "Press Enter to continue..."
+    print(f"{term.blue}{term.bold}", end="")
+    input(prompt)
+    print(f"{term.normal}", end="")
