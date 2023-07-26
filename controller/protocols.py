@@ -3,9 +3,9 @@
 from dataclasses import dataclass
 import json
 import logging
+from secrets import randbelow, token_hex
 from typing import Any, List, Mapping, Optional, Tuple, Union
 from uuid import uuid4
-from secrets import token_hex, randbelow
 
 from .controller import Controller, ControllerError
 from .models import (
@@ -13,12 +13,15 @@ from .models import (
     ConnRecord,
     ConnectionList,
     CredAttrSpec,
+    Credential,
     CredentialDefinitionSendRequest,
     CredentialDefinitionSendResult,
     CredentialPreview,
     DIDCreate,
     DIDCreateOptions,
     DIDResult,
+    DIFOptions,
+    DIFProofRequest,
     IndyCredPrecis,
     IndyPresSpec,
     IndyProofReqAttrSpec,
@@ -29,8 +32,11 @@ from .models import (
     InvitationMessage,
     InvitationRecord,
     InvitationResult,
+    LDProofVCDetail,
+    LDProofVCDetailOptions,
     MediationRecord,
     PingRequest,
+    PresentationDefinition,
     ReceiveInvitationRequest,
     SchemaSendRequest,
     SchemaSendResult,
@@ -878,3 +884,182 @@ async def indy_anoncreds_publish_revocation(
             "Expected cred_ex to be V10CredentialExchange or V20CredExRecordDetail; "
             f"got {type(cred_ex).__name__}"
         )
+
+
+async def jsonld_issue_credential(
+    issuer: Controller,
+    holder: Controller,
+    issuer_connection_id: str,
+    holder_connection_id: str,
+    credential: Union[Credential, Mapping[str, Any]],
+    options: Union[LDProofVCDetailOptions, Mapping[str, Any]],
+):
+    """Issue a JSON-LD Credential."""
+    credential = (
+        credential
+        if isinstance(credential, Credential)
+        else Credential.parse_obj(credential)
+    )
+    options = (
+        options
+        if isinstance(options, LDProofVCDetailOptions)
+        else LDProofVCDetailOptions.parse_obj(options)
+    )
+    issuer_cred_ex = await issuer.post(
+        "/issue-credential-2.0/send-offer",
+        json=V20CredOfferRequest(
+            auto_issue=False,
+            auto_remove=False,
+            comment="Credential from minimal example",
+            trace=False,
+            connection_id=issuer_connection_id,
+            filter=V20CredFilter(  # pyright: ignore
+                ld_proof=LDProofVCDetail(
+                    credential=credential,
+                    options=options,
+                )
+            ),
+        ),
+        response=V20CredExRecord,
+    )
+    issuer_cred_ex_id = issuer_cred_ex.cred_ex_id
+
+    holder_cred_ex = await holder.record_with_values(
+        topic="issue_credential_v2_0",
+        record_type=V20CredExRecord,
+        connection_id=holder_connection_id,
+        state="offer-received",
+    )
+    holder_cred_ex_id = holder_cred_ex.cred_ex_id
+
+    holder_cred_ex = await holder.post(
+        f"/issue-credential-2.0/records/{holder_cred_ex_id}/send-request",
+        response=V20CredExRecord,
+    )
+
+    await issuer.record_with_values(
+        topic="issue_credential_v2_0",
+        cred_ex_id=issuer_cred_ex_id,
+        state="request-received",
+    )
+
+    issuer_cred_ex = await issuer.post(
+        f"/issue-credential-2.0/records/{issuer_cred_ex_id}/issue",
+        json={},
+        response=V20CredExRecordDetail,
+    )
+
+    await holder.record_with_values(
+        topic="issue_credential_v2_0",
+        cred_ex_id=holder_cred_ex_id,
+        state="credential-received",
+    )
+
+    holder_cred_ex = await holder.post(
+        f"/issue-credential-2.0/records/{holder_cred_ex_id}/store",
+        json={},
+        response=V20CredExRecordDetail,
+    )
+    issuer_cred_ex = await issuer.record_with_values(
+        topic="issue_credential_v2_0",
+        record_type=V20CredExRecord,
+        cred_ex_id=issuer_cred_ex_id,
+        state="done",
+    )
+
+    holder_cred_ex = await holder.record_with_values(
+        topic="issue_credential_v2_0",
+        record_type=V20CredExRecord,
+        cred_ex_id=holder_cred_ex_id,
+        state="done",
+    )
+
+    return issuer_cred_ex, holder_cred_ex
+
+
+async def jsonld_present_proof(
+    verifier: Controller,
+    holder: Controller,
+    verifier_connection_id: str,
+    holder_connection_id: str,
+    presentation_definition: Union[Mapping[str, Any], PresentationDefinition],
+    domain: str,
+    *,
+    comment: Optional[str] = None,
+):
+    """Present an Indy credential using present proof v1."""
+    presentation_definition = (
+        presentation_definition
+        if isinstance(presentation_definition, PresentationDefinition)
+        else PresentationDefinition.parse_obj(presentation_definition)
+    )
+    verifier_pres_ex = await verifier.post(
+        "/present-proof-2.0/send-request",
+        json=V20PresSendRequestRequest(
+            auto_verify=False,
+            comment=comment or "Presentation request from minimal",
+            connection_id=verifier_connection_id,
+            presentation_request=V20PresRequestByFormat(  # pyright: ignore
+                dif=DIFProofRequest(
+                    presentation_definition=presentation_definition,
+                    options=DIFOptions(challenge=str(uuid4()), domain=domain),
+                ),
+            ),
+            trace=False,
+        ),
+        response=V20PresExRecord,
+    )
+    verifier_pres_ex_id = verifier_pres_ex.pres_ex_id
+
+    holder_pres_ex = await holder.record_with_values(
+        topic="present_proof_v2_0",
+        record_type=V20PresExRecord,
+        connection_id=holder_connection_id,
+        state="request-received",
+    )
+    assert holder_pres_ex.pres_request
+    assert holder_pres_ex.pres_request.request_presentations_attach
+    assert holder_pres_ex.pres_request.request_presentations_attach[0].data
+    assert holder_pres_ex.pres_request.request_presentations_attach[0].data.json_
+    holder_pres_ex_id = holder_pres_ex.pres_ex_id
+
+    holder_pres_ex = await holder.post(
+        f"/present-proof-2.0/records/{holder_pres_ex_id}/send-presentation",
+        json=V20PresRequestByFormat(
+            dif=DIFProofRequest(  # pyright: ignore
+                presentation_definition=(
+                    holder_pres_ex.pres_request.request_presentations_attach[
+                        0
+                    ].data.json_["presentation_definition"]
+                )
+            )
+        ),
+        response=V20PresExRecord,
+    )
+
+    await verifier.record_with_values(
+        topic="present_proof_v2_0",
+        record_type=V20PresExRecord,
+        pres_ex_id=verifier_pres_ex_id,
+        state="presentation-received",
+    )
+    verifier_pres_ex = await verifier.post(
+        f"/present-proof-2.0/records/{verifier_pres_ex_id}/verify-presentation",
+        json={},
+        response=V20PresExRecord,
+    )
+    verifier_pres_ex = await verifier.record_with_values(
+        topic="present_proof_v2_0",
+        record_type=V20PresExRecord,
+        pres_ex_id=verifier_pres_ex_id,
+        state="done",
+    )
+
+    holder_pres_ex = await holder.record_with_values(
+        topic="present_proof_v2_0",
+        record_type=V20PresExRecord,
+        pres_ex_id=holder_pres_ex_id,
+        state="done",
+    )
+
+    return verifier_pres_ex, holder_pres_ex
