@@ -1702,7 +1702,6 @@ class RoutingKey2(BaseModel):
     __root__: str = Field(
         ...,
         example="did:key:z6MkpTHR8VNsBxYAAWHut2Geadd9jSwuBV8xRoAnwWsdvktH",
-        regex="^did:key:z[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+$",
     )
 
 
