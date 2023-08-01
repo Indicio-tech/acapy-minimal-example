@@ -3,18 +3,17 @@ services:
 
   proxy:
     image: ghcr.io/indicio-tech/proxy-mediator:0.1.2
-    volumes:
-      - ./docker/wait:/app/wait:z
     environment:
       PORT: 3000
       ENDPOINT: http://proxy:3000
       LOG_LEVEL: DEBUG
-      WAIT_BEFORE_HOSTS: 3
-      WAIT_HOSTS: ediator:3000
-      WAIT_HOSTS_TIMEOUT: 30
-      WAIT_SLEEP_INTERVAL: 1
-      WAIT_HOST_CONNECT_TIMEOUT: 10
-    entrypoint: /bin/sh -c '/app/wait && python -m proxy_mediator "$$@"' --
+    depends_on:
+      mediator:
+        condition: service_healthy
+      alice:
+        condition: service_healthy
+      reverse-proxy:
+        condition: service_started
 
   setup:
     image: ghcr.io/indicio-tech/proxy-mediator-setup:0.1.2
@@ -34,9 +33,11 @@ services:
   alice:
     image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.9.0
     ports:
+    ports:
       - "3001:3001"
     command: >
       start
+        --label Alice
         --inbound-transport http 0.0.0.0 3000
         --outbound-transport http
         --endpoint http://alice:3000
@@ -64,15 +65,30 @@ services:
       tails:
         condition: service_started
 
+  reverse-proxy:
+    image: nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/templates/default.conf.template:z
+    environment:
+      MEDIATOR: mediator
+      HTTP_PORT: 3000
+      WS_PORT: 3002
+    ports:
+      - 8080:80
+    depends_on:
+      - mediator
+
   mediator:
     image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.9.0
     ports:
       - "3003:3001"
     command: >
       start
+        --label Mediator
         --inbound-transport http 0.0.0.0 3000
+        --inbound-transport ws 0.0.0.0 3002
         --outbound-transport http
-        --endpoint http://mediator:3000
+        --endpoint http://reverse-proxy ws://reverse-proxy/ws
         --admin 0.0.0.0 3001
         --admin-insecure-mode
         --webhook-url http://webhook-listener:8080
@@ -86,6 +102,9 @@ services:
         --debug-webhooks
         --webhook-url http://webhook-listener:8080
         --monitor-revocation-notification
+        --auto-accept-requests
+        --open-mediation
+        --enable-undelivered-queue
     healthcheck:
       test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3001/status/live" | grep "200" > /dev/null
       start_period: 30s
@@ -102,6 +121,7 @@ services:
       - "3002:3001"
     command: >
       start
+        --label Bob
         --inbound-transport http 0.0.0.0 3000
         --outbound-transport http
         --endpoint http://bob:3000
