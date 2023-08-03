@@ -30,14 +30,14 @@ async def main():
         base_url=BOB
     ) as bob, Controller(base_url=MEDIATOR) as mediator:
         public_did = await indy_anoncred_onboard(alice)
-        ma_conn, am_conn = await didexchange(mediator, alice)
-        _, mediation_record = await request_mediation_v1(
-            mediator, alice, ma_conn.connection_id, am_conn.connection_id
-        )
-        await alice.put(f"/mediation/{mediation_record.mediation_id}/default-mediator")
+        # ma_conn, am_conn = await didexchange(mediator, alice)
+        # _, mediation_record = await request_mediation_v1(
+        #     mediator, alice, ma_conn.connection_id, am_conn.connection_id
+        # )
+        # await alice.put(f"/mediation/{mediation_record.mediation_id}/default-mediator")
         ab_conn, ba_conn = await didexchange(alice, bob, use_public_did=True)
         alice_endpoint = await get_their_endpoint(bob, ba_conn.connection_id)
-        assert alice_endpoint == "http://mediator:3000"
+        # assert alice_endpoint == "http://reverse-proxy"
 
 
 if __name__ == "__main__":

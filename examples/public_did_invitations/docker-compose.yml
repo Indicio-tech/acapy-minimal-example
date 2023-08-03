@@ -25,14 +25,15 @@ services:
       - WAIT_HOST_CONNECT_TIMEOUT=10
       - PROXY=http://proxy:3000
       - AGENT=http://alice:3001
-      - MEDIATOR=http://mediator:3001
+      # - MEDIATOR=http://mediator:3001
+      - MEDIATOR_INVITE=https://ys40cgl5r2.execute-api.us-east-1.amazonaws.com/Prod/message?oob=eyJAaWQiOiIwMTk3Y2Y4NS0yMzFlLTRlZDItYTNjMi0zZTBlNmVmYzk3OGQiLCJAdHlwZSI6Imh0dHBzOi8vZGlkY29tbS5vcmcvb3V0LW9mLWJhbmQvMS4xL2ludml0YXRpb24iLCJoYW5kc2hha2VfcHJvdG9jb2xzIjpbImh0dHBzOi8vZGlkY29tbS5vcmcvZGlkZXhjaGFuZ2UvMS4wIl0sInNlcnZpY2VzIjpbeyJpZCI6IiNpbmxpbmUiLCJ0eXBlIjoiZGlkLWNvbW11bmljYXRpb24iLCJyZWNpcGllbnRLZXlzIjpbImRpZDprZXk6ejZNa3R3ZVVBdUJFYXB6d3hoWTdQS2JzdDNhR0xoWGhqcUU0VkNTM1lGMVBMdmU3Il0sInNlcnZpY2VFbmRwb2ludCI6Imh0dHBzOi8veXM0MGNnbDVyMi5leGVjdXRlLWFwaS51cy1lYXN0LTEuYW1hem9uYXdzLmNvbS9Qcm9kL21lc3NhZ2UifSx7ImlkIjoiI2lubGluZSIsInR5cGUiOiJkaWQtY29tbXVuaWNhdGlvbiIsInJlY2lwaWVudEtleXMiOlsiZGlkOmtleTp6Nk1rdHdlVUF1QkVhcHp3eGhZN1BLYnN0M2FHTGhYaGpxRTRWQ1MzWUYxUEx2ZTciXSwic2VydmljZUVuZHBvaW50Ijoid3M6Ly9ERE0tUHJvZC0xMzMxOTUzNzEudXMtZWFzdC0xLmVsYi5hbWF6b25hd3MuY29tL3dzIn1dLCJhY2NlcHQiOlsiZGlkY29tbS9haXAxIiwiZGlkY29tbS9haXAyO2Vudj1yZmMxOSJdLCJsYWJlbCI6IkNsb3VkIE1lZGlhdG9yIn0=
     depends_on:
       - proxy
       - alice
 
   alice:
-    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.9.0
-    ports:
+    #image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.9.0
+    image: ghcr.io/indicio-tech/aries-cloudagent-python:py3.9-fix-keylist-update-response-race
     ports:
       - "3001:3001"
     command: >
@@ -79,7 +80,8 @@ services:
       - mediator
 
   mediator:
-    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.9.0
+    # image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.9.0
+    image: ghcr.io/indicio-tech/aries-cloudagent-python:py3.9-fix-keylist-update-response-race
     ports:
       - "3003:3001"
     command: >
@@ -116,7 +118,8 @@ services:
         condition: service_started
 
   bob:
-    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.9.0
+    # image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.9.0
+    image: ghcr.io/indicio-tech/aries-cloudagent-python:py3.9-fix-keylist-update-response-race
     ports:
       - "3002:3001"
     command: >
