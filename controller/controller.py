@@ -170,6 +170,10 @@ class Controller:
             self._session = await self._stack.enter_async_context(
                 ClientSession(base_url=self.base_url, headers=self.headers)
             )
+
+        # Get settings
+        settings = await self.record("settings")
+        self.label = settings["label"]
         return self
 
     async def shutdown(self, exc_info: Optional[Tuple] = None):

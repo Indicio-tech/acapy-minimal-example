@@ -12,6 +12,7 @@ services:
       - "3001:3001"
     command: >
       start
+        --label Alice
         --inbound-transport http 0.0.0.0 3000
         --outbound-transport http
         --endpoint http://alice:3000
@@ -52,6 +53,7 @@ services:
       - "3002:3001"
     command: >
       start
+        --label Bob
         --inbound-transport http 0.0.0.0 3000
         --outbound-transport http
         --endpoint http://bob:3000
