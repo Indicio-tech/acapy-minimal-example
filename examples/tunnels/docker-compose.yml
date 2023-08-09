@@ -21,6 +21,7 @@ services:
       /bin/sh -c '/tunnel_endpoint.sh aca-py "$$@"' --
     command: >
       start
+        --label Alice
         --inbound-transport http 0.0.0.0 3000
         --outbound-transport http
         --admin 0.0.0.0 3001
@@ -69,6 +70,7 @@ services:
       /bin/sh -c '/tunnel_endpoint.sh aca-py "$$@"' --
     command: >
       start
+        --label Bob
         --inbound-transport http 0.0.0.0 3000
         --outbound-transport http
         --admin 0.0.0.0 3001

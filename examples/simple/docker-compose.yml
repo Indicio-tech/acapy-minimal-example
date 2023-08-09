@@ -6,6 +6,7 @@ services:
       - "3001:3001"
     command: >
       start
+        --label Alice
         --inbound-transport http 0.0.0.0 3000
         --outbound-transport http
         --endpoint http://alice:3000
@@ -38,6 +39,7 @@ services:
       - "3002:3001"
     command: >
       start
+        --label Bob
         --inbound-transport http 0.0.0.0 3000
         --outbound-transport http
         --endpoint http://bob:3000
@@ -72,6 +74,7 @@ services:
       - ALICE=http://alice:3001
       - BOB=http://bob:3001
     volumes:
+      - ../../controller:/usr/src/app/controller:z
       - ./example.py:/usr/src/app/example.py:ro,z
     command: python -m example
     depends_on:
