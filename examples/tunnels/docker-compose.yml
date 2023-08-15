@@ -1,6 +1,7 @@
 version: "3"
 services:
   alice:
+    platform: linux/amd64
     image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.9.0
     #image: bcgovimages/aries-cloudagent:py36-1.16-1_0.7.5
     #image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
@@ -19,7 +20,7 @@ services:
       TAILS_TUNNEL_ENDPOINT: http://tunnel-tails:4040
     entrypoint: >
       /bin/sh -c '/tunnel_endpoint.sh aca-py "$$@"' --
-    command: >
+    command: >+
       start
         --label Alice
         --inbound-transport http 0.0.0.0 3000
@@ -35,6 +36,10 @@ services:
         --auto-provision
         --log-level debug
         --debug-webhooks
+        --invite
+        --invite-multi-use
+        --emit-new-didcomm-prefix
+        
     healthcheck:
       test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3001/status/live" | grep "200" > /dev/null
       start_period: 30s
@@ -101,6 +106,7 @@ services:
         condition: service_started
 
   tunnel-alice:
+    platform: linux/amd64
     image: dbluhm/agent-tunnel
     command: -s alice:3000 -p 4040 -h ${AGENT_TUNNEL_HOST}
 
@@ -109,6 +115,7 @@ services:
     command: -s bob:3000 -p 4040 -h ${AGENT_TUNNEL_HOST}
 
   example:
+    platform: linux/amd64
     container_name: controller
     build:
       context: ../..
@@ -126,14 +133,16 @@ services:
         condition: service_healthy
 
   tunnel-tails:
+    platform: linux/amd64
     image: ngrok/ngrok
-    command: start --all 
+    command: start --all
     environment:
       - NGROK_CONFIG=/etc/ngrok.yml
     volumes:
       - ./ngrok.yml:/etc/ngrok.yml
 
   tails:
+    platform: linux/amd64
     image: ghcr.io/bcgov/tails-server:latest
     ports:
       - 6543:6543
@@ -142,14 +151,14 @@ services:
     command: >
       tails
        --host 0.0.0.0
-      --port 6543
-      --storage-path /tmp/tails-files
-      --log-level INFO
+      --port 6543 --storage-path /tmp/tails-files --log-level INFO
     depends_on:
       tunnel-tails:
         condition: service_started
 
   webhook-listener:
+    platform: linux/amd64
+
     image: mendhak/http-https-echo:18
     environment:
       - HTTP_PORT=8080
