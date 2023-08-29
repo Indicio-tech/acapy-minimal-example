@@ -2,7 +2,7 @@ version: "3"
 services:
   alice:
     platform: linux/amd64
-    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-nightly-2023-08-25
+    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-indy-1.16.0-0.10.1
     #image: bcgovimages/aries-cloudagent:py36-1.16-1_0.7.5
     #image: bcgovimages/aries-cloudagent:py36-1.16-1_1.0.0-rc0
     # image: acapy-test-image
