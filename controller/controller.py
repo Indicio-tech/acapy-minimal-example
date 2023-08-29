@@ -556,20 +556,15 @@ class Controller:
         topic: str,
         *,
         record_type: Optional[Type[T]] = None,
-        timeout: float = 5.0,  # seconds
+        timeout: Optional[int] = None,  # seconds
         **values,
     ) -> Union[T, Mapping[str, Any]]:
         """Get a record from an event with values matching those passed in."""
         try:
-            event = await asyncio.wait_for(
-                self.event_queue.get(
-                    lambda event: event.topic == topic
-                    and all(
-                        [
-                            event.payload.get(key) == value
-                            for key, value in values.items()
-                        ]
-                    )
+            event = await self.event_queue.get(
+                lambda event: event.topic == topic
+                and all(
+                    [event.payload.get(key) == value for key, value in values.items()]
                 ),
                 timeout=timeout,
             )
