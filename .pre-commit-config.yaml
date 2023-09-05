@@ -5,15 +5,16 @@ repos:
     hooks:
       - id: commitlint
         stages: [commit-msg]
-        args: ["--config", ".commitlint.config.js"]
+        args: ['--config', '.commitlint.config.js']
         additional_dependencies: ['@commitlint/config-conventional']
   - repo: https://github.com/psf/black
     rev: 22.3.0
     hooks:
       - id: black
         stages: [commit]
-  - repo: https://github.com/pycqa/flake8
-    rev: 3.9.0
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.0.287
     hooks:
-      - id: flake8
+      - id: ruff
         stages: [commit]
+        args: [--fix, --exit-non-zero-on-fix]
