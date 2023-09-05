@@ -100,3 +100,4 @@ services:
       --port 6543
       --storage-path /tmp/tails-files
       --log-level INFO
+

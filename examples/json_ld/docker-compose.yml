@@ -24,6 +24,7 @@ services:
       timeout: 5s
       retries: 5
 
+
   bob:
     image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.10.1
     ports:

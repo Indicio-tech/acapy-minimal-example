@@ -1,5 +1,4 @@
 # This docker-compose file is used for tests only
-
 version: '3'
 services:
   alice:
