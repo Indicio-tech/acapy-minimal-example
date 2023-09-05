@@ -13,11 +13,20 @@ env:
 
 jobs:
   format:
-    name: Format and Lint
+    name: Format and Lint (Conrollers)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: psf/black@stable
         with:
-          src: "./acapy-minimal-example"
+          src: "./controllers"
+      - uses: chartboost/ruff-action@v1
+
+    name: Format and Lint (Examples)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: psf/black@stable
+        with:
+          src: "./examples"
       - uses: chartboost/ruff-action@v1
