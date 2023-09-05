@@ -1,5 +1,5 @@
 # This docker-compose file is used for tests only
-version: '3'
+version: "3"
 services:
   alice:
     image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.10.1
@@ -10,7 +10,7 @@ services:
     #   args:
     #     acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
     ports:
-      - '3001:3001'
+      - "3001:3001"
     volumes:
       - ./configs:/configs:ro,z
     command: >
@@ -50,7 +50,7 @@ services:
     #   args:
     #     acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
     ports:
-      - '3002:3001'
+      - "3002:3001"
     volumes:
       - ./configs:/configs:ro,z
     command: >
@@ -104,14 +104,14 @@ services:
     build:
       context: .
       args:
-        install_flags: ''
+        install_flags: ""
     environment:
       - ALICE=http://alice:3001
       - BOB=http://bob:3001
     volumes:
       - ./controller:/usr/src/app/controller:z
       - ./tests:/usr/src/app/tests:z
-    entrypoint: 'poetry run pytest'
+    entrypoint: "poetry run pytest"
     depends_on:
       alice:
         condition: service_healthy
