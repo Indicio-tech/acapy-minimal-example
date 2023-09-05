@@ -1,7 +1,7 @@
 version: "3"
 services:
   alice:
-    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.9.0
+    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.10.1
     ports:
       - "3001:3001"
     command: >
@@ -34,7 +34,7 @@ services:
         condition: service_started
 
   bob:
-    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.9.0
+    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.10.1
     ports:
       - "3002:3001"
     command: >
@@ -100,3 +100,4 @@ services:
       --port 6543
       --storage-path /tmp/tails-files
       --log-level INFO
+
