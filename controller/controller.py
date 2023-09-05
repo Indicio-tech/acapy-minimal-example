@@ -556,6 +556,7 @@ class Controller:
         topic: str,
         *,
         record_type: Optional[Type[T]] = None,
+        timeout: Optional[int] = None,  # seconds
         **values,
     ) -> Union[T, Mapping[str, Any]]:
         """Get a record from an event with values matching those passed in."""
@@ -564,7 +565,8 @@ class Controller:
                 lambda event: event.topic == topic
                 and all(
                     [event.payload.get(key) == value for key, value in values.items()]
-                )
+                ),
+                timeout=timeout,
             )
         except asyncio.TimeoutError:
             raise ControllerError(
