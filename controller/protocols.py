@@ -1,6 +1,5 @@
 """Defintions of protocols flows."""
 
-from dataclasses import dataclass
 import json
 import logging
 from secrets import randbelow, token_hex
@@ -35,6 +34,7 @@ from .models import (
     LDProofVCDetail,
     LDProofVCDetailOptions,
     MediationRecord,
+    OobRecord,
     PingRequest,
     PresentationDefinition,
     ReceiveInvitationRequest,
@@ -140,23 +140,6 @@ async def connection(inviter: Controller, invitee: Controller):
     return inviter_conn, invitee_conn
 
 
-# TODO No model for OOBRecord in ACA-Py OpenAPI...
-@dataclass
-class OOBRecord:
-    oob_id: str
-    state: str
-    invi_msg_id: str
-    invitation: dict
-    connection_id: str
-    role: str
-    created_at: str
-    updated_at: str
-    trace: bool
-    their_service: Optional[dict] = None
-    attach_thread_id: Optional[str] = None
-    our_recipient_key: Optional[str] = None
-
-
 async def didexchange(
     inviter: Controller,
     invitee: Controller,
@@ -171,10 +154,12 @@ async def didexchange(
     if not invite:
         invite_record = await inviter.post(
             "/out-of-band/create-invitation",
-            json=InvitationCreateRequest(
-                handshake_protocols=["https://didcomm.org/didexchange/1.0"],
-                use_public_did=use_public_did,
-            ),  # pyright: ignore
+            json=InvitationCreateRequest.parse_obj(
+                {
+                    "handshake_protocols": ["https://didcomm.org/didexchange/1.0"],
+                    "use_public_did": use_public_did,
+                }
+            ),
             params=_make_params(
                 auto_accept=auto_accept,
                 multi_use=multi_use,
@@ -197,14 +182,14 @@ async def didexchange(
         params=_make_params(
             use_existing_connection=use_existing_connection,
         ),
-        response=OOBRecord,
+        response=OobRecord,
     )
 
     if use_existing_connection and invitee_oob_record == "reuse-accepted":
         inviter_oob_record = await inviter.record_with_values(
             topic="out_of_band",
-            record_type=OOBRecord,
             invi_msg_id=invite.id,
+            record_type=OobRecord,
         )
         inviter_conn = await inviter.get(
             f"/connections/{inviter_oob_record.connection_id}",
@@ -223,7 +208,7 @@ async def didexchange(
         )
         inviter_oob_record = await inviter.record_with_values(
             topic="out_of_band",
-            record_type=OOBRecord,
+            record_type=OobRecord,
             connection_id=inviter_conn.connection_id,
             state="done",
         )
@@ -386,6 +371,7 @@ async def indy_issue_credential_v1(
     attributes: Mapping[str, str],
 ) -> Tuple[V10CredentialExchange, V10CredentialExchange]:
     """Issue an indy credential using issue-credential/1.0.
+
     Issuer and holder should already be connected.
     """
     issuer_cred_ex = await issuer.post(
@@ -473,6 +459,7 @@ async def indy_issue_credential_v2(
     attributes: Mapping[str, str],
 ) -> Tuple[V20CredExRecordDetail, V20CredExRecordDetail]:
     """Issue an indy credential using issue-credential/2.0.
+
     Issuer and holder should already be connected.
     """
 
@@ -803,8 +790,9 @@ async def indy_anoncreds_revoke(
     notify_version: str = "v1_0",
 ):
     """Revoking an Indy credential using revocation revoke.
+
     V1.0: V10CredentialExchange
-    V2.0: V20CredExRecordDetail
+    V2.0: V20CredExRecordDetail.
     """
     if notify and holder_connection_id is None:
         return (
@@ -853,9 +841,10 @@ async def indy_anoncreds_publish_revocation(
     publish: bool = False,
     notify: bool = True,
 ):
-    """Publishing revocation of indy credential
+    """Publishing revocation of indy credential.
+
     V1.0: V10CredentialExchange
-    V2.0: V20CredExRecordDetail
+    V2.0: V20CredExRecordDetail.
     """
     if isinstance(cred_ex, V10CredentialExchange):
         await issuer.post(

@@ -1,4 +1,5 @@
 """Minimal reproducible example script.
+
 This script is for you to use to reproduce a bug or demonstrate a feature.
 """
 
@@ -25,6 +26,7 @@ BOB = getenv("BOB", "http://bob:3001")
 
 
 def summary(presentation: V20PresExRecord) -> str:
+    """Summarize a presentation exchange record."""
     request = presentation.pres_request
     return "Summary: " + json.dumps(
         {

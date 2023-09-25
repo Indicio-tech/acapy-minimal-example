@@ -120,6 +120,7 @@ class Controller:
         event_queue: Optional[Queue[Event]] = None,
         session: Optional[ClientSession] = None,
     ):
+        """Initialize and ACA-Py Controller."""
         self.base_url = base_url
         self.label = label or "ACA-Py"
         self.headers = dict(headers or {})
@@ -350,7 +351,6 @@ class Controller:
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
     ) -> Mapping[str, Any]:
-        """HTTP Post and return json."""
         ...
 
     @overload
@@ -364,7 +364,6 @@ class Controller:
         headers: Optional[Mapping[str, str]] = None,
         response: None,
     ) -> Mapping[str, Any]:
-        """HTTP Post and return json."""
         ...
 
     @overload
@@ -378,7 +377,6 @@ class Controller:
         headers: Optional[Mapping[str, str]] = None,
         response: Type[T],
     ) -> T:
-        """HTTP Post and parse returned json as type T."""
         ...
 
     async def post(
@@ -419,7 +417,6 @@ class Controller:
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
     ) -> Mapping[str, Any]:
-        """HTTP Put and return json."""
         ...
 
     @overload
@@ -433,7 +430,6 @@ class Controller:
         headers: Optional[Mapping[str, str]] = None,
         response: None,
     ) -> Mapping[str, Any]:
-        """HTTP Put and return json."""
         ...
 
     @overload
@@ -447,7 +443,6 @@ class Controller:
         headers: Optional[Mapping[str, str]] = None,
         response: Type[T],
     ) -> T:
-        """HTTP Put and parse returned json as type T."""
         ...
 
     async def put(
@@ -564,7 +559,7 @@ class Controller:
             event = await self.event_queue.get(
                 lambda event: event.topic == topic
                 and all(
-                    [event.payload.get(key) == value for key, value in values.items()]
+                    event.payload.get(key) == value for key, value in values.items()
                 ),
                 timeout=timeout,
             )
