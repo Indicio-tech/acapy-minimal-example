@@ -82,6 +82,11 @@ def pause_for_input(
     prompt: Optional[str] = None,
     file: TextIO = sys.stdout,
 ):
+    """Pause the program and wait for the user to hit enter.
+
+    This helps the user to see the output of the program before it proceeds
+    past a step.
+    """
     if file == sys.stdout and sys.stdout.isatty():
         term = Terminal()
         prompt = prompt or "Press Enter to continue..."

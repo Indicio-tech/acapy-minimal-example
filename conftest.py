@@ -1,3 +1,5 @@
+"""Pytest fixtures and configuration."""
+
 from pathlib import Path
 import subprocess
 
@@ -12,6 +14,8 @@ class ExampleFailedException(Exception):
     """Raised when an example fails."""
 
     def __init__(self, message: str, exit_status: int):
+        """Initialize ExampleFailedException."""
+
         super().__init__(message)
         self.exit_status = exit_status
 
@@ -20,6 +24,8 @@ class ExampleRunner:
     """Run the docker-compose of a given example."""
 
     def __init__(self, compose_file: str):
+        """Initialize ExampleRunner."""
+
         self.compose_file = compose_file
 
     def compose(self, *command: str) -> int:
@@ -37,7 +43,7 @@ class ExampleRunner:
             return e.returncode
 
     def cleanup(self):
-        """Runs docker-compose down -v for cleanup"""
+        """Runs docker-compose down -v for cleanup."""
         exit_status = self.compose("down", "-v")
         if exit_status != 0:
             raise ExampleFailedException(
@@ -45,7 +51,7 @@ class ExampleRunner:
             )
 
     def handle_run(self, *command: str):
-        """Handles the run of docker-compose/
+        """Handles the run of docker-compose/.
 
         raises exception if exit status is non-zero.
         """
@@ -97,10 +103,12 @@ class ExmapleItem(pytest.Item):
     """
 
     def __init__(self, name: str, parent: pytest.File, compose_file: str):
+        """Initialize ExampleItem."""
         super().__init__(name, parent)
         self.compose_file = compose_file
 
     def runtest(self) -> None:
+        """Run the test."""
         ExampleRunner(self.compose_file).handle_run("run", "example")
 
     def repr_failure(self, excinfo):
@@ -115,4 +123,5 @@ class ExmapleItem(pytest.Item):
         return f"Some other exectpion happened: {excinfo.value}"
 
     def reportinfo(self):
+        """Report info about the example."""
         return self.fspath, 0, f"example: {self.name}"
