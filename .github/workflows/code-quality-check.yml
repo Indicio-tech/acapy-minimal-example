@@ -8,12 +8,9 @@ name: Code Quality Check
     branches:
       - main
 
-env:
-  BLACK_VERSION: 23.3.0
-
 jobs:
   format:
-    name: Format and Lint (Conrollers)
+    name: Format and Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
