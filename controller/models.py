@@ -273,7 +273,6 @@ class RoutingKey(BaseModel):
         ...,
         description="Routing key",
         example="H3C2AVvLMv6gmMNam3uVAjZpfkcJCwDwnZn6z3wXmqPV",
-        regex="^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{43,44}$",
     )
 
 
@@ -1721,7 +1720,7 @@ class MediationRecord(BaseModel):
     mediator_terms: Optional[List[str]] = None
     recipient_terms: Optional[List[str]] = None
     role: str
-    routing_keys: Optional[List[RoutingKey2]] = None
+    routing_keys: Optional[List[str]] = None
     state: Optional[str] = Field(
         None, description="Current record state", example="active"
     )

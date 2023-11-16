@@ -82,6 +82,16 @@ def _make_params(**kwargs) -> Mapping[str, Any]:
     }
 
 
+async def trustping(
+    sender: Controller, conn: ConnRecord, comment: Optional[str] = None
+):
+    """Send a trustping to the specified connection."""
+    await sender.post(
+        f"/connections/{conn.connection_id}/send-ping",
+        json=PingRequest(comment=comment or "Ping!"),
+    )
+
+
 async def connection(inviter: Controller, invitee: Controller):
     """Connect two agents."""
 
