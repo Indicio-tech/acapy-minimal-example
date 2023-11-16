@@ -1,8 +1,7 @@
 version: "3"
 services:
   alice:
-    #image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.10.2
-    image: acapy-test
+    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.10.4
     ports:
       - "3001:3001"
     environment:
@@ -34,8 +33,7 @@ services:
         condition: service_started
 
   bob:
-    #image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.10.2
-    image: acapy-test
+    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.10.4
     ports:
       - "3002:3001"
     environment:
@@ -68,8 +66,7 @@ services:
         condition: service_started
 
   mediator:
-    #image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.10.2
-    image: acapy-test
+    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.10.4
     ports:
       - "3003:3001"
     environment:

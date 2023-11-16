@@ -8,7 +8,12 @@ from os import getenv
 
 from controller import Controller
 from controller.logging import logging_to_stdout
-from controller.protocols import didexchange, request_mediation_v1
+from controller.protocols import (
+    connection,
+    didexchange,
+    request_mediation_v1,
+    trustping,
+)
 
 ALICE = getenv("ALICE", "http://alice:3001")
 BOB = getenv("BOB", "http://bob:3001")
@@ -27,7 +32,11 @@ async def main():
             mediator, alice, ma.connection_id, am.connection_id
         )
         await alice.put(f"/mediation/{amm.mediation_id}/default-mediator")
-        await didexchange(alice, bob)
+        ab, ba = await didexchange(alice, bob)
+        await trustping(alice, ab)
+
+        ab, ba = await connection(alice, bob)
+        await trustping(alice, ab)
 
 
 if __name__ == "__main__":
