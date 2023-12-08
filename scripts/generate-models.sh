@@ -5,14 +5,15 @@ cd "$(dirname "$0")" || exit
 
 CONTAINER_RUNTIME=${CONTAINER_RUNTIME:-docker}
 NAME="datamodel-codegen"
-API_URL="https://raw.githubusercontent.com/Indicio-tech/acapy-openapi/main/openapi.yml"
+VERSION="${1:-main}"
+API_URL="https://raw.githubusercontent.com/hyperledger/aries-cloudagent-python/${VERSION}/open-api/openapi.json"
 
 ${CONTAINER_RUNTIME} build -t ${NAME} - << DOCKERFILE
 FROM python:3.10
 
 WORKDIR /usr/src/app
 
-RUN pip install datamodel-code-generator[http]==0.21.2
+RUN pip install datamodel-code-generator[http]==0.25.1
 
 ENTRYPOINT ["datamodel-codegen"]
 DOCKERFILE
