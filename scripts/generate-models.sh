@@ -18,7 +18,7 @@ RUN pip install datamodel-code-generator[http]==0.25.1
 ENTRYPOINT ["datamodel-codegen"]
 DOCKERFILE
 
-${CONTAINER_RUNTIME} run --rm -v "../:/usr/src/app:z" ${NAME} \
+${CONTAINER_RUNTIME} run --rm -v "$(pwd)/../:/usr/src/app:z" ${NAME} \
     --url "${API_URL}" \
     --output ./controller/models.py \
     --field-constraints \
