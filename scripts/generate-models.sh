@@ -6,6 +6,7 @@ cd "$(dirname "$0")" || exit
 CONTAINER_RUNTIME=${CONTAINER_RUNTIME:-docker}
 NAME="datamodel-codegen"
 VERSION="${1:-main}"
+shift
 API_URL="https://raw.githubusercontent.com/hyperledger/aries-cloudagent-python/${VERSION}/open-api/openapi.json"
 
 ${CONTAINER_RUNTIME} build -t ${NAME} - << DOCKERFILE
