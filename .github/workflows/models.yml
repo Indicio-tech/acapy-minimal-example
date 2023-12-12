@@ -31,7 +31,7 @@ jobs:
         run: ./scripts/generate-models.sh ${{ github.event.inputs.version }}
 
       - name: Run Black
-        run: poetry run black controllers/models.py
+        run: poetry run black controller/models.py
 
       - name: Check for Changes
         id: git-check
