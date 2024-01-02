@@ -1,7 +1,7 @@
 version: "3"
 services:
   alice:
-    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.10.1
+    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.11.0
     ports:
       - "3001:3001"
     command: >
@@ -21,6 +21,7 @@ services:
         --auto-provision
         --log-level debug
         --debug-webhooks
+        --public-invites
     healthcheck:
       test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3001/status/live" | grep "200" > /dev/null
       start_period: 30s
@@ -34,7 +35,7 @@ services:
         condition: service_started
 
   bob:
-    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.10.1
+    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.11.0
     ports:
       - "3002:3001"
     command: >
