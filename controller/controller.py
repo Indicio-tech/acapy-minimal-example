@@ -563,9 +563,9 @@ class Controller:
                 ),
                 timeout=timeout,
             )
-        except asyncio.TimeoutError:
+        except asyncio.TimeoutError as error:
             raise ControllerError(
                 f"Record with topic {topic} and values {values} "
                 "not received before timeout"
-            )
+            ) from error
         return _deserialize(event.payload, record_type)
