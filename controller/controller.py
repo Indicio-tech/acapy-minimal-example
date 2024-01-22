@@ -3,11 +3,13 @@
 import asyncio
 from contextlib import AsyncExitStack
 from dataclasses import asdict, is_dataclass
+import dataclasses
 import logging
 from json import dumps
 from types import TracebackType
 from typing import (
     Any,
+    ClassVar,
     Mapping,
     Optional,
     Protocol,
@@ -48,6 +50,8 @@ class Serde(Protocol):
 
 class Dataclass(Protocol):
     """Empty protocol for dataclass type hinting."""
+
+    __dataclass_fields__: ClassVar[dict[str, dataclasses.Field[Any]]]
 
 
 Serializable = Union[Mapping[str, Any], Serde, BaseModel, Dataclass, None]
@@ -98,7 +102,7 @@ def _deserialize(
     if issubclass(as_type, Serde):
         return as_type.deserialize(value)
     if is_dataclass(as_type):
-        return as_type(**value)
+        return cast(T, as_type(**value))
     raise TypeError(f"Could not deserialize value into type {as_type.__name__}")
 
 
@@ -514,8 +518,9 @@ class Controller:
             )
         except asyncio.TimeoutError:
             raise ControllerError(
-                f"Record with topic {topic} not received before timeout"
-            )
+                f"Record from {self.label} with topic {topic} not received "
+                "before timeout"
+            ) from None
         return _deserialize(event.payload, record_type)
 
     @overload
@@ -526,14 +531,6 @@ class Controller:
         record_type: Type[T],
         **values,
     ) -> T:
-        ...
-
-    @overload
-    async def record_with_values(
-        self,
-        topic: str,
-        **values,
-    ) -> Mapping[str, Any]:
         ...
 
     @overload
@@ -563,9 +560,9 @@ class Controller:
                 ),
                 timeout=timeout,
             )
-        except asyncio.TimeoutError as error:
+        except asyncio.TimeoutError:
             raise ControllerError(
-                f"Record with topic {topic} and values {values} "
+                f"Record from {self.label} with topic {topic} and values\n\t{values}\n"
                 "not received before timeout"
-            ) from error
+            ) from None
         return _deserialize(event.payload, record_type)

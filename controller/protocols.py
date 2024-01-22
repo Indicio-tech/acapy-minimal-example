@@ -130,10 +130,11 @@ async def connection(
         f"/connections/{invitee_conn.connection_id}/accept-invitation",
     )
 
-    await inviter.record_with_values(
+    inviter_conn = await inviter.record_with_values(
         topic="connections",
-        connection_id=inviter_conn.connection_id,
+        invitation_key=inviter_conn.invitation_key,
         rfc23_state="request-received",
+        record_type=ConnRecord,
     )
 
     inviter_conn = await inviter.post(
