@@ -18,6 +18,7 @@ from controller.protocols import (
     didexchange,
     indy_anoncreds_publish_revocation,
     indy_anoncreds_revoke,
+    oob_invitation,
 )
 
 
@@ -40,7 +41,11 @@ async def test_did_exchange(did_exchange: Tuple[ConnRecord, ConnRecord]):
 @pytest.mark.asyncio
 async def test_did_exchange_with_multiuse(alice, bob):
     """Testing that dids are exchanged successfully."""
-    alice_conn, bob_conn = await didexchange(alice, bob, multi_use=True)
+    invite = await oob_invitation(alice, multi_use=True)
+    alice_conn, bob_conn = await didexchange(alice, bob, invite=invite)
+    assert alice_conn.rfc23_state == "completed"
+    assert bob_conn.rfc23_state == "completed"
+    alice_conn, bob_conn = await didexchange(alice, bob, invite=invite)
     assert alice_conn.rfc23_state == "completed"
     assert bob_conn.rfc23_state == "completed"
 
