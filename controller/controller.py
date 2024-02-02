@@ -538,7 +538,7 @@ class Controller:
         self,
         topic: str,
         *,
-        record_type: None,
+        record_type: None = None,
         **values,
     ) -> Mapping[str, Any]:
         ...
