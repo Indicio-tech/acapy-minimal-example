@@ -13,8 +13,8 @@ pydantic = "^1.10.2"
 blessings = "^1.7"
 
 [tool.poetry.dev-dependencies]
-black = "^22.6.0"
-ruff = "^0.0.287"
+black = "^24.1.1"
+ruff = "^0.1.2"
 pre-commit = "^2.20.0"
 pytest = "^7.1.2"
 pytest-asyncio = "^0.19.0"
