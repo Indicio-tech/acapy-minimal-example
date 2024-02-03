@@ -74,18 +74,15 @@ def _serialize(value: Serializable):
 
 
 @overload
-def _deserialize(value: Mapping[str, Any]) -> Mapping[str, Any]:
-    ...
+def _deserialize(value: Mapping[str, Any]) -> Mapping[str, Any]: ...
 
 
 @overload
-def _deserialize(value: Mapping[str, Any], as_type: Type[T]) -> T:
-    ...
+def _deserialize(value: Mapping[str, Any], as_type: Type[T]) -> T: ...
 
 
 @overload
-def _deserialize(value: Mapping[str, Any], as_type: None) -> Mapping[str, Any]:
-    ...
+def _deserialize(value: Mapping[str, Any], as_type: None) -> Mapping[str, Any]: ...
 
 
 def _deserialize(
@@ -296,8 +293,7 @@ class Controller:
         *,
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
-    ) -> Mapping[str, Any]:
-        ...
+    ) -> Mapping[str, Any]: ...
 
     @overload
     async def get(
@@ -307,8 +303,7 @@ class Controller:
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
         response: None,
-    ) -> Mapping[str, Any]:
-        ...
+    ) -> Mapping[str, Any]: ...
 
     @overload
     async def get(
@@ -318,8 +313,7 @@ class Controller:
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
         response: Type[T],
-    ) -> T:
-        ...
+    ) -> T: ...
 
     async def get(
         self,
@@ -341,8 +335,7 @@ class Controller:
         *,
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
-    ) -> Mapping[str, Any]:
-        ...
+    ) -> Mapping[str, Any]: ...
 
     @overload
     async def delete(
@@ -352,8 +345,7 @@ class Controller:
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
         response: None,
-    ) -> Mapping[str, Any]:
-        ...
+    ) -> Mapping[str, Any]: ...
 
     @overload
     async def delete(
@@ -363,8 +355,7 @@ class Controller:
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
         response: Type[T],
-    ) -> T:
-        ...
+    ) -> T: ...
 
     async def delete(
         self,
@@ -388,8 +379,7 @@ class Controller:
         json: Optional[Serializable] = None,
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
-    ) -> Mapping[str, Any]:
-        ...
+    ) -> Mapping[str, Any]: ...
 
     @overload
     async def post(
@@ -401,8 +391,7 @@ class Controller:
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
         response: None = None,
-    ) -> Mapping[str, Any]:
-        ...
+    ) -> Mapping[str, Any]: ...
 
     @overload
     async def post(
@@ -414,8 +403,7 @@ class Controller:
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
         response: Type[T],
-    ) -> T:
-        ...
+    ) -> T: ...
 
     async def post(
         self,
@@ -447,8 +435,7 @@ class Controller:
         json: Optional[Serializable] = None,
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
-    ) -> Mapping[str, Any]:
-        ...
+    ) -> Mapping[str, Any]: ...
 
     @overload
     async def put(
@@ -460,8 +447,7 @@ class Controller:
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
         response: None,
-    ) -> Mapping[str, Any]:
-        ...
+    ) -> Mapping[str, Any]: ...
 
     @overload
     async def put(
@@ -473,8 +459,7 @@ class Controller:
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
         response: Type[T],
-    ) -> T:
-        ...
+    ) -> T: ...
 
     async def put(
         self,
@@ -502,8 +487,7 @@ class Controller:
         self,
         topic: str,
         select: Optional[Select[Event]] = None,
-    ) -> Mapping[str, Any]:
-        ...
+    ) -> Mapping[str, Any]: ...
 
     @overload
     async def record(
@@ -512,8 +496,7 @@ class Controller:
         select: Optional[Select[Event]] = None,
         *,
         record_type: None,
-    ) -> Mapping[str, Any]:
-        ...
+    ) -> Mapping[str, Any]: ...
 
     @overload
     async def record(
@@ -522,8 +505,7 @@ class Controller:
         select: Optional[Select[Event]] = None,
         *,
         record_type: Type[T],
-    ) -> T:
-        ...
+    ) -> T: ...
 
     async def record(
         self,
@@ -552,8 +534,7 @@ class Controller:
         *,
         record_type: Type[T],
         **values,
-    ) -> T:
-        ...
+    ) -> T: ...
 
     @overload
     async def record_with_values(
@@ -562,8 +543,7 @@ class Controller:
         *,
         record_type: None = None,
         **values,
-    ) -> Mapping[str, Any]:
-        ...
+    ) -> Mapping[str, Any]: ...
 
     async def record_with_values(
         self,

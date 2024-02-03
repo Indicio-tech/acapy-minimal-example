@@ -1,4 +1,5 @@
 """Event Listener."""
+
 import asyncio
 from contextlib import asynccontextmanager, suppress
 import json
