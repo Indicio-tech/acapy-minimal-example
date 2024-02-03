@@ -10,6 +10,7 @@ from types import TracebackType
 from typing import (
     Any,
     ClassVar,
+    Literal,
     Mapping,
     Optional,
     Protocol,
@@ -241,6 +242,53 @@ class Controller:
             )
         raise ControllerError(f"Request failed: {resp.url} {body}")
 
+    async def request(
+        self,
+        method: Literal["GET", "POST", "PUT", "DELETE"],
+        url: str,
+        *,
+        data: Optional[bytes] = None,
+        json: Optional[Serializable] = None,
+        params: Optional[Mapping[str, Any]] = None,
+        headers: Optional[Mapping[str, str]] = None,
+        response: Optional[Type[T]] = None,
+    ) -> Union[T, Mapping[str, Any]]:
+        """Make an HTTP request."""
+        if self._session:
+            session = self._session
+        else:
+            session = await ClientSession(
+                base_url=self.base_url, headers=self.headers
+            ).__aenter__()
+
+        headers = dict(headers or {})
+        headers.update(self.headers)
+
+        if method == "GET" or method == "DELETE":
+            async with session.request(
+                method, url, params=params, headers=headers
+            ) as resp:
+                body = await self._handle_response(resp)
+                value = _deserialize(body, response)
+
+        elif method == "POST" or method == "PUT":
+            json_ = _serialize(json)
+            if not data and not json_:
+                json_ = {}
+
+            async with session.request(
+                method, url, data=data, json=json_, params=params
+            ) as resp:
+                body = await self._handle_response(resp, data=data, json=json_)
+                value = _deserialize(body, response)
+        else:
+            raise ValueError(f"Unsupported method {method}")
+
+        if not self._session:
+            await session.__aexit__(None, None, None)
+
+        return value
+
     @overload
     async def get(
         self,
@@ -282,16 +330,9 @@ class Controller:
         response: Optional[Type[T]] = None,
     ) -> Union[T, Mapping[str, Any]]:
         """HTTP Get."""
-        if not self._session:
-            raise ControllerError(
-                "Controller is missing client session; call setup or enter async context"
-            )
-
-        headers = dict(headers or {})
-        headers.update(self.headers)
-        async with self._session.get(url, params=params, headers=headers) as resp:
-            body = await self._handle_response(resp)
-            return _deserialize(body, response)
+        return await self.request(
+            "GET", url, params=params, headers=headers, response=response
+        )
 
     @overload
     async def delete(
@@ -334,16 +375,9 @@ class Controller:
         response: Optional[Type[T]] = None,
     ) -> Union[T, Mapping[str, Any]]:
         """HTTP Delete."""
-        if not self._session:
-            raise ControllerError(
-                "Controller is missing client session; call setup or enter async context"
-            )
-
-        headers = dict(headers or {})
-        headers.update(self.headers)
-        async with self._session.delete(url, params=params) as resp:
-            body = await self._handle_response(resp)
-            return _deserialize(body, response)
+        return await self.request(
+            "DELETE", url, params=params, headers=headers, response=response
+        )
 
     @overload
     async def post(
@@ -366,7 +400,7 @@ class Controller:
         json: Optional[Serializable] = None,
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
-        response: None,
+        response: None = None,
     ) -> Mapping[str, Any]:
         ...
 
@@ -394,22 +428,15 @@ class Controller:
         response: Optional[Type[T]] = None,
     ) -> Union[T, Mapping[str, Any]]:
         """HTTP POST."""
-        if not self._session:
-            raise ControllerError(
-                "Controller is missing client session; call setup or enter async context"
-            )
-
-        headers = dict(headers or {})
-        headers.update(self.headers)
-        json_ = _serialize(json)
-        if not data and not json_:
-            json_ = {}
-
-        async with self._session.post(
-            url, data=data, json=json_, params=params
-        ) as resp:
-            body = await self._handle_response(resp, data=data, json=json_)
-            return _deserialize(body, response)
+        return await self.request(
+            "POST",
+            url,
+            data=data,
+            json=json,
+            params=params,
+            headers=headers,
+            response=response,
+        )
 
     @overload
     async def put(
@@ -460,20 +487,15 @@ class Controller:
         response: Optional[Type[T]] = None,
     ) -> Union[T, Mapping[str, Any]]:
         """HTTP Put."""
-        if not self._session:
-            raise ControllerError(
-                "Controller is missing client session; call setup or enter async context"
-            )
-
-        headers = dict(headers or {})
-        headers.update(self.headers)
-        json_ = _serialize(json)
-        if not data and not json_:
-            json_ = {}
-
-        async with self._session.put(url, data=data, json=json_, params=params) as resp:
-            body = await self._handle_response(resp, data=data, json=json_)
-            return _deserialize(body, response)
+        return await self.request(
+            "PUT",
+            url,
+            data=data,
+            json=json,
+            params=params,
+            headers=headers,
+            response=response,
+        )
 
     @overload
     async def record(
