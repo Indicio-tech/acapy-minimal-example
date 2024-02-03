@@ -655,9 +655,11 @@ async def indy_present_proof_v1(
                     str(uuid4()): IndyProofReqPredSpec.parse_obj(pred)
                     for pred in requested_predicates or []
                 },
-                non_revoked=IndyProofRequestNonRevoked.parse_obj(non_revoked)
-                if non_revoked
-                else None,
+                non_revoked=(
+                    IndyProofRequestNonRevoked.parse_obj(non_revoked)
+                    if non_revoked
+                    else None
+                ),
             ),
             trace=False,
         ),
@@ -748,9 +750,11 @@ async def indy_present_proof_v2(
                         str(uuid4()): IndyProofReqPredSpec.parse_obj(pred)
                         for pred in requested_predicates or []
                     },
-                    non_revoked=IndyProofRequestNonRevoked.parse_obj(non_revoked)
-                    if non_revoked
-                    else None,
+                    non_revoked=(
+                        IndyProofRequestNonRevoked.parse_obj(non_revoked)
+                        if non_revoked
+                        else None
+                    ),
                 ),
             ),
             trace=False,
