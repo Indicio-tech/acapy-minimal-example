@@ -248,7 +248,7 @@ async def didexchange(
         topic="out_of_band",
         record_type=OobRecord,
         connection_id=inviter_conn.connection_id,
-        state="done",
+        state="await-request",
     )
     # Overwrite multiuse invitation connection with actual connection
     inviter_conn = await inviter.record_with_values(
