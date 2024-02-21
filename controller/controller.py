@@ -550,7 +550,7 @@ class Controller:
         topic: str,
         *,
         record_type: Optional[Type[T]] = None,
-        timeout: int = 5,
+        timeout: int = 15,
         **values,
     ) -> Union[T, Mapping[str, Any]]:
         """Get a record from an event with values matching those passed in."""
