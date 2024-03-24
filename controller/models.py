@@ -173,9 +173,9 @@ class ConnRecord(BaseModel):
         description="Connection identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
     )
-    connection_protocol: Optional[
-        Literal["connections/1.0", "didexchange/1.0"]
-    ] = Field(None, description="Connection protocol used", example="connections/1.0")
+    connection_protocol: Optional[Literal["connections/1.0", "didexchange/1.0"]] = (
+        Field(None, description="Connection protocol used", example="connections/1.0")
+    )
     created_at: Optional[str] = Field(
         None,
         description="Time of record creation",
@@ -240,10 +240,12 @@ class ConnRecord(BaseModel):
         description="Other agent's public DID for connection",
         example="2cpBmR3FqGKWi5EyUbpRY8",
     )
-    their_role: Optional[
-        Literal["invitee", "requester", "inviter", "responder"]
-    ] = Field(
-        None, description="Their role in the connection protocol", example="requester"
+    their_role: Optional[Literal["invitee", "requester", "inviter", "responder"]] = (
+        Field(
+            None,
+            description="Their role in the connection protocol",
+            example="requester",
+        )
     )
     updated_at: Optional[str] = Field(
         None,
@@ -480,9 +482,9 @@ class CreateWalletRequest(BaseModel):
         description="Master key used for key derivation.",
         example="MySecretKey123",
     )
-    wallet_key_derivation: Optional[
-        Literal["ARGON2I_MOD", "ARGON2I_INT", "RAW"]
-    ] = Field(None, description="Key derivation", example="RAW")
+    wallet_key_derivation: Optional[Literal["ARGON2I_MOD", "ARGON2I_INT", "RAW"]] = (
+        Field(None, description="Key derivation", example="RAW")
+    )
     wallet_name: Optional[str] = Field(
         None, description="Wallet name", example="MyNewWallet"
     )
@@ -4048,9 +4050,9 @@ class IndyRevRegDefValue(BaseModel):
     class Config:
         allow_population_by_field_name = True
 
-    issuance_type: Optional[
-        Literal["ISSUANCE_ON_DEMAND", "ISSUANCE_BY_DEFAULT"]
-    ] = Field(None, alias="issuanceType", description="Issuance type")
+    issuance_type: Optional[Literal["ISSUANCE_ON_DEMAND", "ISSUANCE_BY_DEFAULT"]] = (
+        Field(None, alias="issuanceType", description="Issuance type")
+    )
     max_cred_num: Optional[int] = Field(
         None,
         alias="maxCredNum",

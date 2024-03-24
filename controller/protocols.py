@@ -92,12 +92,39 @@ async def trustping(
     )
 
 
-async def connection(inviter: Controller, invitee: Controller):
+async def connection_invitation(
+    inviter: Controller,
+    *,
+    use_public_did: bool = False,
+    multi_use: Optional[bool] = None,
+):
+    """Create a connection invitation.
+
+    This will always create an invite with auto_accept set to false to simplify
+    the connection function below.
+    """
+    invitation = await inviter.post(
+        "/connections/create-invitation",
+        json={},
+        params=_make_params(
+            auto_accept=False, multi_use=multi_use, public=use_public_did
+        ),
+        response=InvitationResult,
+    )
+    return invitation
+
+
+async def connection(
+    inviter: Controller,
+    invitee: Controller,
+    *,
+    invitation: Optional[InvitationResult] = None,
+):
     """Connect two agents."""
 
-    invitation = await inviter.post(
-        "/connections/create-invitation", json={}, response=InvitationResult
-    )
+    if invitation is None:
+        invitation = await connection_invitation(inviter)
+
     inviter_conn = await inviter.get(
         f"/connections/{invitation.connection_id}",
         response=ConnRecord,
@@ -113,10 +140,11 @@ async def connection(inviter: Controller, invitee: Controller):
         f"/connections/{invitee_conn.connection_id}/accept-invitation",
     )
 
-    await inviter.record_with_values(
+    inviter_conn = await inviter.record_with_values(
         topic="connections",
-        connection_id=inviter_conn.connection_id,
+        invitation_key=inviter_conn.invitation_key,
         rfc23_state="request-received",
+        record_type=ConnRecord,
     )
 
     inviter_conn = await inviter.post(
@@ -150,33 +178,44 @@ async def connection(inviter: Controller, invitee: Controller):
     return inviter_conn, invitee_conn
 
 
+async def oob_invitation(
+    inviter: Controller,
+    *,
+    use_public_did: bool = False,
+    multi_use: Optional[bool] = None,
+) -> InvitationMessage:
+    """Create an OOB invitation.
+
+    This will always create an invite with auto_accept set to false to simplify
+    the didexchange function below.
+    """
+    invite_record = await inviter.post(
+        "/out-of-band/create-invitation",
+        json=InvitationCreateRequest.parse_obj(
+            {
+                "handshake_protocols": ["https://didcomm.org/didexchange/1.0"],
+                "use_public_did": use_public_did,
+            }
+        ),
+        params=_make_params(
+            auto_accept=False,
+            multi_use=multi_use,
+        ),
+        response=InvitationRecord,
+    )
+    return invite_record.invitation
+
+
 async def didexchange(
     inviter: Controller,
     invitee: Controller,
     *,
     invite: Optional[InvitationMessage] = None,
-    use_public_did: bool = False,
-    auto_accept: Optional[bool] = None,
-    multi_use: Optional[bool] = None,
     use_existing_connection: bool = False,
 ):
     """Connect two agents using did exchange protocol."""
     if not invite:
-        invite_record = await inviter.post(
-            "/out-of-band/create-invitation",
-            json=InvitationCreateRequest.parse_obj(
-                {
-                    "handshake_protocols": ["https://didcomm.org/didexchange/1.0"],
-                    "use_public_did": use_public_did,
-                }
-            ),
-            params=_make_params(
-                auto_accept=auto_accept,
-                multi_use=multi_use,
-            ),
-            response=InvitationRecord,
-        )
-        invite = invite_record.invitation
+        invite = await oob_invitation(inviter)
 
     inviter_conn = (
         await inviter.get(
@@ -211,51 +250,45 @@ async def didexchange(
         )
         return inviter_conn, invitee_conn
 
-    if not auto_accept:
-        invitee_conn = await invitee.post(
-            f"/didexchange/{invitee_oob_record.connection_id}/accept-invitation",
-            response=ConnRecord,
-        )
-        inviter_oob_record = await inviter.record_with_values(
-            topic="out_of_band",
-            record_type=OobRecord,
-            connection_id=inviter_conn.connection_id,
-            state="done",
-        )
-        # Overwrite multiuse invitation connection with actual connection
-        inviter_conn = await inviter.record_with_values(
-            topic="connections",
-            record_type=ConnRecord,
-            rfc23_state="request-received",
-            invitation_key=inviter_oob_record.our_recipient_key,
-        )
-        inviter_conn = await inviter.post(
-            f"/didexchange/{inviter_conn.connection_id}/accept-request",
-            response=ConnRecord,
-        )
+    invitee_conn = await invitee.post(
+        f"/didexchange/{invitee_oob_record.connection_id}/accept-invitation",
+        response=ConnRecord,
+    )
+    inviter_oob_record = await inviter.record_with_values(
+        topic="out_of_band",
+        record_type=OobRecord,
+        connection_id=inviter_conn.connection_id,
+        state="done",
+    )
+    # Overwrite multiuse invitation connection with actual connection
+    inviter_conn = await inviter.record_with_values(
+        topic="connections",
+        record_type=ConnRecord,
+        rfc23_state="request-received",
+        invitation_key=inviter_oob_record.our_recipient_key,
+    )
+    inviter_conn = await inviter.post(
+        f"/didexchange/{inviter_conn.connection_id}/accept-request",
+        response=ConnRecord,
+    )
 
-        await invitee.record_with_values(
-            topic="connections",
-            connection_id=invitee_conn.connection_id,
-            rfc23_state="response-received",
-        )
-        invitee_conn = await invitee.record_with_values(
-            topic="connections",
-            connection_id=invitee_conn.connection_id,
-            rfc23_state="completed",
-            record_type=ConnRecord,
-        )
-        inviter_conn = await inviter.record_with_values(
-            topic="connections",
-            connection_id=inviter_conn.connection_id,
-            rfc23_state="completed",
-            record_type=ConnRecord,
-        )
-    else:
-        invitee_conn = await invitee.get(
-            f"/connections/{invitee_oob_record.connection_id}",
-            response=ConnRecord,
-        )
+    await invitee.record_with_values(
+        topic="connections",
+        connection_id=invitee_conn.connection_id,
+        rfc23_state="response-received",
+    )
+    invitee_conn = await invitee.record_with_values(
+        topic="connections",
+        connection_id=invitee_conn.connection_id,
+        rfc23_state="completed",
+        record_type=ConnRecord,
+    )
+    inviter_conn = await inviter.record_with_values(
+        topic="connections",
+        connection_id=inviter_conn.connection_id,
+        rfc23_state="completed",
+        record_type=ConnRecord,
+    )
 
     return inviter_conn, invitee_conn
 
@@ -632,9 +665,11 @@ async def indy_present_proof_v1(
                     str(uuid4()): IndyProofReqPredSpec.parse_obj(pred)
                     for pred in requested_predicates or []
                 },
-                non_revoked=IndyProofRequestNonRevoked.parse_obj(non_revoked)
-                if non_revoked
-                else None,
+                non_revoked=(
+                    IndyProofRequestNonRevoked.parse_obj(non_revoked)
+                    if non_revoked
+                    else None
+                ),
             ),
             trace=False,
         ),
@@ -725,9 +760,11 @@ async def indy_present_proof_v2(
                         str(uuid4()): IndyProofReqPredSpec.parse_obj(pred)
                         for pred in requested_predicates or []
                     },
-                    non_revoked=IndyProofRequestNonRevoked.parse_obj(non_revoked)
-                    if non_revoked
-                    else None,
+                    non_revoked=(
+                        IndyProofRequestNonRevoked.parse_obj(non_revoked)
+                        if non_revoked
+                        else None
+                    ),
                 ),
             ),
             trace=False,
