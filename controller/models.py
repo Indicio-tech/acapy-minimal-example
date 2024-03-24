@@ -173,9 +173,9 @@ class ConnRecord(BaseModel):
         description="Connection identifier",
         example="3fa85f64-5717-4562-b3fc-2c963f66afa6",
     )
-    connection_protocol: Optional[Literal["connections/1.0", "didexchange/1.0"]] = (
-        Field(None, description="Connection protocol used", example="connections/1.0")
-    )
+    connection_protocol: Optional[
+        Literal["connections/1.0", "didexchange/1.0", "didexchange/1.1"]
+    ] = Field(None, description="Connection protocol used", example="connections/1.0")
     created_at: Optional[str] = Field(
         None,
         description="Time of record creation",
@@ -210,7 +210,6 @@ class ConnRecord(BaseModel):
         None,
         description="Our DID for connection",
         example="WgWxqztrNooG92RXvxSTWv",
-        regex="^(did:sov:)?[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{21,22}$",
     )
     request_id: Optional[str] = Field(
         None,
@@ -230,7 +229,6 @@ class ConnRecord(BaseModel):
         None,
         description="Their DID for connection",
         example="WgWxqztrNooG92RXvxSTWv",
-        regex="^(did:sov:)?[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{21,22}$",
     )
     their_label: Optional[str] = Field(
         None, description="Their label for connection", example="Bob"
