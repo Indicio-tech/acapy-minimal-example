@@ -1,5 +1,6 @@
 """Defintions of protocols flows."""
 
+import asyncio
 import json
 import logging
 from secrets import randbelow, token_hex
@@ -10,7 +11,6 @@ from .controller import Controller, ControllerError
 from .models import (
     AdminConfig,
     ConnRecord,
-    ConnectionList,
     CredAttrSpec,
     Credential,
     CredentialDefinitionSendRequest,
@@ -217,14 +217,6 @@ async def didexchange(
     if not invite:
         invite = await oob_invitation(inviter)
 
-    inviter_conn = (
-        await inviter.get(
-            "/connections",
-            params={"invitation_msg_id": invite.id},
-            response=ConnectionList,
-        )
-    ).results[0]
-
     invitee_oob_record = await invitee.post(
         "/out-of-band/receive-invitation",
         json=invite,
@@ -256,17 +248,19 @@ async def didexchange(
     )
     inviter_oob_record = await inviter.record_with_values(
         topic="out_of_band",
-        record_type=OobRecord,
-        connection_id=inviter_conn.connection_id,
+        invi_msg_id=invite.id,
         state="done",
+        record_type=OobRecord,
     )
-    # Overwrite multiuse invitation connection with actual connection
     inviter_conn = await inviter.record_with_values(
         topic="connections",
         record_type=ConnRecord,
         rfc23_state="request-received",
         invitation_key=inviter_oob_record.our_recipient_key,
     )
+    # TODO Remove after ACA-Py 0.12.0
+    # There's a bug with race conditions in the OOB multiuse handling
+    await asyncio.sleep(1)
     inviter_conn = await inviter.post(
         f"/didexchange/{inviter_conn.connection_id}/accept-request",
         response=ConnRecord,
