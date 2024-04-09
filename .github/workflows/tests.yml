@@ -7,13 +7,13 @@ on:
       - main
     paths:
       - 'examples/**'
-      - 'controller/**'
+      - 'acapy_controller/**'
   pull_request:
     branches:
       - main
     paths:
       - 'examples/**'
-      - 'controller/**'
+      - 'acapy_controller/**'
 
 env:
   POETRY_VERSION: 1.5.1
