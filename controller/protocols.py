@@ -143,7 +143,7 @@ async def connection(
     inviter_conn = await inviter.record_with_values(
         topic="connections",
         invitation_key=inviter_conn.invitation_key,
-        rfc23_state="request-received",
+        state="request",
         record_type=ConnRecord,
     )
 
