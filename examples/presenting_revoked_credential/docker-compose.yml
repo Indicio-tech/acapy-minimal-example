@@ -18,7 +18,6 @@ services:
         --endpoint http://alice:3000
         --admin 0.0.0.0 3001
         --admin-insecure-mode
-        --webhook-url http://webhook-listener:8080
         --tails-server-base-url http://tails:6543
         --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_testnet_genesis
         --wallet-type askar
@@ -34,8 +33,6 @@ services:
       timeout: 5s
       retries: 5
     depends_on:
-      webhook-listener:
-        condition: service_started
       tails:
         condition: service_started
 
@@ -59,7 +56,6 @@ services:
         --endpoint http://bob:3000
         --admin 0.0.0.0 3001
         --admin-insecure-mode
-        --webhook-url http://webhook-listener:8080
         --tails-server-base-url http://tails:6543
         --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_testnet_genesis
         --wallet-type askar
@@ -68,7 +64,6 @@ services:
         --auto-provision
         --log-level debug
         --debug-webhooks
-        --webhook-url http://webhook-listener:8080
         --monitor-revocation-notification
     healthcheck:
       test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3001/status/live" | grep "200" > /dev/null
@@ -76,9 +71,6 @@ services:
       interval: 7s
       timeout: 5s
       retries: 5
-    depends_on:
-      webhook-listener:
-        condition: service_started
 
   example:
     container_name: controller
@@ -95,11 +87,6 @@ services:
         condition: service_healthy
       bob:
         condition: service_healthy
-
-  webhook-listener:
-    image: mendhak/http-https-echo:18
-    environment:
-      - HTTP_PORT=8080
 
   tails:
     image: ghcr.io/bcgov/tails-server:latest

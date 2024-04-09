@@ -14,7 +14,6 @@ services:
         --endpoint http://alice:3000
         --admin 0.0.0.0 3001
         --admin-insecure-mode
-        --webhook-url http://webhook-listener:8080
         --no-ledger
         --wallet-type askar
         --wallet-name alice
@@ -28,9 +27,6 @@ services:
       interval: 7s
       timeout: 5s
       retries: 5
-    depends_on:
-      webhook-listener:
-        condition: service_started
 
   bob:
     image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.10.4
@@ -46,7 +42,6 @@ services:
         --endpoint http://bob:3000
         --admin 0.0.0.0 3001
         --admin-insecure-mode
-        --webhook-url http://webhook-listener:8080
         --no-ledger
         --wallet-type askar
         --wallet-name bob
@@ -61,9 +56,6 @@ services:
       interval: 7s
       timeout: 5s
       retries: 5
-    depends_on:
-      webhook-listener:
-        condition: service_started
 
   mediator:
     image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.10.4
@@ -79,7 +71,6 @@ services:
         --endpoint http://mediator:3000
         --admin 0.0.0.0 3001
         --admin-insecure-mode
-        --webhook-url http://webhook-listener:8080
         --no-ledger
         --wallet-type askar
         --wallet-name mediator
@@ -94,9 +85,6 @@ services:
       interval: 7s
       timeout: 5s
       retries: 5
-    depends_on:
-      webhook-listener:
-        condition: service_started
 
   example:
     container_name: controller
@@ -117,8 +105,3 @@ services:
         condition: service_healthy
       mediator:
         condition: service_healthy
-
-  webhook-listener:
-    image: mendhak/http-https-echo:18
-    environment:
-      - HTTP_PORT=8080
