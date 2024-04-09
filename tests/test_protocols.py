@@ -4,8 +4,8 @@ from typing import Tuple
 
 import pytest
 
-from controller.controller import Controller
-from controller.models import (
+from acapy_controller import Controller
+from acapy_controller.models import (
     ConnRecord,
     DID,
     V10CredentialExchange,
@@ -13,7 +13,7 @@ from controller.models import (
     V20CredExRecordDetail,
     V20PresExRecord,
 )
-from controller.protocols import (
+from acapy_controller.protocols import (
     connection,
     didexchange,
     indy_anoncreds_publish_revocation,

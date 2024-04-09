@@ -5,14 +5,14 @@ from typing import Tuple
 import pytest
 import pytest_asyncio
 
-from controller.controller import Controller
-from controller.models import (
+from acapy_controller.controller import Controller
+from acapy_controller.models import (
     ConnRecord,
     CredentialDefinitionSendResult,
     SchemaSendResult,
     V10CredentialExchange,
 )
-from controller.protocols import (
+from acapy_controller.protocols import (
     didexchange,
     indy_anoncred_credential_artifacts,
     indy_anoncred_onboard,

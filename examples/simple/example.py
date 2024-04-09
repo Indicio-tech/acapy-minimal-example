@@ -6,9 +6,9 @@ This script is for you to use to reproduce a bug or demonstrate a feature.
 import asyncio
 from os import getenv
 
-from controller import Controller
-from controller.logging import logging_to_stdout
-from controller.protocols import connection, didexchange
+from acapy_controller import Controller
+from acapy_controller.logging import logging_to_stdout
+from acapy_controller.protocols import connection, didexchange
 
 ALICE = getenv("ALICE", "http://alice:3001")
 BOB = getenv("BOB", "http://bob:3001")

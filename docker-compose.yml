@@ -98,7 +98,7 @@ services:
       - ALICE=http://alice:3001
       - BOB=http://bob:3001
     volumes:
-      - ./controller:/usr/src/app/controller:z
+      - ./acapy_controller:/usr/src/app/acapy_controller:z
       - ./tests:/usr/src/app/tests:z
     entrypoint: "poetry run pytest"
     depends_on:

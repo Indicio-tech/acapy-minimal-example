@@ -83,7 +83,7 @@ services:
       - ALICE=http://alice:3001
       - BOB=http://bob:3001
     volumes:
-      - ../../controller:/usr/src/app/controller:z
+      - ../../acapy_controller:/usr/src/app/acapy_controller:z
       - ./example.py:/usr/src/app/example.py:ro,z
     command: python -m example
     depends_on:

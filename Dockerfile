@@ -9,11 +9,11 @@ ENV PATH="/opt/poetry/bin:$PATH"
 RUN poetry config virtualenvs.in-project true
 
 # Setup project
-RUN mkdir controller && touch controller/__init__.py
+RUN mkdir acapy_controller && touch acapy_controller/__init__.py
 COPY pyproject.toml poetry.lock ./
 ARG install_flags=--no-dev
 RUN poetry install ${install_flags}
 
-COPY controller/ controller/
+COPY acapy_controller/ acapy_controller/
 
 ENTRYPOINT ["poetry", "run"]
