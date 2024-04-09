@@ -4,6 +4,7 @@ from typing import Tuple
 
 import pytest
 import pytest_asyncio
+from pytest_asyncio import is_async_test
 
 from acapy_controller.controller import Controller
 from acapy_controller.models import (
@@ -37,6 +38,13 @@ def event_loop():
     loop = policy.new_event_loop()
     yield loop
     loop.close()
+
+
+def pytest_collection_modifyitems(items):
+    pytest_asyncio_tests = (item for item in items if is_async_test(item))
+    session_scope_marker = pytest.mark.asyncio(scope="session")
+    for async_test in pytest_asyncio_tests:
+        async_test.add_marker(session_scope_marker, append=False)
 
 
 @pytest_asyncio.fixture(scope="session")
