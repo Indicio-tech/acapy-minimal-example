@@ -9,10 +9,10 @@ import json
 from os import getenv
 from uuid import uuid4
 
-from controller import Controller
-from controller.logging import logging_to_stdout, pause_for_input, section
-from controller.models import DIDResult, V20PresExRecord
-from controller.protocols import (
+from acapy_controller import Controller
+from acapy_controller.logging import logging_to_stdout, pause_for_input, section
+from acapy_controller.models import DIDResult, V20PresExRecord
+from acapy_controller.protocols import (
     didexchange,
     indy_anoncred_onboard,
     jsonld_issue_credential,

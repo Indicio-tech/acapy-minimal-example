@@ -6,9 +6,9 @@ This script is for you to use to reproduce a bug or demonstrate a feature.
 import asyncio
 from os import getenv
 
-from controller import Controller
-from controller.logging import logging_to_stdout
-from controller.protocols import (
+from acapy_controller import Controller
+from acapy_controller.logging import logging_to_stdout
+from acapy_controller.protocols import (
     connection,
     didexchange,
     request_mediation_v1,

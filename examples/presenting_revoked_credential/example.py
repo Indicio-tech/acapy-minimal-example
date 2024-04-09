@@ -8,10 +8,10 @@ import json
 from os import getenv
 import time
 
-from controller import Controller
-from controller.logging import logging_to_stdout
-from controller.models import V20PresExRecord, V20PresExRecordList
-from controller.protocols import (
+from acapy_controller import Controller
+from acapy_controller.logging import logging_to_stdout
+from acapy_controller.models import V20PresExRecord, V20PresExRecordList
+from acapy_controller.protocols import (
     didexchange,
     indy_anoncred_credential_artifacts,
     indy_anoncred_onboard,

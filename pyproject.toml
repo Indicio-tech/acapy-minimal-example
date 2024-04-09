@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "controller"
+name = "acapy-controller"
 version = "0.1.0"
 description = "ACA-Py Controller"
 authors = ["Daniel Bluhm <dbluhm@pm.me>"]
@@ -38,7 +38,7 @@ ignore = [
 ]
 
 # The models module is generated
-extend-exclude = ["controller/models.py"]
+extend-exclude = ["acapy_controller/models.py"]
 
 line-length = 90
 
