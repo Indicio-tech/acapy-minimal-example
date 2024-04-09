@@ -1,58 +1,32 @@
 """Defintions of protocols flows."""
 
 import asyncio
+from dataclasses import asdict, dataclass, field, fields
 import json
 import logging
 from secrets import randbelow, token_hex
-from typing import Any, List, Mapping, Optional, Tuple, Union
+from typing import Any, Dict, List, Mapping, Optional, Tuple, Type, TypeVar, Union
 from uuid import uuid4
 
-from .controller import Controller, ControllerError
+from .controller import Controller, ControllerError, Dataclass, Serde
 from .models import (
-    AdminConfig,
-    ConnRecord,
-    CredAttrSpec,
     Credential,
-    CredentialDefinitionSendRequest,
-    CredentialDefinitionSendResult,
-    CredentialPreview,
-    DIDCreate,
-    DIDCreateOptions,
-    DIDResult,
     DIFOptions,
     DIFProofRequest,
     IndyCredPrecis,
-    IndyPresSpec,
     IndyProofReqAttrSpec,
     IndyProofReqPredSpec,
-    IndyProofRequest,
     IndyProofRequestNonRevoked,
     InvitationCreateRequest,
-    InvitationMessage,
-    InvitationRecord,
-    InvitationResult,
     LDProofVCDetail,
     LDProofVCDetailOptions,
-    MediationRecord,
     OobRecord,
     PingRequest,
     PresentationDefinition,
-    ReceiveInvitationRequest,
-    SchemaSendRequest,
-    SchemaSendResult,
-    TAAAccept,
-    TAAResult,
-    V10CredentialExchange,
-    V10CredentialFreeOfferRequest,
     V10PresentationExchange,
     V10PresentationSendRequestRequest,
-    V20CredExRecord,
-    V20CredExRecordDetail,
-    V20CredExRecordIndy,
     V20CredFilter,
-    V20CredFilterIndy,
     V20CredOfferRequest,
-    V20CredPreview,
     V20PresExRecord,
     V20PresRequestByFormat,
     V20PresSendRequestRequest,
@@ -82,14 +56,91 @@ def params(**kwargs) -> Mapping[str, Any]:
     }
 
 
+def index_of_extra(pairs: List[Tuple[str, Any]]) -> Optional[int]:
+    """Return the index of the _extra field."""
+    for index, (key, _) in enumerate(pairs):
+        if key == "_extra":
+            return index
+    return None
+
+
+T = TypeVar("T", bound="Minimized")
+S = TypeVar("S", bound="Serde")
+
+
+@dataclass
+class Minimized(Serde, Dataclass, Mapping[str, Any]):
+    """Base class for minimized record."""
+
+    _extra: Dict[str, Any] = field(init=False, default_factory=dict)
+
+    @classmethod
+    def deserialize(cls: Type[T], value: Mapping[str, Any]) -> T:
+        """Deserialize from a dictionary."""
+        field_names = (f.name for f in fields(cls))
+        filtered = {key: value for key, value in value.items() if key in field_names}
+        instance = cls(**filtered)
+        instance._extra = {
+            key: value for key, value in value.items() if key not in field_names
+        }
+        return instance
+
+    def serialize(self) -> Mapping[str, Any]:
+        """Serialize to a dictionary."""
+
+        def _factory(pairs: List[Tuple[str, Any]]) -> Dict[str, Any]:
+            extra_index = index_of_extra(pairs)
+            if extra_index is not None:
+                extra = pairs.pop(extra_index)
+                assert isinstance(extra, dict)
+                pairs = [*pairs, *extra.items()]
+
+            return dict(pairs)
+
+        return asdict(self, dict_factory=_factory)
+
+    def __getitem__(self, key: str) -> Any:
+        """Get an extra field."""
+        return self._extra[key]
+
+    def __iter__(self):
+        """Iterate over fields."""
+        return iter(self.serialize())
+
+    def __len__(self):
+        """Return the number of fields."""
+        return len(fields(self)) + len(self._extra)
+
+    def into(self, cls: Type[S]) -> S:
+        """Convert to another serializable class."""
+        flattened = self.serialize()
+        return cls.deserialize(flattened)
+
+
+@dataclass
+class ConnRecord(Minimized):
+    """Connection record."""
+
+    connection_id: str
+    invitation_key: str
+
+
 async def trustping(
     sender: Controller, conn: ConnRecord, comment: Optional[str] = None
 ):
     """Send a trustping to the specified connection."""
     await sender.post(
         f"/connections/{conn.connection_id}/send-ping",
-        json=PingRequest(comment=comment or "Ping!"),
+        json={"comment": comment or "Ping!"},
     )
+
+
+@dataclass
+class InvitationResult(Minimized):
+    """Result of creating a connection invitation."""
+
+    invitation: dict
+    connection_id: str
 
 
 async def connection_invitation(
@@ -130,7 +181,7 @@ async def connection(
 
     invitee_conn = await invitee.post(
         "/connections/receive-invitation",
-        json=ReceiveInvitationRequest.parse_obj(invitation.invitation.dict()),
+        json=invitation.invitation,
         response=ConnRecord,
     )
 
@@ -174,6 +225,24 @@ async def connection(
     )
 
     return inviter_conn, invitee_conn
+
+
+@dataclass
+class InvitationMessage(Minimized):
+    """Invitation message."""
+
+    id: str = field(init=False)
+
+    def __post_init__(self):
+        """Generate id."""
+        self.id = self._extra.pop("@id")
+
+
+@dataclass
+class InvitationRecord(Minimized):
+    """Invitation record."""
+
+    invitation: InvitationMessage
 
 
 async def oob_invitation(
@@ -285,6 +354,14 @@ async def didexchange(
     return inviter_conn, invitee_conn
 
 
+@dataclass
+class MediationRecord(Minimized):
+    """Mediation record."""
+
+    mediation_id: str
+    connection_id: str
+
+
 async def request_mediation_v1(
     mediator: Controller,
     client: Controller,
@@ -319,25 +396,39 @@ async def request_mediation_v1(
     return mediator_record, client_record
 
 
+@dataclass
+class DIDResult(Minimized):
+    """Result of creating a DID."""
+
+    result: "DIDInfo"
+
+
+@dataclass
+class DIDInfo(Minimized):
+    """DID information."""
+
+    did: str
+    verkey: str
+
+
 async def indy_anoncred_onboard(agent: Controller):
     """Onboard agent for indy anoncred operations."""
 
-    config = (await agent.get("/status/config", response=AdminConfig)).config
+    config = (await agent.get("/status/config"))["config"]
     genesis_url = config.get("ledger.genesis_url")
 
     if not genesis_url:
         raise ControllerError("No ledger configured on agent")
 
-    taa = (await agent.get("/ledger/taa", response=TAAResult)).result
-    if taa.taa_required is True and taa.taa_accepted is None:
-        assert taa.taa_record
+    taa = (await agent.get("/ledger/taa"))["result"]
+    if taa.get("taa_required") is True and taa.get("taa_accepted") is None:
         await agent.post(
             "/ledger/taa/accept",
-            json=TAAAccept(
-                mechanism="on_file",
-                text=taa.taa_record.text,
-                version=taa.taa_record.version,
-            ),
+            json={
+                "mechanism": "on_file",
+                "text": taa["taa_record"]["text"],
+                "version": taa["taa_record"]["version"],
+            },
         )
 
     public_did = (await agent.get("/wallet/did/public", response=DIDResult)).result
@@ -345,9 +436,7 @@ async def indy_anoncred_onboard(agent: Controller):
         public_did = (
             await agent.post(
                 "/wallet/did/create",
-                json=DIDCreate(
-                    method="sov", options=DIDCreateOptions(key_type="ed25519")
-                ),
+                json={"method": "sov", "options": {"key_type": "ed25519"}},
                 response=DIDResult,
             )
         ).result
@@ -363,6 +452,20 @@ async def indy_anoncred_onboard(agent: Controller):
     return public_did
 
 
+@dataclass
+class SchemaResult(Minimized):
+    """Result of creating a schema."""
+
+    schema_id: str
+
+
+@dataclass
+class CredDefResult(Minimized):
+    """Result of creating a credential definition."""
+
+    cred_def_id: str
+
+
 async def indy_anoncred_credential_artifacts(
     agent: Controller,
     attributes: List[str],
@@ -375,26 +478,38 @@ async def indy_anoncred_credential_artifacts(
     """Prepare credential artifacts for indy anoncreds."""
     schema = await agent.post(
         "/schemas",
-        json=SchemaSendRequest(
-            schema_name=schema_name or "minimal-" + token_hex(8),
-            schema_version=schema_version or "1.0",
-            attributes=attributes,
-        ),
-        response=SchemaSendResult,
+        json={
+            "schema_name": schema_name or "minimal-" + token_hex(8),
+            "schema_version": schema_version or "1.0",
+            "attributes": attributes,
+        },
+        response=SchemaResult,
     )
 
     cred_def = await agent.post(
         "/credential-definitions",
-        json=CredentialDefinitionSendRequest(
-            revocation_registry_size=revocation_registry_size,
-            schema_id=schema.schema_id,
-            support_revocation=support_revocation,
-            tag=cred_def_tag or token_hex(8),
-        ),
-        response=CredentialDefinitionSendResult,
+        json={
+            "revocation_registry_size": revocation_registry_size,
+            "schema_id": schema.schema_id,
+            "support_revocation": support_revocation,
+            "tag": cred_def_tag or token_hex(8),
+        },
+        response=CredDefResult,
     )
 
     return schema, cred_def
+
+
+@dataclass
+class V10CredentialExchange(Minimized):
+    """V1.0 credential exchange record."""
+
+    credential_exchange_id: str
+    connection_id: str
+    thread_id: str
+    credential_definition_id: str
+    revoc_reg_id: Optional[str] = None
+    revocation_id: Optional[str] = None
 
 
 async def indy_issue_credential_v1(
@@ -411,23 +526,25 @@ async def indy_issue_credential_v1(
     """
     issuer_cred_ex = await issuer.post(
         "/issue-credential/send-offer",
-        json=V10CredentialFreeOfferRequest(
-            auto_issue=False,
-            auto_remove=False,
-            comment="Credential from minimal example",
-            trace=False,
-            connection_id=issuer_connection_id,
-            cred_def_id=cred_def_id,
-            credential_preview=CredentialPreview(
-                type="issue-credential/1.0/credential-preview",  # pyright: ignore
-                attributes=[
-                    CredAttrSpec(
-                        mime_type=None, name=name, value=value  # pyright: ignore
-                    )
+        json={
+            "auto_issue": False,
+            "auto_remove": False,
+            "comment": "Credential from minimal example",
+            "trace": False,
+            "connection_id": issuer_connection_id,
+            "cred_def_id": cred_def_id,
+            "credential_preview": {
+                "type": "issue-credential/1.0/credential-preview",
+                "attributes": [
+                    {
+                        "mime_type": None,
+                        "name": name,
+                        "value": value,
+                    }
                     for name, value in attributes.items()
                 ],
-            ),
-        ),
+            },
+        },
         response=V10CredentialExchange,
     )
     issuer_cred_ex_id = issuer_cred_ex.credential_exchange_id
@@ -485,6 +602,31 @@ async def indy_issue_credential_v1(
     return issuer_cred_ex, holder_cred_ex
 
 
+@dataclass
+class V20CredExRecord(Minimized):
+    """V2.0 credential exchange record."""
+
+    cred_ex_id: str
+    connection_id: str
+    thread_id: str
+
+
+@dataclass
+class V20CredExRecordIndy(Minimized):
+    """V2.0 credential exchange record indy."""
+
+    rev_reg_id: Optional[str] = None
+    cred_rev_id: Optional[str] = None
+
+
+@dataclass
+class V20CredExRecordDetail(Minimized):
+    """V2.0 credential exchange record detail."""
+
+    cred_ex_record: V20CredExRecord
+    indy: Optional[V20CredExRecordIndy] = None
+
+
 async def indy_issue_credential_v2(
     issuer: Controller,
     holder: Controller,
@@ -500,27 +642,25 @@ async def indy_issue_credential_v2(
 
     issuer_cred_ex = await issuer.post(
         "/issue-credential-2.0/send-offer",
-        json=V20CredOfferRequest(
-            auto_issue=False,
-            auto_remove=False,
-            comment="Credential from minimal example",
-            trace=False,
-            connection_id=issuer_connection_id,
-            filter=V20CredFilter(  # pyright: ignore
-                indy=V20CredFilterIndy(  # pyright: ignore
-                    cred_def_id=cred_def_id,
-                )
-            ),
-            credential_preview=V20CredPreview(
-                type="issue-credential-2.0/2.0/credential-preview",  # pyright: ignore
-                attributes=[
-                    CredAttrSpec(
-                        mime_type=None, name=name, value=value  # pyright: ignore
-                    )
+        json={
+            "auto_issue": False,
+            "auto_remove": False,
+            "comment": "Credential from minimal example",
+            "trace": False,
+            "connection_id": issuer_connection_id,
+            "filter": {"indy": {"cred_def_id": cred_def_id}},
+            "credential_preview": {
+                "type": "issue-credential-2.0/2.0/credential-preview",  # pyright: ignore
+                "attributes": [
+                    {
+                        "mime_type": None,
+                        "name": name,
+                        "value": value,
+                    }
                     for name, value in attributes.items()
                 ],
-            ),
-        ),
+            },
+        },
         response=V20CredExRecord,
     )
     issuer_cred_ex_id = issuer_cred_ex.cred_ex_id
@@ -592,13 +732,30 @@ async def indy_issue_credential_v2(
     )
 
 
+@dataclass
+class IndyProofRequest(Minimized):
+    """Indy proof request."""
+
+    requested_attributes: Dict[str, Any]
+    requested_predicates: Dict[str, Any]
+
+
+@dataclass
+class IndyPresSpec(Minimized):
+    """Indy presentation specification."""
+
+    requested_attributes: Dict[str, Any]
+    requested_predicates: Dict[str, Any]
+    self_attested_attributes: Dict[str, Any]
+
+
 def indy_auto_select_credentials_for_presentation_request(
     presentation_request: Union[IndyProofRequest, dict],
     relevant_creds: List[IndyCredPrecis],
 ) -> IndyPresSpec:
     """Select credentials to use for presentation automatically."""
     if isinstance(presentation_request, dict):
-        presentation_request = IndyProofRequest.parse_obj(presentation_request)
+        presentation_request = IndyProofRequest.deserialize(presentation_request)
 
     requested_attributes = {}
     for pres_referrent in presentation_request.requested_attributes.keys():
@@ -616,7 +773,7 @@ def indy_auto_select_credentials_for_presentation_request(
                     "cred_id": cred_precis.cred_info.referent,
                 }
 
-    return IndyPresSpec.parse_obj(
+    return IndyPresSpec.deserialize(
         {
             "requested_attributes": requested_attributes,
             "requested_predicates": requested_predicates,
