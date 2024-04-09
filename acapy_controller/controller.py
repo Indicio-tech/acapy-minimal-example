@@ -120,7 +120,6 @@ class Controller:
         subwallet_token: Optional[str] = None,
         headers: Optional[Mapping[str, str]] = None,
         event_queue: Optional[Queue[Event]] = None,
-        session: Optional[ClientSession] = None,
     ):
         """Initialize and ACA-Py Controller."""
         self.base_url = base_url
@@ -135,7 +134,6 @@ class Controller:
             self.headers["Authorization"] = f"Bearer {subwallet_token}"
 
         self._event_queue: Optional[Queue[Event]] = event_queue
-        self._session: Optional[ClientSession] = session
 
         self._stack: Optional[AsyncExitStack] = None
 
@@ -169,10 +167,6 @@ class Controller:
         self._stack = await AsyncExitStack().__aenter__()
         if not self._event_queue:
             self._event_queue = await self._stack.enter_async_context(EventQueue(self))
-        if not self._session:
-            self._session = await self._stack.enter_async_context(
-                ClientSession(base_url=self.base_url, headers=self.headers)
-            )
 
         # Get settings
         settings = await self.record("settings")
@@ -251,38 +245,31 @@ class Controller:
         response: Optional[Type[T]] = None,
     ) -> Union[T, Mapping[str, Any]]:
         """Make an HTTP request."""
-        if self._session:
-            session = self._session
-        else:
-            session = await ClientSession(
-                base_url=self.base_url, headers=self.headers
-            ).__aenter__()
+        async with ClientSession(
+            base_url=self.base_url, headers=self.headers
+        ) as session:
+            headers = dict(headers or {})
+            headers.update(self.headers)
 
-        headers = dict(headers or {})
-        headers.update(self.headers)
+            if method == "GET" or method == "DELETE":
+                async with session.request(
+                    method, url, params=params, headers=headers
+                ) as resp:
+                    body = await self._handle_response(resp)
+                    value = _deserialize(body, response)
 
-        if method == "GET" or method == "DELETE":
-            async with session.request(
-                method, url, params=params, headers=headers
-            ) as resp:
-                body = await self._handle_response(resp)
-                value = _deserialize(body, response)
+            elif method == "POST" or method == "PUT":
+                json_ = _serialize(json)
+                if not data and not json_:
+                    json_ = {}
 
-        elif method == "POST" or method == "PUT":
-            json_ = _serialize(json)
-            if not data and not json_:
-                json_ = {}
-
-            async with session.request(
-                method, url, data=data, json=json_, params=params
-            ) as resp:
-                body = await self._handle_response(resp, data=data, json=json_)
-                value = _deserialize(body, response)
-        else:
-            raise ValueError(f"Unsupported method {method}")
-
-        if not self._session:
-            await session.__aexit__(None, None, None)
+                async with session.request(
+                    method, url, data=data, json=json_, params=params
+                ) as resp:
+                    body = await self._handle_response(resp, data=data, json=json_)
+                    value = _deserialize(body, response)
+            else:
+                raise ValueError(f"Unsupported method {method}")
 
         return value
 
