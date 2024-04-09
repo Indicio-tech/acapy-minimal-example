@@ -72,7 +72,7 @@ def _serialize_param(value: Any):
     )
 
 
-def _make_params(**kwargs) -> Mapping[str, Any]:
+def params(**kwargs) -> Mapping[str, Any]:
     """Filter out keys with none values from dictionary."""
 
     return {
@@ -106,9 +106,7 @@ async def connection_invitation(
     invitation = await inviter.post(
         "/connections/create-invitation",
         json={},
-        params=_make_params(
-            auto_accept=False, multi_use=multi_use, public=use_public_did
-        ),
+        params=params(auto_accept=False, multi_use=multi_use, public=use_public_did),
         response=InvitationResult,
     )
     return invitation
@@ -197,7 +195,7 @@ async def oob_invitation(
                 "use_public_did": use_public_did,
             }
         ),
-        params=_make_params(
+        params=params(
             auto_accept=False,
             multi_use=multi_use,
         ),
@@ -220,7 +218,7 @@ async def didexchange(
     invitee_oob_record = await invitee.post(
         "/out-of-band/receive-invitation",
         json=invite,
-        params=_make_params(
+        params=params(
             use_existing_connection=use_existing_connection,
         ),
         response=OobRecord,
@@ -360,7 +358,7 @@ async def indy_anoncred_onboard(agent: Controller):
             raise ControllerError("Unrecognized ledger, cannot automatically onboard")
         await onboarder.onboard(public_did.did, public_did.verkey)
 
-        await agent.post("/wallet/did/public", params=_make_params(did=public_did.did))
+        await agent.post("/wallet/did/public", params=params(did=public_did.did))
 
     return public_did
 
