@@ -11,8 +11,6 @@ services:
     #     acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
     ports:
       - "3001:3001"
-    volumes:
-      - ./configs:/configs:ro,z
     command: >
       start
         --label Alice
@@ -49,8 +47,6 @@ services:
     #     acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
     ports:
       - "3002:3001"
-    volumes:
-      - ./configs:/configs:ro,z
     command: >
       start
         --label Bob
