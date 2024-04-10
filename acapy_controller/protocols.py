@@ -8,21 +8,6 @@ from typing import Any, Dict, List, Mapping, Optional, Tuple, Type, Union
 from uuid import uuid4
 
 from .controller import Controller, ControllerError, MinType, Minimized, params
-from .models import (
-    Credential,
-    DIFOptions,
-    DIFProofRequest,
-    IndyCredPrecis,
-    LDProofVCDetail,
-    LDProofVCDetailOptions,
-    OobRecord,
-    PingRequest,
-    PresentationDefinition,
-    V20CredFilter,
-    V20CredOfferRequest,
-    V20PresRequestByFormat,
-    V20PresSendRequestRequest,
-)
 from .onboarding import get_onboarder
 
 
@@ -122,7 +107,7 @@ async def connection(
     )
     await invitee.post(
         f"/connections/{invitee_conn.connection_id}/send-ping",
-        json=PingRequest(comment="Making connection active"),
+        json={"comment": "Making connection active"},
     )
 
     inviter_conn = await inviter.record_with_values(
@@ -190,6 +175,14 @@ async def oob_invitation(
         response=InvitationRecord,
     )
     return invite_record.invitation
+
+
+@dataclass
+class OobRecord(Minimized):
+    """Out-of-band record."""
+
+    connection_id: str
+    our_recipient_key: str
 
 
 async def didexchange(
@@ -684,6 +677,30 @@ class IndyPresSpec(Minimized):
     self_attested_attributes: Dict[str, Any]
 
 
+@dataclass
+class IndyCredInfo(Minimized):
+    """Indy credential information."""
+
+    referent: str
+    attrs: Dict[str, Any]
+
+
+@dataclass
+class IndyCredPrecis(Minimized):
+    """Indy credential precis."""
+
+    cred_info: IndyCredInfo
+    presentation_referents: List[str]
+
+    @classmethod
+    def deserialize(cls: Type[MinType], value: Mapping[str, Any]) -> MinType:
+        """Deserialize the credential precis."""
+        value = dict(value)
+        if cred_info := value.get("cred_info"):
+            value["cred_info"] = IndyCredInfo.deserialize(cred_info)
+        return super().deserialize(value)
+
+
 def indy_auto_select_credentials_for_presentation_request(
     presentation_request: Union[IndyProofRequest, dict],
     relevant_creds: List[IndyCredPrecis],
@@ -1037,35 +1054,25 @@ async def jsonld_issue_credential(
     holder: Controller,
     issuer_connection_id: str,
     holder_connection_id: str,
-    credential: Union[Credential, Mapping[str, Any]],
-    options: Union[LDProofVCDetailOptions, Mapping[str, Any]],
+    credential: Mapping[str, Any],
+    options: Mapping[str, Any],
 ):
     """Issue a JSON-LD Credential."""
-    credential = (
-        credential
-        if isinstance(credential, Credential)
-        else Credential.parse_obj(credential)
-    )
-    options = (
-        options
-        if isinstance(options, LDProofVCDetailOptions)
-        else LDProofVCDetailOptions.parse_obj(options)
-    )
     issuer_cred_ex = await issuer.post(
         "/issue-credential-2.0/send-offer",
-        json=V20CredOfferRequest(
-            auto_issue=False,
-            auto_remove=False,
-            comment="Credential from minimal example",
-            trace=False,
-            connection_id=issuer_connection_id,
-            filter=V20CredFilter(  # pyright: ignore
-                ld_proof=LDProofVCDetail(
-                    credential=credential,
-                    options=options,
-                )
-            ),
-        ),
+        json={
+            "auto_issue": False,
+            "auto_remove": False,
+            "comment": "Credential from minimal example",
+            "trace": False,
+            "connection_id": issuer_connection_id,
+            "filter": {
+                "ld_proof": {
+                    "credential": credential,
+                    "options": options,
+                }
+            },
+        },
         response=V20CredExRecord,
     )
     issuer_cred_ex_id = issuer_cred_ex.cred_ex_id
@@ -1128,31 +1135,26 @@ async def jsonld_present_proof(
     holder: Controller,
     verifier_connection_id: str,
     holder_connection_id: str,
-    presentation_definition: Union[Mapping[str, Any], PresentationDefinition],
+    presentation_definition: Mapping[str, Any],
     domain: str,
     *,
     comment: Optional[str] = None,
 ):
     """Present an Indy credential using present proof v1."""
-    presentation_definition = (
-        presentation_definition
-        if isinstance(presentation_definition, PresentationDefinition)
-        else PresentationDefinition.parse_obj(presentation_definition)
-    )
     verifier_pres_ex = await verifier.post(
         "/present-proof-2.0/send-request",
-        json=V20PresSendRequestRequest(
-            auto_verify=False,
-            comment=comment or "Presentation request from minimal",
-            connection_id=verifier_connection_id,
-            presentation_request=V20PresRequestByFormat(  # pyright: ignore
-                dif=DIFProofRequest(
-                    presentation_definition=presentation_definition,
-                    options=DIFOptions(challenge=str(uuid4()), domain=domain),
-                ),
-            ),
-            trace=False,
-        ),
+        json={
+            "auto_verify": False,
+            "comment": comment or "Presentation request from minimal",
+            "connection_id": verifier_connection_id,
+            "presentation_request": {
+                "dif": {
+                    "presentation_definition": presentation_definition,
+                    "options": {"challenge": str(uuid4()), "domain": domain},
+                },
+            },
+            "trace": False,
+        },
         response=V20PresExRecord,
     )
     verifier_pres_ex_id = verifier_pres_ex.pres_ex_id
@@ -1164,22 +1166,18 @@ async def jsonld_present_proof(
         state="request-received",
     )
     assert holder_pres_ex.pres_request
-    assert holder_pres_ex.pres_request.request_presentations_attach
-    assert holder_pres_ex.pres_request.request_presentations_attach[0].data
-    assert holder_pres_ex.pres_request.request_presentations_attach[0].data.json_
+    assert holder_pres_ex.pres_request["request_presentations_attach"]
+    assert holder_pres_ex.pres_request["request_presentations_attach"][0]["data"]
+    assert holder_pres_ex.pres_request["request_presentations_attach"][0]["data"][
+        "json"
+    ]
+    attachment = holder_pres_ex.pres_request["request_presentations_attach"][0]
+    definition = attachment["data"]["json"]["presentation_definition"]
     holder_pres_ex_id = holder_pres_ex.pres_ex_id
 
     holder_pres_ex = await holder.post(
         f"/present-proof-2.0/records/{holder_pres_ex_id}/send-presentation",
-        json=V20PresRequestByFormat(
-            dif=DIFProofRequest(  # pyright: ignore
-                presentation_definition=(
-                    holder_pres_ex.pres_request.request_presentations_attach[
-                        0
-                    ].data.json_["presentation_definition"]
-                )
-            )
-        ),
+        json={"dif": {"presentation_definition": definition}},
         response=V20PresExRecord,
     )
 

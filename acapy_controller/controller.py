@@ -121,7 +121,7 @@ def _deserialize(
 
 
 MinType = TypeVar("MinType", bound="Minimized")
-S = TypeVar("S", bound="Serde")
+S = TypeVar("S", bound=Serializable)
 
 
 @dataclass
@@ -170,7 +170,7 @@ class Minimized(Serde, Dataclass, Mapping[str, Any]):
     def into(self, cls: Type[S]) -> S:
         """Convert to another serializable class."""
         flattened = self.serialize()
-        return cls.deserialize(flattened)
+        return _deserialize(flattened, cls)
 
 
 def _serialize_param(value: Any):

@@ -158,7 +158,7 @@ async def main():
                 domain="test-degree",
             )
         with section("Presentation summary", character="-"):
-            print(presentation_summary(alice_pres_ex))
+            print(presentation_summary(alice_pres_ex.into(V20PresExRecord)))
 
         pause_for_input()
 
@@ -234,7 +234,7 @@ async def main():
                 domain="test-degree",
             )
         with section("Presentation summary", character="-"):
-            print(presentation_summary(alice_pres_ex))
+            print(presentation_summary(alice_pres_ex.into(V20PresExRecord)))
 
         pause_for_input()
 
@@ -311,7 +311,7 @@ async def main():
                 domain="building-access",
             )
         with section("Presentation summary", character="-"):
-            print(presentation_summary(alice_pres_ex))
+            print(presentation_summary(alice_pres_ex.into(V20PresExRecord)))
 
 
 if __name__ == "__main__":
