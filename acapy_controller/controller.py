@@ -103,12 +103,12 @@ def _deserialize(value: Any, as_type: Optional[Type[T]] = None) -> Union[T, Any]
     raise TypeError(f"Could not deserialize value into type {as_type.__name__}")
 
 
-MinType = TypeVar("MinType", bound="Minimized")
+MinType = TypeVar("MinType", bound="Minimal")
 S = TypeVar("S", bound=Serializable)
 
 
 @dataclass
-class Minimized(Serde, Dataclass, Mapping[str, Any]):
+class Minimal(Serde, Dataclass, Mapping[str, Any]):
     """Base class for minimized record."""
 
     _extra: Dict[str, Any] = field(default_factory=dict, kw_only=True)

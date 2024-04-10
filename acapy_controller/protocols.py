@@ -7,7 +7,7 @@ from secrets import randbelow, token_hex
 from typing import Any, Dict, List, Mapping, Optional, Tuple, Type, Union
 from uuid import uuid4
 
-from .controller import Controller, ControllerError, MinType, Minimized, params
+from .controller import Controller, ControllerError, MinType, Minimal, params
 from .onboarding import get_onboarder
 
 
@@ -15,7 +15,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
-class ConnRecord(Minimized):
+class ConnRecord(Minimal):
     """Connection record."""
 
     connection_id: str
@@ -35,7 +35,7 @@ async def trustping(
 
 
 @dataclass
-class InvitationResult(Minimized):
+class InvitationResult(Minimal):
     """Result of creating a connection invitation."""
 
     invitation: dict
@@ -127,7 +127,7 @@ async def connection(
 
 
 @dataclass
-class InvitationMessage(Minimized):
+class InvitationMessage(Minimal):
     """Invitation message."""
 
     @property
@@ -137,7 +137,7 @@ class InvitationMessage(Minimized):
 
 
 @dataclass
-class InvitationRecord(Minimized):
+class InvitationRecord(Minimal):
     """Invitation record."""
 
     invitation: InvitationMessage
@@ -178,7 +178,7 @@ async def oob_invitation(
 
 
 @dataclass
-class OobRecord(Minimized):
+class OobRecord(Minimal):
     """Out-of-band record."""
 
     connection_id: str
@@ -267,7 +267,7 @@ async def didexchange(
 
 
 @dataclass
-class MediationRecord(Minimized):
+class MediationRecord(Minimal):
     """Mediation record."""
 
     mediation_id: str
@@ -309,7 +309,7 @@ async def request_mediation_v1(
 
 
 @dataclass
-class DIDInfo(Minimized):
+class DIDInfo(Minimal):
     """DID information."""
 
     did: str
@@ -317,7 +317,7 @@ class DIDInfo(Minimized):
 
 
 @dataclass
-class DIDResult(Minimized):
+class DIDResult(Minimal):
     """Result of creating a DID."""
 
     result: Optional[DIDInfo]
@@ -373,14 +373,14 @@ async def indy_anoncred_onboard(agent: Controller):
 
 
 @dataclass
-class SchemaResult(Minimized):
+class SchemaResult(Minimal):
     """Result of creating a schema."""
 
     schema_id: str
 
 
 @dataclass
-class CredDefResult(Minimized):
+class CredDefResult(Minimal):
     """Result of creating a credential definition."""
 
     credential_definition_id: str
@@ -423,7 +423,7 @@ async def indy_anoncred_credential_artifacts(
 
 
 @dataclass
-class V10CredentialExchange(Minimized):
+class V10CredentialExchange(Minimal):
     """V1.0 credential exchange record."""
 
     state: str
@@ -529,7 +529,7 @@ async def indy_issue_credential_v1(
 
 
 @dataclass
-class V20CredExRecord(Minimized):
+class V20CredExRecord(Minimal):
     """V2.0 credential exchange record."""
 
     state: str
@@ -539,7 +539,7 @@ class V20CredExRecord(Minimized):
 
 
 @dataclass
-class V20CredExRecordIndy(Minimized):
+class V20CredExRecordIndy(Minimal):
     """V2.0 credential exchange record indy."""
 
     rev_reg_id: Optional[str] = None
@@ -547,7 +547,7 @@ class V20CredExRecordIndy(Minimized):
 
 
 @dataclass
-class V20CredExRecordDetail(Minimized):
+class V20CredExRecordDetail(Minimal):
     """V2.0 credential exchange record detail."""
 
     cred_ex_record: V20CredExRecord
@@ -660,7 +660,7 @@ async def indy_issue_credential_v2(
 
 
 @dataclass
-class IndyProofRequest(Minimized):
+class IndyProofRequest(Minimal):
     """Indy proof request."""
 
     requested_attributes: Dict[str, Any]
@@ -668,7 +668,7 @@ class IndyProofRequest(Minimized):
 
 
 @dataclass
-class IndyPresSpec(Minimized):
+class IndyPresSpec(Minimal):
     """Indy presentation specification."""
 
     requested_attributes: Dict[str, Any]
@@ -677,7 +677,7 @@ class IndyPresSpec(Minimized):
 
 
 @dataclass
-class IndyCredInfo(Minimized):
+class IndyCredInfo(Minimal):
     """Indy credential information."""
 
     referent: str
@@ -685,7 +685,7 @@ class IndyCredInfo(Minimized):
 
 
 @dataclass
-class IndyCredPrecis(Minimized):
+class IndyCredPrecis(Minimal):
     """Indy credential precis."""
 
     cred_info: IndyCredInfo
@@ -734,7 +734,7 @@ def indy_auto_select_credentials_for_presentation_request(
 
 
 @dataclass
-class V10PresentationExchange(Minimized):
+class V10PresentationExchange(Minimal):
     """V1.0 presentation exchange record."""
 
     state: str
@@ -833,14 +833,14 @@ async def indy_present_proof_v1(
 
 
 @dataclass
-class ByFormat(Minimized):
+class ByFormat(Minimal):
     """By format."""
 
     pres_request: Optional[dict] = None
 
 
 @dataclass
-class V20PresExRecord(Minimized):
+class V20PresExRecord(Minimal):
     """V2.0 presentation exchange record."""
 
     state: str

@@ -1,5 +1,5 @@
 from typing import Tuple
-from acapy_controller.controller import Minimized
+from acapy_controller.controller import Minimal
 
 
 def test_import():
@@ -8,7 +8,7 @@ def test_import():
     assert ConnRecord
 
 
-def test_into(did_exchange: Tuple[Minimized, Minimized]):
+def test_into(did_exchange: Tuple[Minimal, Minimal]):
     from acapy_controller.models import ConnRecord
 
     alice, bob = did_exchange
