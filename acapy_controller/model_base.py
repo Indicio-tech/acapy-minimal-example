@@ -2,8 +2,6 @@
 
 from typing import Any, Mapping, Type, TypeVar
 
-from acapy_controller.controller import Serde
-
 try:
     from pydantic import BaseModel as PydanticBaseModel
 except ImportError:
@@ -15,7 +13,7 @@ except ImportError:
 T = TypeVar("T", bound="BaseModel")
 
 
-class BaseModel(PydanticBaseModel, Serde):
+class BaseModel(PydanticBaseModel):
     """BaseModel for use with pydantic models implementing Serde protocol."""
 
     def serialize(self):

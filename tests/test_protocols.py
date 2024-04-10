@@ -5,20 +5,18 @@ from typing import Tuple
 import pytest
 
 from acapy_controller import Controller
-from acapy_controller.models import (
-    ConnRecord,
-    DID,
-    V10CredentialExchange,
-    V10PresentationExchange,
-    V20CredExRecordDetail,
-    V20PresExRecord,
-)
 from acapy_controller.protocols import (
     connection,
     didexchange,
     indy_anoncreds_publish_revocation,
     indy_anoncreds_revoke,
     oob_invitation,
+    ConnRecord,
+    DIDInfo,
+    V10CredentialExchange,
+    V10PresentationExchange,
+    V20CredExRecordDetail,
+    V20PresExRecord,
 )
 
 
@@ -51,7 +49,7 @@ async def test_did_exchange_with_multiuse(alice, bob):
 
 
 @pytest.mark.asyncio
-async def test_indy_anoncred_onboard(public_did: DID):
+async def test_indy_anoncred_onboard(public_did: DIDInfo):
     """Testing onboard agent for indy anoncred operations."""
 
 
