@@ -2,14 +2,16 @@
 
 import asyncio
 from contextlib import AsyncExitStack
-from dataclasses import asdict, is_dataclass
+from dataclasses import asdict, dataclass, field, fields, is_dataclass
 import dataclasses
+import json
 import logging
 from json import dumps
 from types import TracebackType
 from typing import (
     Any,
     ClassVar,
+    Dict,
     Literal,
     Mapping,
     Optional,
@@ -62,12 +64,12 @@ def _serialize(value: Serializable):
     """Serialize value."""
     if value is None:
         return None
-    if isinstance(value, Mapping):
-        return value
     if isinstance(value, Serde):
         return value.serialize()
     if isinstance(value, BaseModel):
         return value.dict(by_alias=True, exclude_unset=True, exclude_none=True)
+    if isinstance(value, Mapping):
+        return value
     if is_dataclass(value):
         return asdict(value)
     raise TypeError(f"Could not serialize value {value}")
@@ -78,30 +80,115 @@ def _deserialize(value: Mapping[str, Any]) -> Mapping[str, Any]: ...
 
 
 @overload
+def _deserialize(value: None) -> None: ...
+
+
+@overload
 def _deserialize(value: Mapping[str, Any], as_type: Type[T]) -> T: ...
+
+
+@overload
+def _deserialize(value: None, as_type: Type[T]) -> None: ...
 
 
 @overload
 def _deserialize(value: Mapping[str, Any], as_type: None) -> Mapping[str, Any]: ...
 
 
+@overload
+def _deserialize(value: None, as_type: None) -> None: ...
+
+
 def _deserialize(
-    value: Mapping[str, Any], as_type: Optional[Type[T]] = None
-) -> Union[T, Mapping[str, Any]]:
+    value: Optional[Mapping[str, Any]], as_type: Optional[Type[T]] = None
+) -> Union[T, Mapping[str, Any], None]:
     """Deserialize value."""
+    if value is None:
+        return None
     if as_type is None:
         return value
     if get_origin(as_type) is not None:
         return parse_obj_as(as_type, value)
-    if issubclass(as_type, Mapping):
-        return cast(T, value)
     if issubclass(as_type, BaseModel):
         return as_type.parse_obj(value)
     if issubclass(as_type, Serde):
         return as_type.deserialize(value)
     if is_dataclass(as_type):
         return cast(T, as_type(**value))
+    if issubclass(as_type, Mapping):
+        return cast(T, value)
     raise TypeError(f"Could not deserialize value into type {as_type.__name__}")
+
+
+MinType = TypeVar("MinType", bound="Minimized")
+S = TypeVar("S", bound="Serde")
+
+
+@dataclass
+class Minimized(Serde, Dataclass, Mapping[str, Any]):
+    """Base class for minimized record."""
+
+    _extra: Dict[str, Any] = field(default_factory=dict, kw_only=True)
+
+    @classmethod
+    def deserialize(cls: Type[MinType], value: Mapping[str, Any]) -> MinType:
+        """Deserialize from a dictionary.
+
+        Subclasses must implement this method to enable handling nested structures.
+        """
+        filtered = {}
+        extra = {}
+        field_names = tuple(f.name for f in fields(cls))
+        for key, value in value.items():
+            if key in field_names:
+                filtered[key] = value
+            else:
+                extra[key] = value
+
+        instance = cls(**filtered, _extra=extra)
+        return instance
+
+    def serialize(self) -> Mapping[str, Any]:
+        """Serialize to a dictionary."""
+        serialized = asdict(self)
+        extra = serialized.pop("_extra")
+        serialized.update(extra)
+        return serialized
+
+    def __getitem__(self, key: str) -> Any:
+        """Get an extra field."""
+        return self._extra[key]
+
+    def __iter__(self):
+        """Iterate over fields."""
+        return iter(self.serialize())
+
+    def __len__(self):
+        """Return the number of fields."""
+        return len(fields(self)) + len(self._extra)
+
+    def into(self, cls: Type[S]) -> S:
+        """Convert to another serializable class."""
+        flattened = self.serialize()
+        return cls.deserialize(flattened)
+
+
+def _serialize_param(value: Any):
+    return (
+        value
+        if isinstance(value, (str, int, float)) and not isinstance(value, bool)
+        else json.dumps(value)
+    )
+
+
+def params(**kwargs) -> Mapping[str, Any]:
+    """Filter out keys with none values from dictionary."""
+
+    return {
+        key: _serialize_param(value)
+        for key, value in kwargs.items()
+        if value is not None
+    }
 
 
 class ControllerError(Exception):
@@ -216,7 +303,6 @@ class Controller:
                 resp.method,
                 resp.url.path_qs,
             )
-        resp.request_info
 
         if resp.ok and resp.content_type == "application/json":
             body = await resp.json()
@@ -260,7 +346,7 @@ class Controller:
 
             elif method == "POST" or method == "PUT":
                 json_ = _serialize(json)
-                if not data and not json_:
+                if not data and json_ is None:
                     json_ = {}
 
                 async with session.request(

@@ -1,120 +1,32 @@
 """Defintions of protocols flows."""
 
 import asyncio
-from dataclasses import asdict, dataclass, field, fields
-import json
+from dataclasses import dataclass
 import logging
 from secrets import randbelow, token_hex
-from typing import Any, Dict, List, Mapping, Optional, Tuple, Type, TypeVar, Union
+from typing import Any, Dict, List, Mapping, Optional, Tuple, Type, Union
 from uuid import uuid4
 
-from .controller import Controller, ControllerError, Dataclass, Serde
+from .controller import Controller, ControllerError, MinType, Minimized, params
 from .models import (
     Credential,
     DIFOptions,
     DIFProofRequest,
     IndyCredPrecis,
-    IndyProofReqAttrSpec,
-    IndyProofReqPredSpec,
-    IndyProofRequestNonRevoked,
-    InvitationCreateRequest,
     LDProofVCDetail,
     LDProofVCDetailOptions,
     OobRecord,
     PingRequest,
     PresentationDefinition,
-    V10PresentationExchange,
-    V10PresentationSendRequestRequest,
     V20CredFilter,
     V20CredOfferRequest,
-    V20PresExRecord,
     V20PresRequestByFormat,
     V20PresSendRequestRequest,
-    V20PresSpecByFormatRequest,
 )
 from .onboarding import get_onboarder
 
 
 LOGGER = logging.getLogger(__name__)
-
-
-def _serialize_param(value: Any):
-    return (
-        value
-        if isinstance(value, (str, int, float)) and not isinstance(value, bool)
-        else json.dumps(value)
-    )
-
-
-def params(**kwargs) -> Mapping[str, Any]:
-    """Filter out keys with none values from dictionary."""
-
-    return {
-        key: _serialize_param(value)
-        for key, value in kwargs.items()
-        if value is not None
-    }
-
-
-def index_of_extra(pairs: List[Tuple[str, Any]]) -> Optional[int]:
-    """Return the index of the _extra field."""
-    for index, (key, _) in enumerate(pairs):
-        if key == "_extra":
-            return index
-    return None
-
-
-T = TypeVar("T", bound="Minimized")
-S = TypeVar("S", bound="Serde")
-
-
-@dataclass
-class Minimized(Serde, Dataclass, Mapping[str, Any]):
-    """Base class for minimized record."""
-
-    _extra: Dict[str, Any] = field(init=False, default_factory=dict)
-
-    @classmethod
-    def deserialize(cls: Type[T], value: Mapping[str, Any]) -> T:
-        """Deserialize from a dictionary."""
-        field_names = (f.name for f in fields(cls))
-        filtered = {key: value for key, value in value.items() if key in field_names}
-        instance = cls(**filtered)
-        instance._extra = {
-            key: value for key, value in value.items() if key not in field_names
-        }
-        return instance
-
-    def serialize(self) -> Mapping[str, Any]:
-        """Serialize to a dictionary."""
-
-        def _factory(pairs: List[Tuple[str, Any]]) -> Dict[str, Any]:
-            extra_index = index_of_extra(pairs)
-            if extra_index is not None:
-                extra = pairs.pop(extra_index)
-                assert isinstance(extra, dict)
-                pairs = [*pairs, *extra.items()]
-
-            return dict(pairs)
-
-        return asdict(self, dict_factory=_factory)
-
-    def __getitem__(self, key: str) -> Any:
-        """Get an extra field."""
-        return self._extra[key]
-
-    def __iter__(self):
-        """Iterate over fields."""
-        return iter(self.serialize())
-
-    def __len__(self):
-        """Return the number of fields."""
-        return len(fields(self)) + len(self._extra)
-
-    def into(self, cls: Type[S]) -> S:
-        """Convert to another serializable class."""
-        flattened = self.serialize()
-        return cls.deserialize(flattened)
 
 
 @dataclass
@@ -123,6 +35,8 @@ class ConnRecord(Minimized):
 
     connection_id: str
     invitation_key: str
+    state: str
+    rfc23_state: str
 
 
 async def trustping(
@@ -231,11 +145,10 @@ async def connection(
 class InvitationMessage(Minimized):
     """Invitation message."""
 
-    id: str = field(init=False)
-
-    def __post_init__(self):
-        """Generate id."""
-        self.id = self._extra.pop("@id")
+    @property
+    def id(self) -> str:
+        """Return the invitation id."""
+        return self._extra["@id"]
 
 
 @dataclass
@@ -243,6 +156,14 @@ class InvitationRecord(Minimized):
     """Invitation record."""
 
     invitation: InvitationMessage
+
+    @classmethod
+    def deserialize(cls: Type[MinType], value: Mapping[str, Any]) -> MinType:
+        """Deserialize the invitation record."""
+        value = dict(value)
+        if invitation := value.get("invitation"):
+            value["invitation"] = InvitationMessage.deserialize(invitation)
+        return super().deserialize(value)
 
 
 async def oob_invitation(
@@ -258,12 +179,10 @@ async def oob_invitation(
     """
     invite_record = await inviter.post(
         "/out-of-band/create-invitation",
-        json=InvitationCreateRequest.parse_obj(
-            {
-                "handshake_protocols": ["https://didcomm.org/didexchange/1.0"],
-                "use_public_did": use_public_did,
-            }
-        ),
+        json={
+            "handshake_protocols": ["https://didcomm.org/didexchange/1.0"],
+            "use_public_did": use_public_did,
+        },
         params=params(
             auto_accept=False,
             multi_use=multi_use,
@@ -397,18 +316,27 @@ async def request_mediation_v1(
 
 
 @dataclass
-class DIDResult(Minimized):
-    """Result of creating a DID."""
-
-    result: "DIDInfo"
-
-
-@dataclass
 class DIDInfo(Minimized):
     """DID information."""
 
     did: str
     verkey: str
+
+
+@dataclass
+class DIDResult(Minimized):
+    """Result of creating a DID."""
+
+    result: Optional[DIDInfo]
+
+    @classmethod
+    def deserialize(cls: Type[MinType], value: Mapping[str, Any]) -> MinType:
+        """Deserialize the DID result."""
+        value = dict(value)
+        result = value.get("result")
+        if result is not None:
+            value["result"] = DIDInfo.deserialize(result)
+        return super().deserialize(value)
 
 
 async def indy_anoncred_onboard(agent: Controller):
@@ -463,7 +391,7 @@ class SchemaResult(Minimized):
 class CredDefResult(Minimized):
     """Result of creating a credential definition."""
 
-    cred_def_id: str
+    credential_definition_id: str
 
 
 async def indy_anoncred_credential_artifacts(
@@ -489,7 +417,9 @@ async def indy_anoncred_credential_artifacts(
     cred_def = await agent.post(
         "/credential-definitions",
         json={
-            "revocation_registry_size": revocation_registry_size,
+            "revocation_registry_size": (
+                revocation_registry_size if revocation_registry_size else 10
+            ),
             "schema_id": schema.schema_id,
             "support_revocation": support_revocation,
             "tag": cred_def_tag or token_hex(8),
@@ -504,6 +434,7 @@ async def indy_anoncred_credential_artifacts(
 class V10CredentialExchange(Minimized):
     """V1.0 credential exchange record."""
 
+    state: str
     credential_exchange_id: str
     connection_id: str
     thread_id: str
@@ -568,6 +499,9 @@ async def indy_issue_credential_v1(
         state="request_received",
     )
 
+    # TODO Remove after ACA-Py 0.12.0
+    # Race condition in DB commit vs webhook emit
+    await asyncio.sleep(1)
     issuer_cred_ex = await issuer.post(
         f"/issue-credential/records/{issuer_cred_ex_id}/issue",
         json={},
@@ -606,6 +540,7 @@ async def indy_issue_credential_v1(
 class V20CredExRecord(Minimized):
     """V2.0 credential exchange record."""
 
+    state: str
     cred_ex_id: str
     connection_id: str
     thread_id: str
@@ -782,6 +717,17 @@ def indy_auto_select_credentials_for_presentation_request(
     )
 
 
+@dataclass
+class V10PresentationExchange(Minimized):
+    """V1.0 presentation exchange record."""
+
+    state: str
+    presentation_exchange_id: str
+    connection_id: str
+    thread_id: str
+    presentation_request: dict
+
+
 async def indy_present_proof_v1(
     holder: Controller,
     verifier: Controller,
@@ -798,30 +744,24 @@ async def indy_present_proof_v1(
     """Present an Indy credential using present proof v1."""
     verifier_pres_ex = await verifier.post(
         "/present-proof/send-request",
-        json=V10PresentationSendRequestRequest(
-            auto_verify=False,
-            comment=comment or "Presentation request from minimal",
-            connection_id=verifier_connection_id,
-            proof_request=IndyProofRequest(
-                name=name or "proof",
-                version=version or "0.1.0",
-                nonce=str(randbelow(10**10)),
-                requested_attributes={
-                    str(uuid4()): IndyProofReqAttrSpec.parse_obj(attr)
-                    for attr in requested_attributes or []
+        json={
+            "auto_verify": False,
+            "comment": comment or "Presentation request from minimal",
+            "connection_id": verifier_connection_id,
+            "proof_request": {
+                "name": name or "proof",
+                "version": version or "0.1.0",
+                "nonce": str(randbelow(10**10)),
+                "requested_attributes": {
+                    str(uuid4()): attr for attr in requested_attributes or []
                 },
-                requested_predicates={
-                    str(uuid4()): IndyProofReqPredSpec.parse_obj(pred)
-                    for pred in requested_predicates or []
+                "requested_predicates": {
+                    str(uuid4()): pred for pred in requested_predicates or []
                 },
-                non_revoked=(
-                    IndyProofRequestNonRevoked.parse_obj(non_revoked)
-                    if non_revoked
-                    else None
-                ),
-            ),
-            trace=False,
-        ),
+                "non_revoked": (non_revoked if non_revoked else None),
+            },
+            "trace": False,
+        },
         response=V10PresentationExchange,
     )
     verifier_pres_ex_id = verifier_pres_ex.presentation_exchange_id
@@ -876,6 +816,33 @@ async def indy_present_proof_v1(
     return holder_pres_ex, verifier_pres_ex
 
 
+@dataclass
+class ByFormat(Minimized):
+    """By format."""
+
+    pres_request: Optional[dict] = None
+
+
+@dataclass
+class V20PresExRecord(Minimized):
+    """V2.0 presentation exchange record."""
+
+    state: str
+    pres_ex_id: str
+    connection_id: str
+    thread_id: str
+    by_format: ByFormat
+    pres_request: Optional[dict] = None
+
+    @classmethod
+    def deserialize(cls: Type[MinType], value: Mapping[str, Any]) -> MinType:
+        """Deserialize the presentation exchange record."""
+        value = dict(value)
+        if by_format := value.get("by_format"):
+            value["by_format"] = ByFormat.deserialize(by_format)
+        return super().deserialize(value)
+
+
 async def indy_present_proof_v2(
     holder: Controller,
     verifier: Controller,
@@ -892,32 +859,26 @@ async def indy_present_proof_v2(
     """Present an Indy credential using present proof v2."""
     verifier_pres_ex = await verifier.post(
         "/present-proof-2.0/send-request",
-        json=V20PresSendRequestRequest(
-            auto_verify=False,
-            comment=comment or "Presentation request from minimal",
-            connection_id=verifier_connection_id,
-            presentation_request=V20PresRequestByFormat(  # pyright: ignore
-                indy=IndyProofRequest(
-                    name=name or "proof",
-                    version=version or "0.1.0",
-                    nonce=str(randbelow(10**10)),
-                    requested_attributes={
-                        str(uuid4()): IndyProofReqAttrSpec.parse_obj(attr)
-                        for attr in requested_attributes or []
+        json={
+            "auto_verify": False,
+            "comment": comment or "Presentation request from minimal",
+            "connection_id": verifier_connection_id,
+            "presentation_request": {
+                "indy": {
+                    "name": name or "proof",
+                    "version": version or "0.1.0",
+                    "nonce": str(randbelow(10**10)),
+                    "requested_attributes": {
+                        str(uuid4()): attr for attr in requested_attributes or []
                     },
-                    requested_predicates={
-                        str(uuid4()): IndyProofReqPredSpec.parse_obj(pred)
-                        for pred in requested_predicates or []
+                    "requested_predicates": {
+                        str(uuid4()): pred for pred in requested_predicates or []
                     },
-                    non_revoked=(
-                        IndyProofRequestNonRevoked.parse_obj(non_revoked)
-                        if non_revoked
-                        else None
-                    ),
-                ),
-            ),
-            trace=False,
-        ),
+                    "non_revoked": (non_revoked if non_revoked else None),
+                },
+            },
+            "trace": False,
+        },
         response=V20PresExRecord,
     )
     verifier_pres_ex_id = verifier_pres_ex.pres_ex_id
@@ -942,10 +903,10 @@ async def indy_present_proof_v2(
     )
     holder_pres_ex = await holder.post(
         f"/present-proof-2.0/records/{holder_pres_ex_id}/send-presentation",
-        json=V20PresSpecByFormatRequest(  # pyright: ignore
-            indy=pres_spec,
-            trace=False,
-        ),
+        json={
+            "indy": pres_spec.serialize(),
+            "trace": False,
+        },
         response=V20PresExRecord,
     )
 
