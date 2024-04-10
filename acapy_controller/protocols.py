@@ -182,7 +182,7 @@ class OobRecord(Minimized):
     """Out-of-band record."""
 
     connection_id: str
-    our_recipient_key: str
+    our_recipient_key: Optional[str] = None
 
 
 async def didexchange(

@@ -21,6 +21,7 @@ from typing import (
     TypeVar,
     Union,
     cast,
+    get_args,
     overload,
     runtime_checkable,
     get_origin,
@@ -28,7 +29,6 @@ from typing import (
 
 from aiohttp import ClientResponse, ClientSession
 from async_selective_queue import Select
-from pydantic import BaseModel, parse_obj_as
 
 from .events import Event, EventQueue, Queue
 
@@ -57,7 +57,7 @@ class Dataclass(Protocol):
     __dataclass_fields__: ClassVar[dict[str, dataclasses.Field[Any]]]
 
 
-Serializable = Union[Mapping[str, Any], Serde, BaseModel, Dataclass, None]
+Serializable = Union[Mapping[str, Any], Serde, Dataclass, None]
 
 
 def _serialize(value: Serializable):
@@ -66,8 +66,6 @@ def _serialize(value: Serializable):
         return None
     if isinstance(value, Serde):
         return value.serialize()
-    if isinstance(value, BaseModel):
-        return value.dict(by_alias=True, exclude_unset=True, exclude_none=True)
     if isinstance(value, Mapping):
         return value
     if is_dataclass(value):
@@ -76,41 +74,26 @@ def _serialize(value: Serializable):
 
 
 @overload
-def _deserialize(value: Mapping[str, Any]) -> Mapping[str, Any]: ...
+def _deserialize(value: Any) -> Mapping[str, Any]: ...
 
 
 @overload
-def _deserialize(value: None) -> None: ...
+def _deserialize(value: Any, as_type: Type[T]) -> T: ...
 
 
 @overload
-def _deserialize(value: Mapping[str, Any], as_type: Type[T]) -> T: ...
+def _deserialize(value: Any, as_type: None) -> Mapping[str, Any]: ...
 
 
-@overload
-def _deserialize(value: None, as_type: Type[T]) -> None: ...
-
-
-@overload
-def _deserialize(value: Mapping[str, Any], as_type: None) -> Mapping[str, Any]: ...
-
-
-@overload
-def _deserialize(value: None, as_type: None) -> None: ...
-
-
-def _deserialize(
-    value: Optional[Mapping[str, Any]], as_type: Optional[Type[T]] = None
-) -> Union[T, Mapping[str, Any], None]:
+def _deserialize(value: Any, as_type: Optional[Type[T]] = None) -> Union[T, Any]:
     """Deserialize value."""
     if value is None:
         return None
     if as_type is None:
         return value
-    if get_origin(as_type) is not None:
-        return parse_obj_as(as_type, value)
-    if issubclass(as_type, BaseModel):
-        return as_type.parse_obj(value)
+    if get_origin(as_type) is list:
+        args = get_args(as_type)
+        return [_deserialize(item, args[0]) for item in value]
     if issubclass(as_type, Serde):
         return as_type.deserialize(value)
     if is_dataclass(as_type):
