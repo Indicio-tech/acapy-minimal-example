@@ -326,8 +326,7 @@ class DIDResult(Minimized):
     def deserialize(cls: Type[MinType], value: Mapping[str, Any]) -> MinType:
         """Deserialize the DID result."""
         value = dict(value)
-        result = value.get("result")
-        if result is not None:
+        if result := value.get("result"):
             value["result"] = DIDInfo.deserialize(result)
         return super().deserialize(value)
 
