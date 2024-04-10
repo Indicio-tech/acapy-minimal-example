@@ -34,7 +34,7 @@ ${CONTAINER_RUNTIME} run --rm -v "$(pwd)/../:/usr/src/app:z" ${NAME} \
     --snake-case-field \
     --allow-population-by-field-name \
     --aliases ./scripts/aliases.json \
-    --target-python-version 3.9 \
+    --target-python-version 3.10 \
     --base-class acapy_controller.model_base.BaseModel \
     $@
 
