@@ -1165,12 +1165,12 @@ async def jsonld_present_proof(
         state="request-received",
     )
     assert holder_pres_ex.pres_request
-    assert holder_pres_ex.pres_request["request_presentations_attach"]
-    assert holder_pres_ex.pres_request["request_presentations_attach"][0]["data"]
-    assert holder_pres_ex.pres_request["request_presentations_attach"][0]["data"][
-        "json"
-    ]
-    attachment = holder_pres_ex.pres_request["request_presentations_attach"][0]
+    assert "request_presentations~attach" in holder_pres_ex.pres_request
+    assert holder_pres_ex.pres_request["request_presentations~attach"]
+    attachment = holder_pres_ex.pres_request["request_presentations~attach"][0]
+    assert "data" in attachment
+    assert "json" in attachment["data"]
+    assert "presentation_definition" in attachment["data"]["json"]
     definition = attachment["data"]["json"]["presentation_definition"]
     holder_pres_ex_id = holder_pres_ex.pres_ex_id
 

@@ -39,7 +39,7 @@ def logging_to_stdout():
         return
 
     if sys.stdout.isatty():
-        logger = logging.getLogger("controller")
+        logger = logging.getLogger("acapy_controller")
         logger.setLevel(LOG_LEVEL.upper())
         ch = logging.StreamHandler()
         ch.setLevel(LOG_LEVEL.upper())
