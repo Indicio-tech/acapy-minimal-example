@@ -13,7 +13,7 @@ jobs:
     name: Format and Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: psf/black@24.3.0
         with:
           src: "./acapy_controller ./examples"
