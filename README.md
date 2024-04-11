@@ -2,6 +2,10 @@
 
 Create a minimal reproducible example.
 
+## Quick Start
+
+If you'd like to create a minimal reproducible example, consider starting from the template repository: [acapy-minimal-example-template](https://github.com/Indicio-tech/acapy-minimal-example-template)
+
 ## Goals for this Project
 
 - Minimal Setup (everything runs in containers)
