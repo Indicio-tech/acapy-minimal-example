@@ -12,7 +12,7 @@ RUN poetry config virtualenvs.in-project true
 RUN mkdir acapy_controller && touch acapy_controller/__init__.py
 COPY pyproject.toml poetry.lock ./
 ARG install_flags=--no-dev
-RUN poetry install ${install_flags} -E pydantic
+RUN poetry install ${install_flags} -E models
 
 COPY acapy_controller/ acapy_controller/
 

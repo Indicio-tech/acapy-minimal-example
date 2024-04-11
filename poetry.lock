@@ -945,9 +945,9 @@ idna = ">=2.0"
 multidict = ">=4.0"
 
 [extras]
-pydantic = ["pydantic"]
+models = ["pydantic"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "ee39e7a9ab550bd18d1f114f449ddda544968dbcb8a44164382ea17d0a94168e"
+content-hash = "df943f3518dc802fd530e0e9856164cb0b3803ca401f16227cf44c9e9d7fb824"
