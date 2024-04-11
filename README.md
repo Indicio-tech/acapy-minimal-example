@@ -81,9 +81,9 @@ Some of the implemented protocols include:
 In addition to protocol helpers, some other common admin operations have some automated helpers:
 
 - Indy Onboarding (`indy_anoncred_onboard`) - Auto-accept the TAA of the Indy network, create a DID, and anchor it to the network. The helper will attempt to automatically detect the connected network and determine the URL of the "self-serve" endpoint for publishing an Endorser DID. All VON Network instances (that exposes a `register` endpoint) and Indicio Test/Demo Networks are supported.
-> [!CAUTION]
+> [!WARNING]
 > By using this tool, you are expressing your acceptance of the Transaction Author Agreement of the network to which you are connecting.
-- Indy AnonCred credential artifact creation - Creates a schema and credential definition for that schema. Supports setting revocation on the resulting cred def.
+- Indy AnonCred credential artifact creation (`indy_anoncred_credential_artifacts`) - Creates a schema and credential definition for that schema. Supports setting revocation on the resulting cred def.
 
 
 ## Models
