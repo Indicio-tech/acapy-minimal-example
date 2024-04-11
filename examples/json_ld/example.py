@@ -51,14 +51,14 @@ async def main():
         with section("Prepare for issuance"):
             with section("Issuer prepares issuing DIDs", character="-"):
                 public_did = await indy_anoncred_onboard(alice)
-                bls_alice_did = (
+                bls_alice_did_res = (
                     await alice.post(
                         "/wallet/did/create",
                         json={"method": "key", "options": {"key_type": "bls12381g2"}},
-                        response=DIDResult,
                     )
-                ).result
-                assert bls_alice_did
+                )["result"]
+                assert bls_alice_did_res
+                bls_alice_did = bls_alice_did_res["did"]
 
             with section("Recipient prepares subject DIDs", character="-"):
                 bob_did = (
@@ -69,14 +69,14 @@ async def main():
                     )
                 ).result
                 assert bob_did
-                bls_bob_did = (
+                bls_bob_did_res = (
                     await bob.post(
                         "/wallet/did/create",
                         json={"method": "key", "options": {"key_type": "bls12381g2"}},
-                        response=DIDResult,
                     )
-                ).result
-                assert bls_bob_did
+                )["result"]
+                assert bls_bob_did_res
+                bls_bob_did = bls_bob_did_res["did"]
 
         pause_for_input()
 
@@ -158,7 +158,7 @@ async def main():
                 domain="test-degree",
             )
         with section("Presentation summary", character="-"):
-            print(presentation_summary(alice_pres_ex))
+            print(presentation_summary(alice_pres_ex.into(V20PresExRecord)))
 
         pause_for_input()
 
@@ -234,7 +234,7 @@ async def main():
                 domain="test-degree",
             )
         with section("Presentation summary", character="-"):
-            print(presentation_summary(alice_pres_ex))
+            print(presentation_summary(alice_pres_ex.into(V20PresExRecord)))
 
         pause_for_input()
 
@@ -255,10 +255,10 @@ async def main():
                         },
                     ],
                     "type": ["VerifiableCredential", "Employment"],
-                    "issuer": bls_alice_did.did,
+                    "issuer": bls_alice_did,
                     "issuanceDate": str(date.today()),
                     "credentialSubject": {
-                        "id": bls_bob_did.did,
+                        "id": bls_bob_did,
                         "dateHired": str(date.today()),
                         "clearance": 1,
                     },
@@ -311,7 +311,7 @@ async def main():
                 domain="building-access",
             )
         with section("Presentation summary", character="-"):
-            print(presentation_summary(alice_pres_ex))
+            print(presentation_summary(alice_pres_ex.into(V20PresExRecord)))
 
 
 if __name__ == "__main__":

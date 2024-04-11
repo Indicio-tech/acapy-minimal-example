@@ -1,85 +1,27 @@
 """Defintions of protocols flows."""
 
 import asyncio
-import json
+from dataclasses import dataclass
 import logging
 from secrets import randbelow, token_hex
-from typing import Any, List, Mapping, Optional, Tuple, Union
+from typing import Any, Dict, List, Mapping, Optional, Tuple, Type, Union
 from uuid import uuid4
 
-from .controller import Controller, ControllerError
-from .models import (
-    AdminConfig,
-    ConnRecord,
-    CredAttrSpec,
-    Credential,
-    CredentialDefinitionSendRequest,
-    CredentialDefinitionSendResult,
-    CredentialPreview,
-    DIDCreate,
-    DIDCreateOptions,
-    DIDResult,
-    DIFOptions,
-    DIFProofRequest,
-    IndyCredPrecis,
-    IndyPresSpec,
-    IndyProofReqAttrSpec,
-    IndyProofReqPredSpec,
-    IndyProofRequest,
-    IndyProofRequestNonRevoked,
-    InvitationCreateRequest,
-    InvitationMessage,
-    InvitationRecord,
-    InvitationResult,
-    LDProofVCDetail,
-    LDProofVCDetailOptions,
-    MediationRecord,
-    OobRecord,
-    PingRequest,
-    PresentationDefinition,
-    ReceiveInvitationRequest,
-    SchemaSendRequest,
-    SchemaSendResult,
-    TAAAccept,
-    TAAResult,
-    V10CredentialExchange,
-    V10CredentialFreeOfferRequest,
-    V10PresentationExchange,
-    V10PresentationSendRequestRequest,
-    V20CredExRecord,
-    V20CredExRecordDetail,
-    V20CredExRecordIndy,
-    V20CredFilter,
-    V20CredFilterIndy,
-    V20CredOfferRequest,
-    V20CredPreview,
-    V20PresExRecord,
-    V20PresRequestByFormat,
-    V20PresSendRequestRequest,
-    V20PresSpecByFormatRequest,
-)
+from .controller import Controller, ControllerError, MinType, Minimal, params
 from .onboarding import get_onboarder
 
 
 LOGGER = logging.getLogger(__name__)
 
 
-def _serialize_param(value: Any):
-    return (
-        value
-        if isinstance(value, (str, int, float)) and not isinstance(value, bool)
-        else json.dumps(value)
-    )
+@dataclass
+class ConnRecord(Minimal):
+    """Connection record."""
 
-
-def _make_params(**kwargs) -> Mapping[str, Any]:
-    """Filter out keys with none values from dictionary."""
-
-    return {
-        key: _serialize_param(value)
-        for key, value in kwargs.items()
-        if value is not None
-    }
+    connection_id: str
+    invitation_key: str
+    state: str
+    rfc23_state: str
 
 
 async def trustping(
@@ -88,8 +30,16 @@ async def trustping(
     """Send a trustping to the specified connection."""
     await sender.post(
         f"/connections/{conn.connection_id}/send-ping",
-        json=PingRequest(comment=comment or "Ping!"),
+        json={"comment": comment or "Ping!"},
     )
+
+
+@dataclass
+class InvitationResult(Minimal):
+    """Result of creating a connection invitation."""
+
+    invitation: dict
+    connection_id: str
 
 
 async def connection_invitation(
@@ -106,9 +56,7 @@ async def connection_invitation(
     invitation = await inviter.post(
         "/connections/create-invitation",
         json={},
-        params=_make_params(
-            auto_accept=False, multi_use=multi_use, public=use_public_did
-        ),
+        params=params(auto_accept=False, multi_use=multi_use, public=use_public_did),
         response=InvitationResult,
     )
     return invitation
@@ -132,7 +80,7 @@ async def connection(
 
     invitee_conn = await invitee.post(
         "/connections/receive-invitation",
-        json=ReceiveInvitationRequest.parse_obj(invitation.invitation.dict()),
+        json=invitation.invitation,
         response=ConnRecord,
     )
 
@@ -159,7 +107,7 @@ async def connection(
     )
     await invitee.post(
         f"/connections/{invitee_conn.connection_id}/send-ping",
-        json=PingRequest(comment="Making connection active"),
+        json={"comment": "Making connection active"},
     )
 
     inviter_conn = await inviter.record_with_values(
@@ -178,6 +126,31 @@ async def connection(
     return inviter_conn, invitee_conn
 
 
+@dataclass
+class InvitationMessage(Minimal):
+    """Invitation message."""
+
+    @property
+    def id(self) -> str:
+        """Return the invitation id."""
+        return self._extra["@id"]
+
+
+@dataclass
+class InvitationRecord(Minimal):
+    """Invitation record."""
+
+    invitation: InvitationMessage
+
+    @classmethod
+    def deserialize(cls: Type[MinType], value: Mapping[str, Any]) -> MinType:
+        """Deserialize the invitation record."""
+        value = dict(value)
+        if invitation := value.get("invitation"):
+            value["invitation"] = InvitationMessage.deserialize(invitation)
+        return super().deserialize(value)
+
+
 async def oob_invitation(
     inviter: Controller,
     *,
@@ -191,19 +164,25 @@ async def oob_invitation(
     """
     invite_record = await inviter.post(
         "/out-of-band/create-invitation",
-        json=InvitationCreateRequest.parse_obj(
-            {
-                "handshake_protocols": ["https://didcomm.org/didexchange/1.0"],
-                "use_public_did": use_public_did,
-            }
-        ),
-        params=_make_params(
+        json={
+            "handshake_protocols": ["https://didcomm.org/didexchange/1.0"],
+            "use_public_did": use_public_did,
+        },
+        params=params(
             auto_accept=False,
             multi_use=multi_use,
         ),
         response=InvitationRecord,
     )
     return invite_record.invitation
+
+
+@dataclass
+class OobRecord(Minimal):
+    """Out-of-band record."""
+
+    connection_id: str
+    our_recipient_key: Optional[str] = None
 
 
 async def didexchange(
@@ -220,7 +199,7 @@ async def didexchange(
     invitee_oob_record = await invitee.post(
         "/out-of-band/receive-invitation",
         json=invite,
-        params=_make_params(
+        params=params(
             use_existing_connection=use_existing_connection,
         ),
         response=OobRecord,
@@ -287,6 +266,14 @@ async def didexchange(
     return inviter_conn, invitee_conn
 
 
+@dataclass
+class MediationRecord(Minimal):
+    """Mediation record."""
+
+    mediation_id: str
+    connection_id: str
+
+
 async def request_mediation_v1(
     mediator: Controller,
     client: Controller,
@@ -321,25 +308,47 @@ async def request_mediation_v1(
     return mediator_record, client_record
 
 
+@dataclass
+class DIDInfo(Minimal):
+    """DID information."""
+
+    did: str
+    verkey: str
+
+
+@dataclass
+class DIDResult(Minimal):
+    """Result of creating a DID."""
+
+    result: Optional[DIDInfo]
+
+    @classmethod
+    def deserialize(cls: Type[MinType], value: Mapping[str, Any]) -> MinType:
+        """Deserialize the DID result."""
+        value = dict(value)
+        if result := value.get("result"):
+            value["result"] = DIDInfo.deserialize(result)
+        return super().deserialize(value)
+
+
 async def indy_anoncred_onboard(agent: Controller):
     """Onboard agent for indy anoncred operations."""
 
-    config = (await agent.get("/status/config", response=AdminConfig)).config
+    config = (await agent.get("/status/config"))["config"]
     genesis_url = config.get("ledger.genesis_url")
 
     if not genesis_url:
         raise ControllerError("No ledger configured on agent")
 
-    taa = (await agent.get("/ledger/taa", response=TAAResult)).result
-    if taa.taa_required is True and taa.taa_accepted is None:
-        assert taa.taa_record
+    taa = (await agent.get("/ledger/taa"))["result"]
+    if taa.get("taa_required") is True and taa.get("taa_accepted") is None:
         await agent.post(
             "/ledger/taa/accept",
-            json=TAAAccept(
-                mechanism="on_file",
-                text=taa.taa_record.text,
-                version=taa.taa_record.version,
-            ),
+            json={
+                "mechanism": "on_file",
+                "text": taa["taa_record"]["text"],
+                "version": taa["taa_record"]["version"],
+            },
         )
 
     public_did = (await agent.get("/wallet/did/public", response=DIDResult)).result
@@ -347,9 +356,7 @@ async def indy_anoncred_onboard(agent: Controller):
         public_did = (
             await agent.post(
                 "/wallet/did/create",
-                json=DIDCreate(
-                    method="sov", options=DIDCreateOptions(key_type="ed25519")
-                ),
+                json={"method": "sov", "options": {"key_type": "ed25519"}},
                 response=DIDResult,
             )
         ).result
@@ -360,9 +367,23 @@ async def indy_anoncred_onboard(agent: Controller):
             raise ControllerError("Unrecognized ledger, cannot automatically onboard")
         await onboarder.onboard(public_did.did, public_did.verkey)
 
-        await agent.post("/wallet/did/public", params=_make_params(did=public_did.did))
+        await agent.post("/wallet/did/public", params=params(did=public_did.did))
 
     return public_did
+
+
+@dataclass
+class SchemaResult(Minimal):
+    """Result of creating a schema."""
+
+    schema_id: str
+
+
+@dataclass
+class CredDefResult(Minimal):
+    """Result of creating a credential definition."""
+
+    credential_definition_id: str
 
 
 async def indy_anoncred_credential_artifacts(
@@ -377,26 +398,41 @@ async def indy_anoncred_credential_artifacts(
     """Prepare credential artifacts for indy anoncreds."""
     schema = await agent.post(
         "/schemas",
-        json=SchemaSendRequest(
-            schema_name=schema_name or "minimal-" + token_hex(8),
-            schema_version=schema_version or "1.0",
-            attributes=attributes,
-        ),
-        response=SchemaSendResult,
+        json={
+            "schema_name": schema_name or "minimal-" + token_hex(8),
+            "schema_version": schema_version or "1.0",
+            "attributes": attributes,
+        },
+        response=SchemaResult,
     )
 
     cred_def = await agent.post(
         "/credential-definitions",
-        json=CredentialDefinitionSendRequest(
-            revocation_registry_size=revocation_registry_size,
-            schema_id=schema.schema_id,
-            support_revocation=support_revocation,
-            tag=cred_def_tag or token_hex(8),
-        ),
-        response=CredentialDefinitionSendResult,
+        json={
+            "revocation_registry_size": (
+                revocation_registry_size if revocation_registry_size else 10
+            ),
+            "schema_id": schema.schema_id,
+            "support_revocation": support_revocation,
+            "tag": cred_def_tag or token_hex(8),
+        },
+        response=CredDefResult,
     )
 
     return schema, cred_def
+
+
+@dataclass
+class V10CredentialExchange(Minimal):
+    """V1.0 credential exchange record."""
+
+    state: str
+    credential_exchange_id: str
+    connection_id: str
+    thread_id: str
+    credential_definition_id: str
+    revoc_reg_id: Optional[str] = None
+    revocation_id: Optional[str] = None
 
 
 async def indy_issue_credential_v1(
@@ -413,23 +449,25 @@ async def indy_issue_credential_v1(
     """
     issuer_cred_ex = await issuer.post(
         "/issue-credential/send-offer",
-        json=V10CredentialFreeOfferRequest(
-            auto_issue=False,
-            auto_remove=False,
-            comment="Credential from minimal example",
-            trace=False,
-            connection_id=issuer_connection_id,
-            cred_def_id=cred_def_id,
-            credential_preview=CredentialPreview(
-                type="issue-credential/1.0/credential-preview",  # pyright: ignore
-                attributes=[
-                    CredAttrSpec(
-                        mime_type=None, name=name, value=value  # pyright: ignore
-                    )
+        json={
+            "auto_issue": False,
+            "auto_remove": False,
+            "comment": "Credential from minimal example",
+            "trace": False,
+            "connection_id": issuer_connection_id,
+            "cred_def_id": cred_def_id,
+            "credential_preview": {
+                "type": "issue-credential/1.0/credential-preview",
+                "attributes": [
+                    {
+                        "mime_type": None,
+                        "name": name,
+                        "value": value,
+                    }
                     for name, value in attributes.items()
                 ],
-            ),
-        ),
+            },
+        },
         response=V10CredentialExchange,
     )
     issuer_cred_ex_id = issuer_cred_ex.credential_exchange_id
@@ -453,6 +491,9 @@ async def indy_issue_credential_v1(
         state="request_received",
     )
 
+    # TODO Remove after ACA-Py 0.12.0
+    # Race condition in DB commit vs webhook emit
+    await asyncio.sleep(1)
     issuer_cred_ex = await issuer.post(
         f"/issue-credential/records/{issuer_cred_ex_id}/issue",
         json={},
@@ -487,6 +528,32 @@ async def indy_issue_credential_v1(
     return issuer_cred_ex, holder_cred_ex
 
 
+@dataclass
+class V20CredExRecord(Minimal):
+    """V2.0 credential exchange record."""
+
+    state: str
+    cred_ex_id: str
+    connection_id: str
+    thread_id: str
+
+
+@dataclass
+class V20CredExRecordIndy(Minimal):
+    """V2.0 credential exchange record indy."""
+
+    rev_reg_id: Optional[str] = None
+    cred_rev_id: Optional[str] = None
+
+
+@dataclass
+class V20CredExRecordDetail(Minimal):
+    """V2.0 credential exchange record detail."""
+
+    cred_ex_record: V20CredExRecord
+    indy: Optional[V20CredExRecordIndy] = None
+
+
 async def indy_issue_credential_v2(
     issuer: Controller,
     holder: Controller,
@@ -502,27 +569,25 @@ async def indy_issue_credential_v2(
 
     issuer_cred_ex = await issuer.post(
         "/issue-credential-2.0/send-offer",
-        json=V20CredOfferRequest(
-            auto_issue=False,
-            auto_remove=False,
-            comment="Credential from minimal example",
-            trace=False,
-            connection_id=issuer_connection_id,
-            filter=V20CredFilter(  # pyright: ignore
-                indy=V20CredFilterIndy(  # pyright: ignore
-                    cred_def_id=cred_def_id,
-                )
-            ),
-            credential_preview=V20CredPreview(
-                type="issue-credential-2.0/2.0/credential-preview",  # pyright: ignore
-                attributes=[
-                    CredAttrSpec(
-                        mime_type=None, name=name, value=value  # pyright: ignore
-                    )
+        json={
+            "auto_issue": False,
+            "auto_remove": False,
+            "comment": "Credential from minimal example",
+            "trace": False,
+            "connection_id": issuer_connection_id,
+            "filter": {"indy": {"cred_def_id": cred_def_id}},
+            "credential_preview": {
+                "type": "issue-credential-2.0/2.0/credential-preview",  # pyright: ignore
+                "attributes": [
+                    {
+                        "mime_type": None,
+                        "name": name,
+                        "value": value,
+                    }
                     for name, value in attributes.items()
                 ],
-            ),
-        ),
+            },
+        },
         response=V20CredExRecord,
     )
     issuer_cred_ex_id = issuer_cred_ex.cred_ex_id
@@ -594,13 +659,54 @@ async def indy_issue_credential_v2(
     )
 
 
+@dataclass
+class IndyProofRequest(Minimal):
+    """Indy proof request."""
+
+    requested_attributes: Dict[str, Any]
+    requested_predicates: Dict[str, Any]
+
+
+@dataclass
+class IndyPresSpec(Minimal):
+    """Indy presentation specification."""
+
+    requested_attributes: Dict[str, Any]
+    requested_predicates: Dict[str, Any]
+    self_attested_attributes: Dict[str, Any]
+
+
+@dataclass
+class IndyCredInfo(Minimal):
+    """Indy credential information."""
+
+    referent: str
+    attrs: Dict[str, Any]
+
+
+@dataclass
+class IndyCredPrecis(Minimal):
+    """Indy credential precis."""
+
+    cred_info: IndyCredInfo
+    presentation_referents: List[str]
+
+    @classmethod
+    def deserialize(cls: Type[MinType], value: Mapping[str, Any]) -> MinType:
+        """Deserialize the credential precis."""
+        value = dict(value)
+        if cred_info := value.get("cred_info"):
+            value["cred_info"] = IndyCredInfo.deserialize(cred_info)
+        return super().deserialize(value)
+
+
 def indy_auto_select_credentials_for_presentation_request(
     presentation_request: Union[IndyProofRequest, dict],
     relevant_creds: List[IndyCredPrecis],
 ) -> IndyPresSpec:
     """Select credentials to use for presentation automatically."""
     if isinstance(presentation_request, dict):
-        presentation_request = IndyProofRequest.parse_obj(presentation_request)
+        presentation_request = IndyProofRequest.deserialize(presentation_request)
 
     requested_attributes = {}
     for pres_referrent in presentation_request.requested_attributes.keys():
@@ -618,13 +724,24 @@ def indy_auto_select_credentials_for_presentation_request(
                     "cred_id": cred_precis.cred_info.referent,
                 }
 
-    return IndyPresSpec.parse_obj(
+    return IndyPresSpec.deserialize(
         {
             "requested_attributes": requested_attributes,
             "requested_predicates": requested_predicates,
             "self_attested_attributes": {},
         }
     )
+
+
+@dataclass
+class V10PresentationExchange(Minimal):
+    """V1.0 presentation exchange record."""
+
+    state: str
+    presentation_exchange_id: str
+    connection_id: str
+    thread_id: str
+    presentation_request: dict
 
 
 async def indy_present_proof_v1(
@@ -643,30 +760,24 @@ async def indy_present_proof_v1(
     """Present an Indy credential using present proof v1."""
     verifier_pres_ex = await verifier.post(
         "/present-proof/send-request",
-        json=V10PresentationSendRequestRequest(
-            auto_verify=False,
-            comment=comment or "Presentation request from minimal",
-            connection_id=verifier_connection_id,
-            proof_request=IndyProofRequest(
-                name=name or "proof",
-                version=version or "0.1.0",
-                nonce=str(randbelow(10**10)),
-                requested_attributes={
-                    str(uuid4()): IndyProofReqAttrSpec.parse_obj(attr)
-                    for attr in requested_attributes or []
+        json={
+            "auto_verify": False,
+            "comment": comment or "Presentation request from minimal",
+            "connection_id": verifier_connection_id,
+            "proof_request": {
+                "name": name or "proof",
+                "version": version or "0.1.0",
+                "nonce": str(randbelow(10**10)),
+                "requested_attributes": {
+                    str(uuid4()): attr for attr in requested_attributes or []
                 },
-                requested_predicates={
-                    str(uuid4()): IndyProofReqPredSpec.parse_obj(pred)
-                    for pred in requested_predicates or []
+                "requested_predicates": {
+                    str(uuid4()): pred for pred in requested_predicates or []
                 },
-                non_revoked=(
-                    IndyProofRequestNonRevoked.parse_obj(non_revoked)
-                    if non_revoked
-                    else None
-                ),
-            ),
-            trace=False,
-        ),
+                "non_revoked": (non_revoked if non_revoked else None),
+            },
+            "trace": False,
+        },
         response=V10PresentationExchange,
     )
     verifier_pres_ex_id = verifier_pres_ex.presentation_exchange_id
@@ -721,6 +832,33 @@ async def indy_present_proof_v1(
     return holder_pres_ex, verifier_pres_ex
 
 
+@dataclass
+class ByFormat(Minimal):
+    """By format."""
+
+    pres_request: Optional[dict] = None
+
+
+@dataclass
+class V20PresExRecord(Minimal):
+    """V2.0 presentation exchange record."""
+
+    state: str
+    pres_ex_id: str
+    connection_id: str
+    thread_id: str
+    by_format: ByFormat
+    pres_request: Optional[dict] = None
+
+    @classmethod
+    def deserialize(cls: Type[MinType], value: Mapping[str, Any]) -> MinType:
+        """Deserialize the presentation exchange record."""
+        value = dict(value)
+        if by_format := value.get("by_format"):
+            value["by_format"] = ByFormat.deserialize(by_format)
+        return super().deserialize(value)
+
+
 async def indy_present_proof_v2(
     holder: Controller,
     verifier: Controller,
@@ -737,32 +875,26 @@ async def indy_present_proof_v2(
     """Present an Indy credential using present proof v2."""
     verifier_pres_ex = await verifier.post(
         "/present-proof-2.0/send-request",
-        json=V20PresSendRequestRequest(
-            auto_verify=False,
-            comment=comment or "Presentation request from minimal",
-            connection_id=verifier_connection_id,
-            presentation_request=V20PresRequestByFormat(  # pyright: ignore
-                indy=IndyProofRequest(
-                    name=name or "proof",
-                    version=version or "0.1.0",
-                    nonce=str(randbelow(10**10)),
-                    requested_attributes={
-                        str(uuid4()): IndyProofReqAttrSpec.parse_obj(attr)
-                        for attr in requested_attributes or []
+        json={
+            "auto_verify": False,
+            "comment": comment or "Presentation request from minimal",
+            "connection_id": verifier_connection_id,
+            "presentation_request": {
+                "indy": {
+                    "name": name or "proof",
+                    "version": version or "0.1.0",
+                    "nonce": str(randbelow(10**10)),
+                    "requested_attributes": {
+                        str(uuid4()): attr for attr in requested_attributes or []
                     },
-                    requested_predicates={
-                        str(uuid4()): IndyProofReqPredSpec.parse_obj(pred)
-                        for pred in requested_predicates or []
+                    "requested_predicates": {
+                        str(uuid4()): pred for pred in requested_predicates or []
                     },
-                    non_revoked=(
-                        IndyProofRequestNonRevoked.parse_obj(non_revoked)
-                        if non_revoked
-                        else None
-                    ),
-                ),
-            ),
-            trace=False,
-        ),
+                    "non_revoked": (non_revoked if non_revoked else None),
+                },
+            },
+            "trace": False,
+        },
         response=V20PresExRecord,
     )
     verifier_pres_ex_id = verifier_pres_ex.pres_ex_id
@@ -787,10 +919,10 @@ async def indy_present_proof_v2(
     )
     holder_pres_ex = await holder.post(
         f"/present-proof-2.0/records/{holder_pres_ex_id}/send-presentation",
-        json=V20PresSpecByFormatRequest(  # pyright: ignore
-            indy=pres_spec,
-            trace=False,
-        ),
+        json={
+            "indy": pres_spec.serialize(),
+            "trace": False,
+        },
         response=V20PresExRecord,
     )
 
@@ -921,35 +1053,25 @@ async def jsonld_issue_credential(
     holder: Controller,
     issuer_connection_id: str,
     holder_connection_id: str,
-    credential: Union[Credential, Mapping[str, Any]],
-    options: Union[LDProofVCDetailOptions, Mapping[str, Any]],
+    credential: Mapping[str, Any],
+    options: Mapping[str, Any],
 ):
     """Issue a JSON-LD Credential."""
-    credential = (
-        credential
-        if isinstance(credential, Credential)
-        else Credential.parse_obj(credential)
-    )
-    options = (
-        options
-        if isinstance(options, LDProofVCDetailOptions)
-        else LDProofVCDetailOptions.parse_obj(options)
-    )
     issuer_cred_ex = await issuer.post(
         "/issue-credential-2.0/send-offer",
-        json=V20CredOfferRequest(
-            auto_issue=False,
-            auto_remove=False,
-            comment="Credential from minimal example",
-            trace=False,
-            connection_id=issuer_connection_id,
-            filter=V20CredFilter(  # pyright: ignore
-                ld_proof=LDProofVCDetail(
-                    credential=credential,
-                    options=options,
-                )
-            ),
-        ),
+        json={
+            "auto_issue": False,
+            "auto_remove": False,
+            "comment": "Credential from minimal example",
+            "trace": False,
+            "connection_id": issuer_connection_id,
+            "filter": {
+                "ld_proof": {
+                    "credential": credential,
+                    "options": options,
+                }
+            },
+        },
         response=V20CredExRecord,
     )
     issuer_cred_ex_id = issuer_cred_ex.cred_ex_id
@@ -1012,31 +1134,26 @@ async def jsonld_present_proof(
     holder: Controller,
     verifier_connection_id: str,
     holder_connection_id: str,
-    presentation_definition: Union[Mapping[str, Any], PresentationDefinition],
+    presentation_definition: Mapping[str, Any],
     domain: str,
     *,
     comment: Optional[str] = None,
 ):
     """Present an Indy credential using present proof v1."""
-    presentation_definition = (
-        presentation_definition
-        if isinstance(presentation_definition, PresentationDefinition)
-        else PresentationDefinition.parse_obj(presentation_definition)
-    )
     verifier_pres_ex = await verifier.post(
         "/present-proof-2.0/send-request",
-        json=V20PresSendRequestRequest(
-            auto_verify=False,
-            comment=comment or "Presentation request from minimal",
-            connection_id=verifier_connection_id,
-            presentation_request=V20PresRequestByFormat(  # pyright: ignore
-                dif=DIFProofRequest(
-                    presentation_definition=presentation_definition,
-                    options=DIFOptions(challenge=str(uuid4()), domain=domain),
-                ),
-            ),
-            trace=False,
-        ),
+        json={
+            "auto_verify": False,
+            "comment": comment or "Presentation request from minimal",
+            "connection_id": verifier_connection_id,
+            "presentation_request": {
+                "dif": {
+                    "presentation_definition": presentation_definition,
+                    "options": {"challenge": str(uuid4()), "domain": domain},
+                },
+            },
+            "trace": False,
+        },
         response=V20PresExRecord,
     )
     verifier_pres_ex_id = verifier_pres_ex.pres_ex_id
@@ -1048,22 +1165,18 @@ async def jsonld_present_proof(
         state="request-received",
     )
     assert holder_pres_ex.pres_request
-    assert holder_pres_ex.pres_request.request_presentations_attach
-    assert holder_pres_ex.pres_request.request_presentations_attach[0].data
-    assert holder_pres_ex.pres_request.request_presentations_attach[0].data.json_
+    assert "request_presentations~attach" in holder_pres_ex.pres_request
+    assert holder_pres_ex.pres_request["request_presentations~attach"]
+    attachment = holder_pres_ex.pres_request["request_presentations~attach"][0]
+    assert "data" in attachment
+    assert "json" in attachment["data"]
+    assert "presentation_definition" in attachment["data"]["json"]
+    definition = attachment["data"]["json"]["presentation_definition"]
     holder_pres_ex_id = holder_pres_ex.pres_ex_id
 
     holder_pres_ex = await holder.post(
         f"/present-proof-2.0/records/{holder_pres_ex_id}/send-presentation",
-        json=V20PresRequestByFormat(
-            dif=DIFProofRequest(  # pyright: ignore
-                presentation_definition=(
-                    holder_pres_ex.pres_request.request_presentations_attach[
-                        0
-                    ].data.json_["presentation_definition"]
-                )
-            )
-        ),
+        json={"dif": {"presentation_definition": definition}},
         response=V20PresExRecord,
     )
 

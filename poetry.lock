@@ -609,7 +609,7 @@ virtualenv = ">=20.10.0"
 name = "pydantic"
 version = "1.10.15"
 description = "Data validation and settings management using python type hints"
-optional = false
+optional = true
 python-versions = ">=3.7"
 files = [
     {file = "pydantic-1.10.15-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:22ed12ee588b1df028a2aa5d66f07bf8f8b4c8579c2e96d5a9c1f96b77f3bb55"},
@@ -944,7 +944,10 @@ files = [
 idna = ">=2.0"
 multidict = ">=4.0"
 
+[extras]
+pydantic = ["pydantic"]
+
 [metadata]
 lock-version = "2.0"
-python-versions = "^3.9"
-content-hash = "a7ecd1fd30bc544621ec4e0f6bed2eea73c1e022e47166e3549bd45b4838281b"
+python-versions = "^3.10"
+content-hash = "ee39e7a9ab550bd18d1f114f449ddda544968dbcb8a44164382ea17d0a94168e"

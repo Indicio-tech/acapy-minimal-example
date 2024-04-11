@@ -7,12 +7,6 @@ import pytest_asyncio
 from pytest_asyncio import is_async_test
 
 from acapy_controller.controller import Controller
-from acapy_controller.models import (
-    ConnRecord,
-    CredentialDefinitionSendResult,
-    SchemaSendResult,
-    V10CredentialExchange,
-)
 from acapy_controller.protocols import (
     didexchange,
     indy_anoncred_credential_artifacts,
@@ -21,6 +15,10 @@ from acapy_controller.protocols import (
     indy_issue_credential_v2,
     indy_present_proof_v1,
     indy_present_proof_v2,
+    ConnRecord,
+    CredDefResult,
+    SchemaResult,
+    V10CredentialExchange,
 )
 
 
@@ -104,9 +102,7 @@ async def cred_artifacts(alice: Controller):
 
 
 @pytest_asyncio.fixture(scope="session")
-async def cred_def(
-    cred_artifacts: Tuple[SchemaSendResult, CredentialDefinitionSendResult]
-):
+async def cred_def(cred_artifacts: Tuple[SchemaResult, CredDefResult]):
     _, cred_def = cred_artifacts
     yield cred_def
 
@@ -117,7 +113,7 @@ async def alice_cred_ex(
     bob: Controller,
     alice_conn: ConnRecord,
     bob_conn: ConnRecord,
-    cred_def: CredentialDefinitionSendResult,
+    cred_def: CredDefResult,
 ):
     """Testing issuing an indy credential using issue-credential/1.0.
     Issuer and holder should already be connected.
@@ -142,7 +138,7 @@ async def alice_cred_ex_v2(
     bob: Controller,
     alice_conn: ConnRecord,
     bob_conn: ConnRecord,
-    cred_def: CredentialDefinitionSendResult,
+    cred_def: CredDefResult,
 ):
     """Testing issuing an indy credential using issue-credential/2.0.
     Issuer and holder should already be connected.
