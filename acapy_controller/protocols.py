@@ -88,11 +88,11 @@ async def connection(
         f"/connections/{invitee_conn.connection_id}/accept-invitation",
     )
 
-    inviter_conn = await inviter.record_with_values(
+    inviter_conn = await inviter.event_with_values(
         topic="connections",
         invitation_key=inviter_conn.invitation_key,
         state="request",
-        record_type=ConnRecord,
+        event_type=ConnRecord,
     )
 
     inviter_conn = await inviter.post(
@@ -100,7 +100,7 @@ async def connection(
         response=ConnRecord,
     )
 
-    await invitee.record_with_values(
+    await invitee.event_with_values(
         topic="connections",
         connection_id=invitee_conn.connection_id,
         rfc23_state="response-received",
@@ -110,15 +110,15 @@ async def connection(
         json={"comment": "Making connection active"},
     )
 
-    inviter_conn = await inviter.record_with_values(
+    inviter_conn = await inviter.event_with_values(
         topic="connections",
-        record_type=ConnRecord,
+        event_type=ConnRecord,
         connection_id=inviter_conn.connection_id,
         rfc23_state="completed",
     )
-    invitee_conn = await invitee.record_with_values(
+    invitee_conn = await invitee.event_with_values(
         topic="connections",
-        record_type=ConnRecord,
+        event_type=ConnRecord,
         connection_id=invitee_conn.connection_id,
         rfc23_state="completed",
     )
@@ -206,10 +206,10 @@ async def didexchange(
     )
 
     if use_existing_connection and invitee_oob_record == "reuse-accepted":
-        inviter_oob_record = await inviter.record_with_values(
+        inviter_oob_record = await inviter.event_with_values(
             topic="out_of_band",
             invi_msg_id=invite.id,
-            record_type=OobRecord,
+            event_type=OobRecord,
         )
         inviter_conn = await inviter.get(
             f"/connections/{inviter_oob_record.connection_id}",
@@ -225,15 +225,15 @@ async def didexchange(
         f"/didexchange/{invitee_oob_record.connection_id}/accept-invitation",
         response=ConnRecord,
     )
-    inviter_oob_record = await inviter.record_with_values(
+    inviter_oob_record = await inviter.event_with_values(
         topic="out_of_band",
         invi_msg_id=invite.id,
         state="done",
-        record_type=OobRecord,
+        event_type=OobRecord,
     )
-    inviter_conn = await inviter.record_with_values(
+    inviter_conn = await inviter.event_with_values(
         topic="connections",
-        record_type=ConnRecord,
+        event_type=ConnRecord,
         rfc23_state="request-received",
         invitation_key=inviter_oob_record.our_recipient_key,
     )
@@ -245,22 +245,22 @@ async def didexchange(
         response=ConnRecord,
     )
 
-    await invitee.record_with_values(
+    await invitee.event_with_values(
         topic="connections",
         connection_id=invitee_conn.connection_id,
         rfc23_state="response-received",
     )
-    invitee_conn = await invitee.record_with_values(
+    invitee_conn = await invitee.event_with_values(
         topic="connections",
         connection_id=invitee_conn.connection_id,
         rfc23_state="completed",
-        record_type=ConnRecord,
+        event_type=ConnRecord,
     )
-    inviter_conn = await inviter.record_with_values(
+    inviter_conn = await inviter.event_with_values(
         topic="connections",
         connection_id=inviter_conn.connection_id,
         rfc23_state="completed",
-        record_type=ConnRecord,
+        event_type=ConnRecord,
     )
 
     return inviter_conn, invitee_conn
@@ -285,25 +285,25 @@ async def request_mediation_v1(
         f"/mediation/request/{client_connection_id}",
         response=MediationRecord,
     )
-    mediator_record = await mediator.record_with_values(
+    mediator_record = await mediator.event_with_values(
         topic="mediation",
         connection_id=mediator_connection_id,
-        record_type=MediationRecord,
+        event_type=MediationRecord,
     )
     await mediator.post(f"/mediation/requests/{mediator_record.mediation_id}/grant")
-    client_record = await client.record_with_values(
+    client_record = await client.event_with_values(
         topic="mediation",
         connection_id=client_connection_id,
         mediation_id=client_record.mediation_id,
         state="granted",
-        record_type=MediationRecord,
+        event_type=MediationRecord,
     )
-    mediator_record = await mediator.record_with_values(
+    mediator_record = await mediator.event_with_values(
         topic="mediation",
         connection_id=mediator_connection_id,
         mediation_id=mediator_record.mediation_id,
         state="granted",
-        record_type=MediationRecord,
+        event_type=MediationRecord,
     )
     return mediator_record, client_record
 
@@ -472,9 +472,9 @@ async def indy_issue_credential_v1(
     )
     issuer_cred_ex_id = issuer_cred_ex.credential_exchange_id
 
-    holder_cred_ex = await holder.record_with_values(
+    holder_cred_ex = await holder.event_with_values(
         topic="issue_credential",
-        record_type=V10CredentialExchange,
+        event_type=V10CredentialExchange,
         connection_id=holder_connection_id,
         state="offer_received",
     )
@@ -485,7 +485,7 @@ async def indy_issue_credential_v1(
         response=V10CredentialExchange,
     )
 
-    await issuer.record_with_values(
+    await issuer.event_with_values(
         topic="issue_credential",
         credential_exchange_id=issuer_cred_ex_id,
         state="request_received",
@@ -500,7 +500,7 @@ async def indy_issue_credential_v1(
         response=V10CredentialExchange,
     )
 
-    await holder.record_with_values(
+    await holder.event_with_values(
         topic="issue_credential",
         credential_exchange_id=holder_cred_ex_id,
         state="credential_received",
@@ -511,16 +511,16 @@ async def indy_issue_credential_v1(
         json={},
         response=V10CredentialExchange,
     )
-    issuer_cred_ex = await issuer.record_with_values(
+    issuer_cred_ex = await issuer.event_with_values(
         topic="issue_credential",
-        record_type=V10CredentialExchange,
+        event_type=V10CredentialExchange,
         credential_exchange_id=issuer_cred_ex_id,
         state="credential_acked",
     )
 
-    holder_cred_ex = await holder.record_with_values(
+    holder_cred_ex = await holder.event_with_values(
         topic="issue_credential",
-        record_type=V10CredentialExchange,
+        event_type=V10CredentialExchange,
         credential_exchange_id=holder_cred_ex_id,
         state="credential_acked",
     )
@@ -592,9 +592,9 @@ async def indy_issue_credential_v2(
     )
     issuer_cred_ex_id = issuer_cred_ex.cred_ex_id
 
-    holder_cred_ex = await holder.record_with_values(
+    holder_cred_ex = await holder.event_with_values(
         topic="issue_credential_v2_0",
-        record_type=V20CredExRecord,
+        event_type=V20CredExRecord,
         connection_id=holder_connection_id,
         state="offer-received",
     )
@@ -605,7 +605,7 @@ async def indy_issue_credential_v2(
         response=V20CredExRecord,
     )
 
-    await issuer.record_with_values(
+    await issuer.event_with_values(
         topic="issue_credential_v2_0",
         cred_ex_id=issuer_cred_ex_id,
         state="request-received",
@@ -617,7 +617,7 @@ async def indy_issue_credential_v2(
         response=V20CredExRecordDetail,
     )
 
-    await holder.record_with_values(
+    await holder.event_with_values(
         topic="issue_credential_v2_0",
         cred_ex_id=holder_cred_ex_id,
         state="credential-received",
@@ -628,26 +628,26 @@ async def indy_issue_credential_v2(
         json={},
         response=V20CredExRecordDetail,
     )
-    issuer_cred_ex = await issuer.record_with_values(
+    issuer_cred_ex = await issuer.event_with_values(
         topic="issue_credential_v2_0",
-        record_type=V20CredExRecord,
+        event_type=V20CredExRecord,
         cred_ex_id=issuer_cred_ex_id,
         state="done",
     )
-    issuer_indy_record = await issuer.record_with_values(
+    issuer_indy_record = await issuer.event_with_values(
         topic="issue_credential_v2_0_indy",
-        record_type=V20CredExRecordIndy,
+        event_type=V20CredExRecordIndy,
     )
 
-    holder_cred_ex = await holder.record_with_values(
+    holder_cred_ex = await holder.event_with_values(
         topic="issue_credential_v2_0",
-        record_type=V20CredExRecord,
+        event_type=V20CredExRecord,
         cred_ex_id=holder_cred_ex_id,
         state="done",
     )
-    holder_indy_record = await holder.record_with_values(
+    holder_indy_record = await holder.event_with_values(
         topic="issue_credential_v2_0_indy",
-        record_type=V20CredExRecordIndy,
+        event_type=V20CredExRecordIndy,
     )
 
     return (
@@ -782,9 +782,9 @@ async def indy_present_proof_v1(
     )
     verifier_pres_ex_id = verifier_pres_ex.presentation_exchange_id
 
-    holder_pres_ex = await holder.record_with_values(
+    holder_pres_ex = await holder.event_with_values(
         topic="present_proof",
-        record_type=V10PresentationExchange,
+        event_type=V10PresentationExchange,
         connection_id=holder_connection_id,
         state="request_received",
     )
@@ -804,9 +804,9 @@ async def indy_present_proof_v1(
         response=V10PresentationExchange,
     )
 
-    await verifier.record_with_values(
+    await verifier.event_with_values(
         topic="present_proof",
-        record_type=V10PresentationExchange,
+        event_type=V10PresentationExchange,
         presentation_exchange_id=verifier_pres_ex_id,
         state="presentation_received",
     )
@@ -815,16 +815,16 @@ async def indy_present_proof_v1(
         json={},
         response=V10PresentationExchange,
     )
-    verifier_pres_ex = await verifier.record_with_values(
+    verifier_pres_ex = await verifier.event_with_values(
         topic="present_proof",
-        record_type=V10PresentationExchange,
+        event_type=V10PresentationExchange,
         presentation_exchange_id=verifier_pres_ex_id,
         state="verified",
     )
 
-    holder_pres_ex = await holder.record_with_values(
+    holder_pres_ex = await holder.event_with_values(
         topic="present_proof",
-        record_type=V10PresentationExchange,
+        event_type=V10PresentationExchange,
         presentation_exchange_id=holder_pres_ex_id,
         state="presentation_acked",
     )
@@ -899,9 +899,9 @@ async def indy_present_proof_v2(
     )
     verifier_pres_ex_id = verifier_pres_ex.pres_ex_id
 
-    holder_pres_ex = await holder.record_with_values(
+    holder_pres_ex = await holder.event_with_values(
         topic="present_proof_v2_0",
-        record_type=V20PresExRecord,
+        event_type=V20PresExRecord,
         connection_id=holder_connection_id,
         state="request-received",
     )
@@ -926,9 +926,9 @@ async def indy_present_proof_v2(
         response=V20PresExRecord,
     )
 
-    await verifier.record_with_values(
+    await verifier.event_with_values(
         topic="present_proof_v2_0",
-        record_type=V20PresExRecord,
+        event_type=V20PresExRecord,
         pres_ex_id=verifier_pres_ex_id,
         state="presentation-received",
     )
@@ -937,16 +937,16 @@ async def indy_present_proof_v2(
         json={},
         response=V20PresExRecord,
     )
-    verifier_pres_ex = await verifier.record_with_values(
+    verifier_pres_ex = await verifier.event_with_values(
         topic="present_proof_v2_0",
-        record_type=V20PresExRecord,
+        event_type=V20PresExRecord,
         pres_ex_id=verifier_pres_ex_id,
         state="done",
     )
 
-    holder_pres_ex = await holder.record_with_values(
+    holder_pres_ex = await holder.event_with_values(
         topic="present_proof_v2_0",
-        record_type=V20PresExRecord,
+        event_type=V20PresExRecord,
         pres_ex_id=holder_pres_ex_id,
         state="done",
     )
@@ -1076,9 +1076,9 @@ async def jsonld_issue_credential(
     )
     issuer_cred_ex_id = issuer_cred_ex.cred_ex_id
 
-    holder_cred_ex = await holder.record_with_values(
+    holder_cred_ex = await holder.event_with_values(
         topic="issue_credential_v2_0",
-        record_type=V20CredExRecord,
+        event_type=V20CredExRecord,
         connection_id=holder_connection_id,
         state="offer-received",
     )
@@ -1089,7 +1089,7 @@ async def jsonld_issue_credential(
         response=V20CredExRecord,
     )
 
-    await issuer.record_with_values(
+    await issuer.event_with_values(
         topic="issue_credential_v2_0",
         cred_ex_id=issuer_cred_ex_id,
         state="request-received",
@@ -1101,7 +1101,7 @@ async def jsonld_issue_credential(
         response=V20CredExRecordDetail,
     )
 
-    await holder.record_with_values(
+    await holder.event_with_values(
         topic="issue_credential_v2_0",
         cred_ex_id=holder_cred_ex_id,
         state="credential-received",
@@ -1112,16 +1112,16 @@ async def jsonld_issue_credential(
         json={},
         response=V20CredExRecordDetail,
     )
-    issuer_cred_ex = await issuer.record_with_values(
+    issuer_cred_ex = await issuer.event_with_values(
         topic="issue_credential_v2_0",
-        record_type=V20CredExRecord,
+        event_type=V20CredExRecord,
         cred_ex_id=issuer_cred_ex_id,
         state="done",
     )
 
-    holder_cred_ex = await holder.record_with_values(
+    holder_cred_ex = await holder.event_with_values(
         topic="issue_credential_v2_0",
-        record_type=V20CredExRecord,
+        event_type=V20CredExRecord,
         cred_ex_id=holder_cred_ex_id,
         state="done",
     )
@@ -1158,9 +1158,9 @@ async def jsonld_present_proof(
     )
     verifier_pres_ex_id = verifier_pres_ex.pres_ex_id
 
-    holder_pres_ex = await holder.record_with_values(
+    holder_pres_ex = await holder.event_with_values(
         topic="present_proof_v2_0",
-        record_type=V20PresExRecord,
+        event_type=V20PresExRecord,
         connection_id=holder_connection_id,
         state="request-received",
     )
@@ -1180,9 +1180,9 @@ async def jsonld_present_proof(
         response=V20PresExRecord,
     )
 
-    await verifier.record_with_values(
+    await verifier.event_with_values(
         topic="present_proof_v2_0",
-        record_type=V20PresExRecord,
+        event_type=V20PresExRecord,
         pres_ex_id=verifier_pres_ex_id,
         state="presentation-received",
     )
@@ -1191,16 +1191,16 @@ async def jsonld_present_proof(
         json={},
         response=V20PresExRecord,
     )
-    verifier_pres_ex = await verifier.record_with_values(
+    verifier_pres_ex = await verifier.event_with_values(
         topic="present_proof_v2_0",
-        record_type=V20PresExRecord,
+        event_type=V20PresExRecord,
         pres_ex_id=verifier_pres_ex_id,
         state="done",
     )
 
-    holder_pres_ex = await holder.record_with_values(
+    holder_pres_ex = await holder.event_with_values(
         topic="present_proof_v2_0",
-        record_type=V20PresExRecord,
+        event_type=V20PresExRecord,
         pres_ex_id=holder_pres_ex_id,
         state="done",
     )

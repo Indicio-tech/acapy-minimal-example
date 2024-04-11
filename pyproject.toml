@@ -13,7 +13,7 @@ pydantic = {version = "^1.10.2", optional = true}
 blessings = "^1.7"
 
 [tool.poetry.extras]
-pydantic = ["pydantic"]
+models = ["pydantic"]
 
 [tool.poetry.dev-dependencies]
 black = "^24.3.0"

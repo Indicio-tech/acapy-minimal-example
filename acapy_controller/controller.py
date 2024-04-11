@@ -570,18 +570,11 @@ class Controller:
         *,
         record_type: Optional[Type[T]] = None,
     ) -> Union[T, Mapping[str, Any]]:
-        """Get a record from an event."""
-        try:
-            event = await self.event_queue.get(
-                lambda event: event.topic == topic
-                and (select(event) if select else True)
-            )
-        except asyncio.TimeoutError:
-            raise ControllerError(
-                f"Record from {self.label} with topic {topic} not received "
-                "before timeout"
-            ) from None
-        return _deserialize(event.payload, record_type)
+        """Get a record from an event.
+
+        DEPRECATED: Use `event` instead.
+        """
+        return await self.event(topic, select=select, event_type=record_type)
 
     @overload
     async def record_with_values(
@@ -609,7 +602,86 @@ class Controller:
         timeout: int = 5,
         **values,
     ) -> Union[T, Mapping[str, Any]]:
-        """Get a record from an event with values matching those passed in."""
+        """Get a record from an event with values matching those passed in.
+
+        DEPRECATED: Use `event_with_values` instead.
+        """
+        return await self.event_with_values(
+            topic, event_type=record_type, timeout=timeout, **values
+        )
+
+    @overload
+    async def event(
+        self,
+        topic: str,
+        select: Optional[Select[Event]] = None,
+    ) -> Mapping[str, Any]: ...
+
+    @overload
+    async def event(
+        self,
+        topic: str,
+        select: Optional[Select[Event]] = None,
+        *,
+        event_type: None,
+    ) -> Mapping[str, Any]: ...
+
+    @overload
+    async def event(
+        self,
+        topic: str,
+        select: Optional[Select[Event]] = None,
+        *,
+        event_type: Type[T],
+    ) -> T: ...
+
+    async def event(
+        self,
+        topic: str,
+        select: Optional[Select[Event]] = None,
+        *,
+        event_type: Optional[Type[T]] = None,
+    ) -> Union[T, Mapping[str, Any]]:
+        """Await an event matching a given topic and condition."""
+        try:
+            event = await self.event_queue.get(
+                lambda event: event.topic == topic
+                and (select(event) if select else True)
+            )
+        except asyncio.TimeoutError:
+            raise ControllerError(
+                f"Event from {self.label} with topic {topic} not received "
+                "before timeout"
+            ) from None
+        return _deserialize(event.payload, event_type)
+
+    @overload
+    async def event_with_values(
+        self,
+        topic: str,
+        *,
+        event_type: Type[T],
+        **values,
+    ) -> T: ...
+
+    @overload
+    async def event_with_values(
+        self,
+        topic: str,
+        *,
+        event_type: None = None,
+        **values,
+    ) -> Mapping[str, Any]: ...
+
+    async def event_with_values(
+        self,
+        topic: str,
+        *,
+        event_type: Optional[Type[T]] = None,
+        timeout: int = 5,
+        **values,
+    ) -> Union[T, Mapping[str, Any]]:
+        """Await an event matching a given topic and set of values."""
         try:
             event = await self.event_queue.get(
                 lambda event: event.topic == topic
@@ -623,4 +695,4 @@ class Controller:
                 f"Record from {self.label} with topic {topic} and values\n\t{values}\n"
                 "not received before timeout"
             ) from None
-        return _deserialize(event.payload, record_type)
+        return _deserialize(event.payload, event_type)
