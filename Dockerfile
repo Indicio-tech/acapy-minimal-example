@@ -10,7 +10,7 @@ RUN poetry config virtualenvs.in-project true
 
 # Setup project
 RUN mkdir acapy_controller && touch acapy_controller/__init__.py
-COPY pyproject.toml poetry.lock ./
+COPY pyproject.toml poetry.lock README.md ./
 ARG install_flags=--no-dev
 RUN poetry install ${install_flags} -E models
 
