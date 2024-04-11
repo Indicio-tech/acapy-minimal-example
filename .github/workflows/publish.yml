@@ -20,12 +20,11 @@ jobs:
           cache: poetry
       - name: Install dependencies
         run: poetry install
-      - name: Confidence check (run tests)
+      - name: Run tests
         run: |
           docker-compose run tests
       - name: Build package
         run: |
           poetry build
       - name: Publish package
-        run: |
-          poetry publish
+        uses: pypa/gh-action-pypi-publish@v1.8.14
