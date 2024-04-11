@@ -4,6 +4,8 @@ version = "0.1.0"
 description = "ACA-Py Controller"
 authors = ["Daniel Bluhm <dbluhm@pm.me>"]
 license = "Apache-2.0"
+readme = "README.md"
+homepage = "https://github.com/indicio-tech/acapy-minimal-example"
 
 [tool.poetry.dependencies]
 python = "^3.10"
