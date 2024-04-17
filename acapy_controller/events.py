@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, AsyncIterator, Mapping, Optional
 
 from aiohttp import ClientSession, WSMsgType
 from async_selective_queue import AsyncSelectiveQueue as Queue
-from attr import dataclass
+from dataclasses import dataclass
 
 if TYPE_CHECKING:
     from .controller import Controller
