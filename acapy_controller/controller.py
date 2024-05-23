@@ -358,8 +358,8 @@ class Controller:
         *,
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
-        response: None,
-    ) -> Mapping[str, Any]: ...
+        response: Type[T],
+    ) -> T: ...
 
     @overload
     async def get(
@@ -368,8 +368,8 @@ class Controller:
         *,
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
-        response: Type[T],
-    ) -> T: ...
+        response: None,
+    ) -> Mapping[str, Any]: ...
 
     async def get(
         self,
@@ -446,8 +446,8 @@ class Controller:
         json: Optional[Serializable] = None,
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
-        response: None = None,
-    ) -> Mapping[str, Any]: ...
+        response: Type[T],
+    ) -> T: ...
 
     @overload
     async def post(
@@ -458,8 +458,8 @@ class Controller:
         json: Optional[Serializable] = None,
         params: Optional[Mapping[str, Any]] = None,
         headers: Optional[Mapping[str, str]] = None,
-        response: Type[T],
-    ) -> T: ...
+        response: None = None,
+    ) -> Mapping[str, Any]: ...
 
     async def post(
         self,
