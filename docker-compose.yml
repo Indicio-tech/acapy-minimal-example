@@ -2,7 +2,7 @@
 version: "3"
 services:
   alice:
-    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.12.1rc1
+    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.12.1
     # image: acapy-test-image
     # build:
     #   context: .
@@ -38,7 +38,7 @@ services:
         condition: service_started
 
   bob:
-    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.12.1rc1
+    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.12.1
     # image: acapy-test-image
     # build:
     #   context: .

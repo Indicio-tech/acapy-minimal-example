@@ -1,7 +1,7 @@
 version: "3"
 services:
   alice:
-    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.12.1rc1
+    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.12.1
     ports:
       - "3001:3001"
     command: >
@@ -26,7 +26,7 @@ services:
 
 
   bob:
-    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.12.1rc1
+    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.9-0.12.1
     ports:
       - "3002:3001"
     command: >
