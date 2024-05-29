@@ -298,7 +298,7 @@ class Controller:
         body = await resp.text()
         if resp.ok:
             raise ControllerError(
-                "Unexpected content type f{resp.content_type}: {body}"
+                f"Unexpected content type {resp.content_type}: {body}"
             )
         raise ControllerError(f"Request failed: {resp.url} {body}")
 
