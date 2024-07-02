@@ -11,7 +11,7 @@ homepage = "https://github.com/indicio-tech/acapy-minimal-example"
 python = "^3.10"
 async-selective-queue = "^0.1.1"
 aiohttp = "^3.9.5"
-pydantic = {version = "^1.10.2", optional = true}
+pydantic = {version = ">=1.10.2,<3.0.0", optional = true}
 blessings = "^1.7"
 
 [tool.poetry.extras]
