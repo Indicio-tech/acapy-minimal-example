@@ -18,9 +18,9 @@ class BaseModel(PydanticBaseModel):
 
     def serialize(self):
         """Serialize the model to a dictionary."""
-        return self.dict(by_alias=True, exclude_unset=True, exclude_none=True)
+        return self.model_dump(by_alias=True, exclude_unset=True, exclude_none=True)
 
     @classmethod
     def deserialize(cls: Type[T], value: Mapping[str, Any]) -> T:
         """Deserialize a dictionary to a model."""
-        return cls.parse_obj(value)
+        return cls.model_validate(value)
