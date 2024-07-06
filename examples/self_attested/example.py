@@ -4,7 +4,6 @@ This script is for you to use to reproduce a bug or demonstrate a feature.
 """
 
 import asyncio
-import json
 from os import getenv
 from secrets import randbelow
 from typing import List
@@ -146,8 +145,6 @@ async def main():
             presentation_exchange_id=bob_pres_ex_id,
             state="presentation_acked",
         )
-
-        print(json.dumps(alice_pres_ex.model_dump(by_alias=True), indent=2))
 
 
 if __name__ == "__main__":
