@@ -4,6 +4,7 @@ This script is for you to use to reproduce a bug or demonstrate a feature.
 """
 
 import asyncio
+import json
 from os import getenv
 from secrets import randbelow
 from typing import List
@@ -11,9 +12,7 @@ from uuid import uuid4
 
 from acapy_controller import Controller
 from acapy_controller.logging import logging_to_stdout
-from acapy_controller.models import (
-    V10PresentationExchange,
-)
+from acapy_controller.models import V10PresentationExchange
 from acapy_controller.protocols import (
     IndyCredPrecis,
     didexchange,
@@ -114,7 +113,7 @@ async def main():
             response=List[IndyCredPrecis],
         )
         pres_spec = indy_auto_select_credentials_for_presentation_request(
-            bob_pres_ex.presentation_request, relevant_creds
+            bob_pres_ex.presentation_request.serialize(), relevant_creds
         )
         pres_spec.self_attested_attributes = {self_uuid: "self-attested data goes here"}
         bob_pres_ex = await bob.post(
@@ -148,7 +147,7 @@ async def main():
             state="presentation_acked",
         )
 
-        print(alice_pres_ex.json(by_alias=True, indent=2))
+        print(json.dumps(alice_pres_ex.model_dump(by_alias=True), indent=2))
 
 
 if __name__ == "__main__":
