@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "acapy-controller"
-version = "0.1.1"
+version = "0.2.0"
 description = "ACA-Py Controller"
 authors = ["Daniel Bluhm <dbluhm@pm.me>"]
 license = "Apache-2.0"
