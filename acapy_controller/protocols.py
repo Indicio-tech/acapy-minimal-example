@@ -156,6 +156,7 @@ async def oob_invitation(
     *,
     use_public_did: bool = False,
     multi_use: Optional[bool] = None,
+    handshake_protocols: Optional[List[str]] = None,
 ) -> InvitationMessage:
     """Create an OOB invitation.
 
@@ -165,7 +166,8 @@ async def oob_invitation(
     invite_record = await inviter.post(
         "/out-of-band/create-invitation",
         json={
-            "handshake_protocols": ["https://didcomm.org/didexchange/1.0"],
+            "handshake_protocols": handshake_protocols
+            or ["https://didcomm.org/didexchange/1.1"],
             "use_public_did": use_public_did,
         },
         params=params(
