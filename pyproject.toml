@@ -18,7 +18,7 @@ blessings = "^1.7"
 models = ["pydantic"]
 
 [tool.poetry.dev-dependencies]
-black = "^24.4.2"
+black = "^24.8.0"
 ruff = "^0.6.5"
 pre-commit = "^3.7.0"
 pytest = "^8.2.1"
