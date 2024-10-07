@@ -19,8 +19,8 @@ models = ["pydantic"]
 
 [tool.poetry.dev-dependencies]
 black = "^24.8.0"
-ruff = "^0.6.8"
-pre-commit = "^3.8.0"
+ruff = "^0.6.9"
+pre-commit = "^4.0.0"
 pytest = "^8.3.3"
 pytest-asyncio = "^0.24.0"
 
