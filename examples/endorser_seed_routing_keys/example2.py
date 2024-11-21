@@ -24,18 +24,35 @@ ENDORSER = getenv("ENDORSER", "http://endorser:3001")
 
 async def main():
     """Test Controller protocols."""
-    async with Controller(base_url=AUTHOR) as author, Controller(base_url=ENDORSER) as endorser:
-        # 1. Want to set up endorser with its seed (Alex)
-        # (brb need to spin up agent with a seed to see which endpoint we can hit)
+    max_retries = 10
+    retry_delay = 5  # seconds
 
-         # 2. Make OOB invitation from endorser to author (Athan) 
-         # 3. Have author receive invitation (Athan)
-        with section("Establish connection"):
-          endorser_conn, author_conn = await didexchange(endorser, author) # Endorser creates invite for author
-          # ^didexchange would work here
+    for attempt in range(max_retries):
+        try:
+            async with Controller(base_url=AUTHOR) as author, Controller(base_url=ENDORSER) as endorser:
+                # 1. Want to set up endorser with its seed (Alex)
+                # (brb need to spin up agent with a seed to see which endpoint we can hit)
 
-          # 4. Verify connection in active or done state (Athan)
-          assert(endorser_conn.rfc23_state == "completed")
+                # 2. Make OOB invitation from endorser to author (Athan) 
+                # 3. Have author receive invitation (Athan)
+                with section("Establish connection"):
+                    endorser_oob_invite = await oob_invitation(endorser, use_public_did=True, multi_use=False)
+                    if endorser_oob_invite:
+                        endorser_conn, author_conn = await didexchange(endorser, author, endorser_oob_invite)  # Endorser creates invite for author
+                        # ^didexchange would work here
+
+                        # 4. Verify connection in active or done state (Athan)
+                        assert endorser_conn.rfc23_state == "completed"
+                        print("Connection established successfully.")
+                        return
+        except Exception as e:
+            print(f"Attempt {attempt + 1} failed: {e}")
+            if attempt < max_retries - 1:
+                print(f"Retrying in {retry_delay} seconds...")
+                await asyncio.sleep(retry_delay)
+            else:
+                print("Max retries reached. Exiting.")
+                raise
 
 
 if __name__ == "__main__":

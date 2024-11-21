@@ -78,7 +78,10 @@ async def main():
          # 2. Make OOB invitation from endorser to author (Athan) 
          # 3. Have author receive invitation (Athan)
         with section("Establish connection"):
-          endorser_conn, author_conn = await didexchange(endorser, author) # Endorser creates invite for author
+          # Create OOB invite with endorser, using public did
+          # Pass in invite here 
+          endorser_oob_invite = await oob_invitation(endorser, use_public_did=True, multi_use=False)
+          endorser_conn, author_conn = await didexchange(endorser, author, endorser_oob_invite) # Endorser creates invite for author
           # ^didexchange would work here
 
           # 4. Verify connection in active or done state (Athan)
