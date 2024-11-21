@@ -32,6 +32,39 @@ services:
     depends_on:
       tails:
         condition: service_started
+    
+  second_author:
+    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.12-1.0.0
+    platform: linux/amd64
+    ports:
+      - "3003:3002"
+    environment:
+      RUST_LOG: 'aries-askar::log::target=error'
+    command: >
+      start
+        --label SecondAuthor
+        --inbound-transport http 0.0.0.0 3003
+        --outbound-transport http
+        --endpoint http://second_author:3003
+        --admin 0.0.0.0 3002
+        --admin-insecure-mode
+        --tails-server-base-url http://tails:6543
+        --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_testnet_genesis
+        --wallet-type askar
+        --wallet-name SecondAuthor
+        --wallet-key insecure
+        --auto-provision
+        --log-level debug
+        --debug-webhooks
+    healthcheck:
+      test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3002/status/live" | grep "200" > /dev/null
+      start_period: 30s
+      interval: 7s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      tails:
+        condition: service_started
 
   endorser:
     image: ghcr.io/hyperledger/aries-cloudagent-python:py3.12-1.0.0
@@ -57,13 +90,13 @@ services:
         --log-level debug
         --debug-webhooks
         --monitor-revocation-notification
-        --seed voojeil1eephahf0vooch4Eireihooli
     healthcheck:
       test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3001/status/live" | grep "200" > /dev/null
       start_period: 30s
       interval: 7s
       timeout: 5s
       retries: 5
+    restart: on-failure 
 
   tails:
     image: ghcr.io/bcgov/tails-server:latest
@@ -79,9 +112,9 @@ services:
       --storage-path /tmp/tails-files
       --log-level INFO
 
-  example:
+  example1:
     platform: linux/amd64
-    container_name: controller
+    container_name: controller_one
     build:
       context: ../..
     environment:
@@ -89,8 +122,26 @@ services:
       - endorser=http://endorser:3001
     volumes:
       - ../../acapy_controller:/usr/src/app/acapy_controller:z
-      - ./example.py:/usr/src/app/example.py:ro,z
-    command: python -m example
+      - ./example1.py:/usr/src/app/example1.py:ro,z
+    command: python -m example1
+    depends_on:
+      author:
+        condition: service_healthy
+      endorser:
+        condition: service_healthy
+
+  example2:
+    platform: linux/amd64
+    container_name: controller_two
+    build:
+      context: ../..
+    environment:
+      - author=http://author:3001
+      - endorser=http://endorser:3001
+    volumes:
+      - ../../acapy_controller:/usr/src/app/acapy_controller:z
+      - ./example2.py:/usr/src/app/example2.py:ro,z
+    command: python -m example2
     depends_on:
       author:
         condition: service_healthy

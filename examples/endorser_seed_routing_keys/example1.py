@@ -13,9 +13,11 @@ from acapy_controller.protocols import (
     didexchange, 
     indy_anoncred_credential_artifacts,
     indy_anoncred_onboard,
-    oob_invitation
+    oob_invitation,
+    trustping
 )
 import httpx
+from httpx import RequestError
 
 AUTHOR = getenv("AUTHOR", "http://author:3001")
 ENDORSER = getenv("ENDORSER", "http://endorser:3001")
@@ -27,17 +29,10 @@ async def main():
         # 1. Want to set up endorser with its seed (Alex)
         # (brb need to spin up agent with a seed to see which endpoint we can hit)
         with section("Grab DID and Verkey from Seed"): 
-           print("GRABBING SEED INFORMATION")
            seed_information = await endorser.get("/wallet/did/public")
-           print("DID: ", seed_information["result"]["did"])
            endorser_did = seed_information["result"]["did"]
-           print("Verkey: ", seed_information["result"]["verkey"])
            endorser_verkey = seed_information["result"]["verkey"]
-           print(seed_information)
-           # Grab did and verkey
 
-        
-           
         with section("Onboard Endorser"):
             with section("Accept TAA"):
                 config = (await endorser.get("/status/config"))["config"]
@@ -80,38 +75,52 @@ async def main():
 
                 await endorser.post("/wallet/did/public", params=params(did=endorser_did, verkey=endorser_verkey))
 
-            # Endorser creates schema
-            schema, cred_def = await indy_anoncred_credential_artifacts(
-                endorser,
-                ["firstname", "lastname"],
-                support_revocation=True,
-            )
-            print("DID WE DO A THING?")
-            print("Schemay: ", schema)
-
-        # Attempt to create schema to see if it works
-
          # 2. Make OOB invitation from endorser to author (Athan) 
          # 3. Have author receive invitation (Athan)
         with section("Establish connection"):
           endorser_conn, author_conn = await didexchange(endorser, author) # Endorser creates invite for author
           # ^didexchange would work here
-          print("what information do we have to work with")
-          print("endorser_conn")
-          print(endorser_conn)
-          print("author_conn")
-          print(author_conn)
 
           # 4. Verify connection in active or done state (Athan)
-              # this is not correct, surely? is there a built-in way to do logging or is this it?
-          # assert(endorser_con.rfc23_state == "completed" or endorser_con.rfc23_state == "done") 
-          # assert(author_con.rfc23_state == "completed" or author_con.rfc23_state == "done") 
+          assert(endorser_conn.rfc23_state == "completed")
 
-          # 5. Down endorser, down author, respin them back up (Alex)
-          # 6. Verify it's back up^ 
-          # 7. Make OOB invitation from endorser to author (Athan) --> this shouldn't fail, but does
-          # endorser_con, author_con = await didexchange(endorser, author)
-              # use-existing-connection = True?
+        #   # 5. Down endorser, down author, respin them back up (Alex)
+        # with section("Down agents"):
+        #     await endorser.get("/shutdown")
+
+        #     await asyncio.sleep(10)
+
+        #      # 5b. Can we ping? If not, yay!
+        #     print("use endorser")
+        #     max_retries = 10
+        #     for attempt in range(max_retries):
+        #         try:
+        #             response = await trustping(endorser, endorser_conn)
+        #             print(response)
+        #             response.raise_for_status()
+        #             print("Shutdown successful")
+        #             return
+        #         except RequestError as exc:
+        #             print(f"Attempt {attempt + 1} failed: {exc}")
+        #             if attempt < max_retries - 1:
+        #                 await asyncio.sleep(2 ** attempt)  # Exponential backoff
+        #             else:
+        #                 print("Max retries reached. Could not shutdown the agent.")
+        #                 raise
+            
+        #     print("use author")
+        #     await trustping(author, author_conn)
+
+        #     # 6. Verify it's back up^ 
+        #     print("use endorser")
+        #     await trustping(endorser, endorser_conn)
+        #     print("use author")
+        #     await trustping(author, author_conn)
+        #     # 6b. Can we ping? If so, yay!
+
+        #     # 7. Make OOB invitation from endorser to author (Athan) --> this shouldn't fail, but does
+        #     # endorser_con, author_con = await didexchange(endorser, author)
+        #         # use-existing-connection = True?
 
 
 if __name__ == "__main__":
