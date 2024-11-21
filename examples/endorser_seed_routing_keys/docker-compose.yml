@@ -90,6 +90,7 @@ services:
         --auto-provision
         --log-level debug
         --debug-webhooks
+        --seed maeJoux5oeK9Tietor8Oajux3iDoopha
         --monitor-revocation-notification
         --public-invites
     healthcheck:
