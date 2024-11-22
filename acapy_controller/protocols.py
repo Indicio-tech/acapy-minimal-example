@@ -19,9 +19,9 @@ class ConnRecord(Minimal):
     """Connection record."""
 
     connection_id: str
-    invitation_key: str
     state: str
     rfc23_state: str
+    invitation_key: Optional[str] = None
 
 
 async def trustping(
