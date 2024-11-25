@@ -14,7 +14,7 @@ if [ -z "$SEED" ]; then
 fi
 
 
-LINE_NUMBER=93
+LINE_NUMBER=241
 INSERT_CONTENT="        --seed $SEED"
 
 # Insert the content into the specific line in docker-compose.yml

@@ -1,5 +1,79 @@
 version: "3"
 services:
+  # ------------------------
+  # -------- Author --------
+  # ------------------------
+  # DB Service
+  authordb:
+    image: postgres:14.8
+    platform: linux/amd64
+    healthcheck:
+      test: "pg_isready --username=${DB_SERVER_USERNAME}"
+      start_period: 30s
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    hostname: db
+    restart: unless-stopped
+    #    ports: # Uncomment to access postgres outside of containers
+    #      - "5432:5432"
+    volumes:
+      - ./db/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d/
+    environment:
+      POSTGRES_USER: ${DB_SERVER_USERNAME}
+      POSTGRES_PASSWORD: ${DB_SERVER_PASSWORD}
+      AUTHOR_AGENT_DB: ${AUTHOR_AGENT_DB}
+      AUTHOR_AGENT_DB_USERNAME: ${AUTHOR_AGENT_DB_USERNAME}
+      AUTHOR_AGENT_DB_PASSWORD: ${AUTHOR_AGENT_DB_PASSWORD}
+      AUTHOR_PROXY_DB: ${AUTHOR_PROXY_DB}
+      AUTHOR_PROXY_DB_USERNAME: ${AUTHOR_PROXY_DB_USERNAME}
+      AUTHOR_PROXY_DB_PASSWORD: ${AUTHOR_PROXY_DB_PASSWORD}
+    networks:
+      - app-network
+
+  author-proxy:
+    image: ghcr.io/indicio-tech/proxy-mediator:0.1.6
+    healthcheck:
+      test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3000/status" | grep "200" > /dev/null
+      start_period: 30s
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      ENDPOINT: http://author-proxy:3000
+      ENABLE_STORE: "true"
+      REPO_URI: "${AUTHOR_PROXY_DB_COMBINED}"
+      REPO_KEY: insecure
+      LOG_LEVEL: WARNING
+    networks:
+      - app-network
+    depends_on:
+      authordb:
+        condition: service_healthy
+
+  author-proxy-setup:
+    image: ghcr.io/indicio-tech/proxy-mediator-setup:0.1.6
+    environment:
+      - WAIT_BEFORE_HOSTS=3
+      - WAIT_HOSTS=author-proxy:3000,author:3000
+      - WAIT_HOSTS_TIMEOUT=300
+      - WAIT_SLEEP_INTERVAL=1
+      - WAIT_HOST_CONNECT_TIMEOUT=10
+      - PROXY=http://author-proxy:3000
+      - AGENT=http:/author:3001
+      - MEDIATOR_INVITE=${MEDIATOR_INVITE}
+    networks:
+      - app-network
+    depends_on:
+      authordb:
+        condition: service_healthy
+      author:
+        condition: service_started
+      author-proxy:
+        condition: service_started
+
   author:
     image: ghcr.io/hyperledger/aries-cloudagent-python:py3.12-1.0.0
     platform: linux/amd64
@@ -18,8 +92,11 @@ services:
         --tails-server-base-url http://tails:6543
         --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_testnet_genesis
         --wallet-type askar
-        --wallet-name author
+        --wallet-name ${AUTHOR_AGENT_DB}
         --wallet-key insecure
+        --wallet-storage-type postgres_storage
+        --wallet-storage-config '{"url":"${AUTHOR_AGENT_DB_HOST}:5432"}'
+        --wallet-storage-creds '{"account":"${AUTHOR_AGENT_DB_USERNAME}","password":"${AUTHOR_AGENT_DB_PASSWORD}","admin_account":"${AUTHOR_AGENT_ADMIN_DB_USERNAME}","admin_password":"${AUTHOR_AGENT_ADMIN_DB_PASSWORD}"}'
         --auto-provision
         --log-level debug
         --debug-webhooks
@@ -33,38 +110,112 @@ services:
       tails:
         condition: service_started
     
-  second_author:
-    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.12-1.0.0
+  # second_author:
+  #   image: ghcr.io/hyperledger/aries-cloudagent-python:py3.12-1.0.0
+  #   platform: linux/amd64
+  #   ports:
+  #     - "3003:3002"
+  #   environment:
+  #     RUST_LOG: 'aries-askar::log::target=error'
+  #   command: >
+  #     start
+  #       --label SecondAuthor
+  #       --inbound-transport http 0.0.0.0 3003
+  #       --outbound-transport http
+  #       --endpoint http://second_author:3003
+  #       --admin 0.0.0.0 3002
+  #       --admin-insecure-mode
+  #       --tails-server-base-url http://tails:6543
+  #       --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_testnet_genesis
+  #       --wallet-type askar
+  #       --wallet-name SecondAuthor
+  #       --wallet-key insecure
+  #       --auto-provision
+  #       --log-level debug
+  #       --debug-webhooks
+  #       --public-invites
+  #   healthcheck:
+  #     test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3002/status/live" | grep "200" > /dev/null
+  #     start_period: 30s
+  #     interval: 7s
+  #     timeout: 5s
+  #     retries: 5
+  #   depends_on:
+  #     tails:
+  #       condition: service_started
+
+  # ------------------------
+  # ------- Endorser -------
+  # ------------------------
+  # DB Service
+  endorserdb:
+    image: postgres:14.8
     platform: linux/amd64
-    ports:
-      - "3003:3002"
-    environment:
-      RUST_LOG: 'aries-askar::log::target=error'
-    command: >
-      start
-        --label SecondAuthor
-        --inbound-transport http 0.0.0.0 3003
-        --outbound-transport http
-        --endpoint http://second_author:3003
-        --admin 0.0.0.0 3002
-        --admin-insecure-mode
-        --tails-server-base-url http://tails:6543
-        --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_testnet_genesis
-        --wallet-type askar
-        --wallet-name SecondAuthor
-        --wallet-key insecure
-        --auto-provision
-        --log-level debug
-        --debug-webhooks
-        --public-invites
     healthcheck:
-      test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3002/status/live" | grep "200" > /dev/null
+      test: "pg_isready --username=${DB_SERVER_USERNAME}"
       start_period: 30s
-      interval: 7s
+      interval: 30s
       timeout: 5s
       retries: 5
+    hostname: db
+    restart: unless-stopped
+    #    ports: # Uncomment to access postgres outside of containers
+    #      - "5432:5432"
+    volumes:
+      - ./db/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d/
+    environment:
+      POSTGRES_USER: ${DB_SERVER_USERNAME}
+      POSTGRES_PASSWORD: ${DB_SERVER_PASSWORD}
+      ENDORSER_AGENT_DB: ${ENDORSER_AGENT_DB}
+      ENDORSER_AGENT_DB_USERNAME: ${ENDORSER_AGENT_DB_USERNAME}
+      ENDORSER_AGENT_DB_PASSWORD: ${ENDORSER_AGENT_DB_PASSWORD}
+      ENDORSER_PROXY_DB: ${ENDORSER_PROXY_DB}
+      ENDORSER_PROXY_DB_USERNAME: ${ENDORSER_PROXY_DB_USERNAME}
+      ENDORSER_PROXY_DB_PASSWORD: ${ENDORSER_PROXY_DB_PASSWORD}
+    networks:
+      - app-network
+
+  endorser-proxy:
+    image: ghcr.io/indicio-tech/proxy-mediator:0.1.6
+    healthcheck:
+      test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3000/status" | grep "200" > /dev/null
+      start_period: 30s
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      ENDPOINT: http://endorser-proxy:3000
+      ENABLE_STORE: "true"
+      REPO_URI: "${ENDORSER_PROXY_DB_COMBINED}"
+      REPO_KEY: insecure
+      LOG_LEVEL: WARNING
+    networks:
+      - app-network
     depends_on:
-      tails:
+      endorserdb:
+        condition: service_healthy
+
+  endorser-proxy-setup:
+    image: ghcr.io/indicio-tech/proxy-mediator-setup:0.1.6
+    environment:
+      - WAIT_BEFORE_HOSTS=3
+      - WAIT_HOSTS=author-proxy:3000,endorser:3000
+      - WAIT_HOSTS_TIMEOUT=300
+      - WAIT_SLEEP_INTERVAL=1
+      - WAIT_HOST_CONNECT_TIMEOUT=10
+      - PROXY=http://endorser-proxy:3000
+      - AGENT=http:/endorser:3001
+      - MEDIATOR_INVITE=${MEDIATOR_INVITE}
+    networks:
+      - app-network
+    depends_on:
+      endorserdb:
+        condition: service_healthy
+      endorser:
+        condition: service_started
+      endorser-proxy:
         condition: service_started
 
   endorser:
@@ -85,8 +236,11 @@ services:
         --tails-server-base-url http://tails:6543
         --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_testnet_genesis
         --wallet-type askar
-        --wallet-name endorser
+        --wallet-name ${ENDORSER_AGENT_DB}
         --wallet-key insecure
+        --wallet-storage-type postgres_storage
+        --wallet-storage-config '{"url":"${ENDORSER_AGENT_DB_HOST}:5432"}'
+        --wallet-storage-creds '{"account":"${ENDORSER_AGENT_DB_USERNAME}","password":"${ENDORSER_AGENT_DB_PASSWORD}","admin_account":"${ENDORSER_AGENT_ADMIN_DB_USERNAME}","admin_password":"${ENDORSER_AGENT_ADMIN_DB_PASSWORD}"}'
         --auto-provision
         --log-level debug
         --debug-webhooks
@@ -150,3 +304,9 @@ services:
         condition: service_healthy
       endorser:
         condition: service_healthy
+  
+  #Docker Networks
+  networks:
+    app-network:
+      driver: bridge
+    
