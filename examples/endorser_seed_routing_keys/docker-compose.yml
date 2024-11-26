@@ -4,7 +4,7 @@ services:
   # -------- Author --------
   # ------------------------
   # DB Service
-  authordb:
+  db:
     image: postgres:14.8
     platform: linux/amd64
     healthcheck:
@@ -50,7 +50,7 @@ services:
     networks:
       - app-network
     depends_on:
-      authordb:
+      db:
         condition: service_healthy
 
   author-proxy-setup:
@@ -67,7 +67,7 @@ services:
     networks:
       - app-network
     depends_on:
-      authordb:
+      db:
         condition: service_healthy
       author:
         condition: service_started
@@ -109,72 +109,10 @@ services:
     depends_on:
       tails:
         condition: service_started
-    
-  # second_author:
-  #   image: ghcr.io/hyperledger/aries-cloudagent-python:py3.12-1.0.0
-  #   platform: linux/amd64
-  #   ports:
-  #     - "3003:3002"
-  #   environment:
-  #     RUST_LOG: 'aries-askar::log::target=error'
-  #   command: >
-  #     start
-  #       --label SecondAuthor
-  #       --inbound-transport http 0.0.0.0 3003
-  #       --outbound-transport http
-  #       --endpoint http://second_author:3003
-  #       --admin 0.0.0.0 3002
-  #       --admin-insecure-mode
-  #       --tails-server-base-url http://tails:6543
-  #       --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_testnet_genesis
-  #       --wallet-type askar
-  #       --wallet-name SecondAuthor
-  #       --wallet-key insecure
-  #       --auto-provision
-  #       --log-level debug
-  #       --debug-webhooks
-  #       --public-invites
-  #   healthcheck:
-  #     test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3002/status/live" | grep "200" > /dev/null
-  #     start_period: 30s
-  #     interval: 7s
-  #     timeout: 5s
-  #     retries: 5
-  #   depends_on:
-  #     tails:
-  #       condition: service_started
 
   # ------------------------
   # ------- Endorser -------
   # ------------------------
-  # DB Service
-  endorserdb:
-    image: postgres:14.8
-    platform: linux/amd64
-    healthcheck:
-      test: "pg_isready --username=${DB_SERVER_USERNAME}"
-      start_period: 30s
-      interval: 30s
-      timeout: 5s
-      retries: 5
-    hostname: db
-    restart: unless-stopped
-    #    ports: # Uncomment to access postgres outside of containers
-    #      - "5432:5432"
-    volumes:
-      - ./db/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d/
-    environment:
-      POSTGRES_USER: ${DB_SERVER_USERNAME}
-      POSTGRES_PASSWORD: ${DB_SERVER_PASSWORD}
-      ENDORSER_AGENT_DB: ${ENDORSER_AGENT_DB}
-      ENDORSER_AGENT_DB_USERNAME: ${ENDORSER_AGENT_DB_USERNAME}
-      ENDORSER_AGENT_DB_PASSWORD: ${ENDORSER_AGENT_DB_PASSWORD}
-      ENDORSER_PROXY_DB: ${ENDORSER_PROXY_DB}
-      ENDORSER_PROXY_DB_USERNAME: ${ENDORSER_PROXY_DB_USERNAME}
-      ENDORSER_PROXY_DB_PASSWORD: ${ENDORSER_PROXY_DB_PASSWORD}
-    networks:
-      - app-network
-
   endorser-proxy:
     image: ghcr.io/indicio-tech/proxy-mediator:0.1.6
     healthcheck:
@@ -194,7 +132,7 @@ services:
     networks:
       - app-network
     depends_on:
-      endorserdb:
+      db:
         condition: service_healthy
 
   endorser-proxy-setup:
@@ -211,7 +149,7 @@ services:
     networks:
       - app-network
     depends_on:
-      endorserdb:
+      db:
         condition: service_healthy
       endorser:
         condition: service_started
@@ -238,6 +176,7 @@ services:
         --wallet-type askar
         --wallet-name ${ENDORSER_AGENT_DB}
         --wallet-key insecure
+        --seed AhJaengeit6Xau3eiThaethee3oofeet
         --wallet-storage-type postgres_storage
         --wallet-storage-config '{"url":"${ENDORSER_AGENT_DB_HOST}:5432"}'
         --wallet-storage-creds '{"account":"${ENDORSER_AGENT_DB_USERNAME}","password":"${ENDORSER_AGENT_DB_PASSWORD}","admin_account":"${ENDORSER_AGENT_ADMIN_DB_USERNAME}","admin_password":"${ENDORSER_AGENT_ADMIN_DB_PASSWORD}"}'
@@ -254,6 +193,9 @@ services:
       timeout: 5s
       retries: 5
     restart: on-failure 
+    depends_on:
+      db:
+        condition: service_started
 
   tails:
     image: ghcr.io/bcgov/tails-server:latest
@@ -305,8 +247,8 @@ services:
       endorser:
         condition: service_healthy
   
-  #Docker Networks
-  networks:
-    app-network:
-      driver: bridge
+#Docker Networks
+networks:
+  app-network:
+    driver: bridge
     
