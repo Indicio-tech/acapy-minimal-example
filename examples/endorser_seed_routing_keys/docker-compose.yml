@@ -18,7 +18,7 @@ services:
     #    ports: # Uncomment to access postgres outside of containers
     #      - "5432:5432"
     volumes:
-      - ./db/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d/
+      - ./db:/docker-entrypoint-initdb.d/
     environment:
       POSTGRES_USER: ${DB_SERVER_USERNAME}
       POSTGRES_PASSWORD: ${DB_SERVER_PASSWORD}
@@ -28,6 +28,12 @@ services:
       AUTHOR_PROXY_DB: ${AUTHOR_PROXY_DB}
       AUTHOR_PROXY_DB_USERNAME: ${AUTHOR_PROXY_DB_USERNAME}
       AUTHOR_PROXY_DB_PASSWORD: ${AUTHOR_PROXY_DB_PASSWORD}
+      ENDORSER_AGENT_DB: ${ENDORSER_AGENT_DB}
+      ENDORSER_AGENT_DB_USERNAME: ${ENDORSER_AGENT_DB_USERNAME}
+      ENDORSER_AGENT_DB_PASSWORD: ${ENDORSER_AGENT_DB_PASSWORD}
+      ENDORSER_PROXY_DB: ${ENDORSER_PROXY_DB}
+      ENDORSER_PROXY_DB_USERNAME: ${ENDORSER_PROXY_DB_USERNAME}
+      ENDORSER_PROXY_DB_PASSWORD: ${ENDORSER_PROXY_DB_PASSWORD}
     networks:
       - app-network
 
@@ -106,6 +112,8 @@ services:
       interval: 7s
       timeout: 5s
       retries: 5
+    networks:
+      - app-network
     depends_on:
       tails:
         condition: service_started
@@ -176,7 +184,6 @@ services:
         --wallet-type askar
         --wallet-name ${ENDORSER_AGENT_DB}
         --wallet-key insecure
-        --seed AhJaengeit6Xau3eiThaethee3oofeet
         --wallet-storage-type postgres_storage
         --wallet-storage-config '{"url":"${ENDORSER_AGENT_DB_HOST}:5432"}'
         --wallet-storage-creds '{"account":"${ENDORSER_AGENT_DB_USERNAME}","password":"${ENDORSER_AGENT_DB_PASSWORD}","admin_account":"${ENDORSER_AGENT_ADMIN_DB_USERNAME}","admin_password":"${ENDORSER_AGENT_ADMIN_DB_PASSWORD}"}'
@@ -192,6 +199,8 @@ services:
       interval: 7s
       timeout: 5s
       retries: 5
+    networks:
+      - app-network
     restart: on-failure 
     depends_on:
       db:
@@ -204,6 +213,8 @@ services:
       - 6543:6543
     environment:
       - GENESIS_URL=https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_testnet_genesis
+    networks:
+      - app-network
     command: >
       tails-server
       --host 0.0.0.0
@@ -223,6 +234,8 @@ services:
       - ../../acapy_controller:/usr/src/app/acapy_controller:z
       - ./example1.py:/usr/src/app/example1.py:ro,z
     command: python -m example1
+    networks:
+      - app-network
     depends_on:
       author:
         condition: service_healthy
@@ -241,6 +254,8 @@ services:
       - ../../acapy_controller:/usr/src/app/acapy_controller:z
       - ./example2.py:/usr/src/app/example2.py:ro,z
     command: python -m example2
+    networks:
+      - app-network
     depends_on:
       author:
         condition: service_healthy
