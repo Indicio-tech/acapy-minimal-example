@@ -374,10 +374,15 @@ async def indy_anoncred_onboard(agent: Controller):
 
 @dataclass
 class SchemaResult(Minimal):
-    """Result of creating a schema."""
+    """Result of creating a schema using /schemas."""
 
     schema_id: str
 
+@dataclass
+class SchemaResultAnoncreds(Minimal):
+    """Result of creating a schema using /anoncreds/schema."""
+
+    schema_state: dict
 
 @dataclass
 class CredDefResult(Minimal):
@@ -385,6 +390,11 @@ class CredDefResult(Minimal):
 
     credential_definition_id: str
 
+@dataclass
+class CredDefResultAnoncreds(Minimal):
+    """Result of creating a credential definition using /anoncreds/credential-definition."""
+
+    credential_definition_state: dict
 
 async def indy_anoncred_credential_artifacts(
     agent: Controller,
@@ -396,7 +406,6 @@ async def indy_anoncred_credential_artifacts(
     revocation_registry_size: Optional[int] = None,
     anoncreds_wallet: bool = False,
     issuerID: Optional[str] = None,
-    endorser_connection_id: Optional[str] = None,
 ):
     """Prepare credential artifacts for indy anoncreds."""
 
@@ -405,29 +414,25 @@ async def indy_anoncred_credential_artifacts(
         if issuerID is None:
             raise ControllerError("If using askar-anoncreds wallet, issuerID must be specified.")
         
-        schema = await agent.post(
+        schema = (await agent.post(
             "/anoncreds/schema",
             json={
-                "options": {
-                    "create_transaction_for_endorser": False,
-                    "endorser_connection_id": endorser_connection_id,
-                },
                 "schema": {
                     "attrNames": attributes,
                     "issuerId": issuerID,
                     "name": schema_name or "minimal-" + token_hex(8),
-                    "vesion": schema_version or "1.0",
+                    "version": schema_version or "1.0",
                 },
             },
-            response=SchemaResult,
-        )
+            response=SchemaResultAnoncreds,
+        )).schema_state
 
-        cred_def = await agent.post(
+        cred_def = (await agent.post(
             "/anoncreds/credential-definition",
             json={
-                "credential-definition": {
+                "credential_definition": {
                     "issuerId": issuerID,
-                    "schemaId": schema.schema_id,
+                    "schemaId": schema["schema_id"],
                     "tag": cred_def_tag or token_hex(8),
                 },
 
@@ -438,8 +443,8 @@ async def indy_anoncred_credential_artifacts(
                     "support_revocation": support_revocation,
                 },
             },
-            response=CredDefResult,
-        )
+            response=CredDefResultAnoncreds,
+        )).credential_definition_state
 
         return schema, cred_def
     
