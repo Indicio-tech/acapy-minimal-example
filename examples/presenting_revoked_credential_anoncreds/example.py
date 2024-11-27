@@ -55,7 +55,6 @@ async def main():
                 support_revocation=True,
                 anoncreds_wallet=True,
                 issuerID=alice_did.did,
-                endorser_connection_id = alice_conn.connection_id,
             )
 
         with section("Issue credential to Bob"):
@@ -65,7 +64,7 @@ async def main():
                 bob,
                 alice_conn.connection_id,
                 bob_conn.connection_id,
-                cred_def.credential_definition_id,
+                cred_def["credential_definition_id"],
                 {"firstname": "Bob", "lastname": "Builder"},
             )
             issued_time = int(time.time())
@@ -105,7 +104,7 @@ async def main():
                 {
                     "name": "firstname",
                     "restrictions": [
-                        {"cred_def_id": cred_def.credential_definition_id}
+                        {"cred_def_id": cred_def["credential_definition_id"],}
                     ],
                 }
             ],
@@ -122,7 +121,7 @@ async def main():
                 {
                     "name": "firstname",
                     "restrictions": [
-                        {"cred_def_id": cred_def.credential_definition_id}
+                        {"cred_def_id": cred_def["credential_definition_id"],}
                     ],
                 }
             ],
@@ -140,7 +139,7 @@ async def main():
                 {
                     "name": "firstname",
                     "restrictions": [
-                        {"cred_def_id": cred_def.credential_definition_id}
+                        {"cred_def_id": cred_def["credential_definition_id"],}
                     ],
                     "non_revoked": {
                         "from": issued_time,
@@ -161,7 +160,7 @@ async def main():
                 {
                     "name": "firstname",
                     "restrictions": [
-                        {"cred_def_id": cred_def.credential_definition_id}
+                        {"cred_def_id": cred_def["credential_definition_id"],}
                     ],
                     "non_revoked": {
                         "from": revoked_time,
