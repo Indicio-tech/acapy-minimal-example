@@ -202,7 +202,6 @@ class Controller:
         self.subwallet_token = subwallet_token
         if subwallet_token:
             self.headers["Authorization"] = f"Bearer {subwallet_token}"
-
         self._event_queue: Optional[Queue[Event]] = event_queue
 
         self._stack: Optional[AsyncExitStack] = None

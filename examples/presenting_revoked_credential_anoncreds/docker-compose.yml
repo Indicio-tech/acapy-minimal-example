@@ -9,7 +9,7 @@ services:
     #   args:
     #     acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
     ports:
-      - "3001:3001"
+      - "3003:3001"
     command: >
       start
         --label Alice
@@ -48,7 +48,7 @@ services:
     #   args:
     #     acapy_url: https://github.com/Indicio-tech/aries-cloudagent-python@c1fed3c13d33e65979b08dd1eaf79dc84e3ce504
     ports:
-      - "3002:3001"
+      - "3004:3001"
     command: >
       start
         --label Bob
@@ -92,7 +92,7 @@ services:
   tails:
     image: ghcr.io/bcgov/tails-server:latest
     ports:
-      - 6543:6543
+      - 6544:6543
     environment:
       - GENESIS_URL=https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_testnet_genesis
     command: >
