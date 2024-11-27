@@ -19,9 +19,9 @@ class ConnRecord(Minimal):
     """Connection record."""
 
     connection_id: str
+    invitation_key: str
     state: str
     rfc23_state: str
-    invitation_key: Optional[str]=None
 
 
 async def trustping(
@@ -394,8 +394,47 @@ async def indy_anoncred_credential_artifacts(
     cred_def_tag: Optional[str] = None,
     support_revocation: bool = False,
     revocation_registry_size: Optional[int] = None,
+    anoncreds_wallet: bool = False,
 ):
     """Prepare credential artifacts for indy anoncreds."""
+
+    # If using wallet=askar-anoncreds:
+    if anoncreds_wallet:
+        schema = await agent.post(
+            "/anoncreds/schema",
+            json={
+                "schema": {
+                    "attrNames": attributes,
+                    "issuerId": agent.base_url,
+                    "name": schema_name or "minimal-" + token_hex(8),
+                    "vesion": schema_version or "1.0",
+                },
+            },
+            response=SchemaResult,
+        )
+
+        cred_def = await agent.post(
+            "/anoncreds/credential-definition",
+            json={
+                "credential-definition": {
+                    "issuerId": agent.base_url,
+                    "schemaId": schema.schema_id,
+                    "tag": cred_def_tag or token_hex(8),
+                },
+
+                "options": {
+                    "revocation_registry_size": (
+                        revocation_registry_size if revocation_registry_size else 10
+                    ),
+                    "support_revocation": support_revocation,
+                },
+            },
+            response=CredDefResult,
+        )
+
+        return schema, cred_def
+    
+    # If using wallet=askar
     schema = await agent.post(
         "/schemas",
         json={
@@ -961,6 +1000,7 @@ async def indy_anoncreds_revoke(
     publish: bool = False,
     notify: bool = True,
     notify_version: str = "v1_0",
+    anoncreds_wallet: bool = False,
 ):
     """Revoking an Indy credential using revocation revoke.
 
@@ -976,7 +1016,7 @@ async def indy_anoncreds_revoke(
     # Passes in V10CredentialExchange
     if isinstance(cred_ex, V10CredentialExchange):
         await issuer.post(
-            url="/revocation/revoke",
+            url="{}/revocation/revoke".format("/anoncreds" if anoncreds_wallet else ""),
             json={
                 "connection_id": holder_connection_id,
                 "rev_reg_id": cred_ex.revoc_reg_id,
@@ -990,7 +1030,7 @@ async def indy_anoncreds_revoke(
     # Passes in V20CredExRecordDetail
     elif isinstance(cred_ex, V20CredExRecordDetail) and cred_ex.indy:
         await issuer.post(
-            url="/revocation/revoke",
+            url="{}/revocation/revoke".format("/anoncreds" if anoncreds_wallet else ""),
             json={
                 "connection_id": holder_connection_id,
                 "rev_reg_id": cred_ex.indy.rev_reg_id,
@@ -1013,6 +1053,7 @@ async def indy_anoncreds_publish_revocation(
     cred_ex: Union[V10CredentialExchange, V20CredExRecordDetail],
     publish: bool = False,
     notify: bool = True,
+    anoncreds_wallet: bool = False,
 ):
     """Publishing revocation of indy credential.
 
@@ -1021,7 +1062,7 @@ async def indy_anoncreds_publish_revocation(
     """
     if isinstance(cred_ex, V10CredentialExchange):
         await issuer.post(
-            url="/revocation/publish-revocations",
+            url="{}/revocation/publish-revocations".format("/anoncreds" if anoncreds_wallet else ""),
             json={
                 "rev_reg_id": cred_ex.revoc_reg_id,
                 "cred_rev_id": cred_ex.revocation_id,
@@ -1032,7 +1073,7 @@ async def indy_anoncreds_publish_revocation(
 
     elif isinstance(cred_ex, V20CredExRecordDetail) and cred_ex.indy:
         await issuer.post(
-            url="/revocation/publish-revocations",
+            url="{}/revocation/publish-revocations".format("/anoncreds" if anoncreds_wallet else ""),
             json={
                 "rev_reg_id": cred_ex.indy.rev_reg_id,
                 "cred_rev_id": cred_ex.indy.cred_rev_id,
