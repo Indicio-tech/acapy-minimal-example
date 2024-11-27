@@ -9,7 +9,7 @@ from os import getenv
 import time
 
 from acapy_controller import Controller
-from acapy_controller.logging import logging_to_stdout
+from acapy_controller.logging import logging_to_stdout, section
 from acapy_controller.models import V20PresExRecord, V20PresExRecordList
 from acapy_controller.protocols import (
     didexchange,
@@ -43,49 +43,56 @@ async def main():
     """Test Controller protocols."""
     async with Controller(base_url=ALICE) as alice, Controller(base_url=BOB) as bob:
         # Connecting
-        alice_conn, bob_conn = await didexchange(alice, bob)
+        with section("Establish connection"):
+            alice_conn, bob_conn = await didexchange(alice, bob)
 
-        # Issuance prep
-        await indy_anoncred_onboard(alice)
-        schema, cred_def = await indy_anoncred_credential_artifacts(
-            alice,
-            ["firstname", "lastname"],
-            support_revocation=True,
-            anoncreds_wallet=True,
-        )
+        with section("Create and publish schema and cred def"):
+            # Issuance prep
+            alice_did = await indy_anoncred_onboard(alice)
+            schema, cred_def = await indy_anoncred_credential_artifacts(
+                alice,
+                ["firstname", "lastname"],
+                support_revocation=True,
+                anoncreds_wallet=True,
+                issuerID=alice_did.did,
+                endorser_connection_id = alice_conn.connection_id,
+            )
 
-        # Issue a credential
-        alice_cred_ex, _ = await indy_issue_credential_v2(
-            alice,
-            bob,
-            alice_conn.connection_id,
-            bob_conn.connection_id,
-            cred_def.credential_definition_id,
-            {"firstname": "Bob", "lastname": "Builder"},
-        )
-        issued_time = int(time.time())
+        with section("Issue credential to Bob"):
+            # Issue a credential
+            alice_cred_ex, _ = await indy_issue_credential_v2(
+                alice,
+                bob,
+                alice_conn.connection_id,
+                bob_conn.connection_id,
+                cred_def.credential_definition_id,
+                {"firstname": "Bob", "lastname": "Builder"},
+            )
+            issued_time = int(time.time())
 
-        # Present the the credential's attributes
-        await indy_present_proof_v2(
-            bob,
-            alice,
-            bob_conn.connection_id,
-            alice_conn.connection_id,
-            requested_attributes=[{"name": "firstname"}],
-        )
+        with section("Present credential attributes"):
+            # Present the the credential's attributes
+            await indy_present_proof_v2(
+                bob,
+                alice,
+                bob_conn.connection_id,
+                alice_conn.connection_id,
+                requested_attributes=[{"name": "firstname"}],
+            )
 
-        # Revoke credential
-        await indy_anoncreds_revoke(
-            alice,
-            cred_ex=alice_cred_ex,
-            holder_connection_id=alice_conn.connection_id,
-            notify=True,
-            anoncreds_wallet=True,
-        )
-        await indy_anoncreds_publish_revocation(alice, cred_ex=alice_cred_ex, anoncreds_wallet=True)
-        # TODO: Make this into a helper in protocols.py?
-        await bob.record(topic="revocation-notification")
-        revoked_time = int(time.time())
+        with section("Revoke credential"):
+            # Revoke credential
+            await indy_anoncreds_revoke(
+                alice,
+                cred_ex=alice_cred_ex,
+                holder_connection_id=alice_conn.connection_id,
+                notify=True,
+                anoncreds_wallet=True,
+            )
+            await indy_anoncreds_publish_revocation(alice, cred_ex=alice_cred_ex, anoncreds_wallet=True)
+            # TODO: Make this into a helper in protocols.py?
+            await bob.record(topic="revocation-notification")
+            revoked_time = int(time.time())
 
         # Request proof from holder again after revoking,
         # using the interval before cred revoked
