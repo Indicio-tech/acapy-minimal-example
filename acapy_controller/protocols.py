@@ -395,17 +395,26 @@ async def indy_anoncred_credential_artifacts(
     support_revocation: bool = False,
     revocation_registry_size: Optional[int] = None,
     anoncreds_wallet: bool = False,
+    issuerID: Optional[str] = None,
+    endorser_connection_id: Optional[str] = None,
 ):
     """Prepare credential artifacts for indy anoncreds."""
 
     # If using wallet=askar-anoncreds:
     if anoncreds_wallet:
+        if issuerID is None:
+            raise ControllerError("If using askar-anoncreds wallet, issuerID must be specified.")
+        
         schema = await agent.post(
             "/anoncreds/schema",
             json={
+                "options": {
+                    "create_transaction_for_endorser": False,
+                    "endorser_connection_id": endorser_connection_id,
+                },
                 "schema": {
                     "attrNames": attributes,
-                    "issuerId": agent.base_url,
+                    "issuerId": issuerID,
                     "name": schema_name or "minimal-" + token_hex(8),
                     "vesion": schema_version or "1.0",
                 },
@@ -417,7 +426,7 @@ async def indy_anoncred_credential_artifacts(
             "/anoncreds/credential-definition",
             json={
                 "credential-definition": {
-                    "issuerId": agent.base_url,
+                    "issuerId": issuerID,
                     "schemaId": schema.schema_id,
                     "tag": cred_def_tag or token_hex(8),
                 },
