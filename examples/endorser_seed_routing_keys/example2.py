@@ -6,38 +6,41 @@ This script is for you to use to reproduce a bug or demonstrate a feature.
 import asyncio
 from os import getenv
 
-from acapy_controller.controller import Controller, ControllerError, params
+from acapy_controller.controller import Controller
 from acapy_controller.logging import logging_to_stdout, section
 from acapy_controller.protocols import (
-    connection, 
-    didexchange, 
-    indy_anoncred_credential_artifacts,
-    indy_anoncred_onboard,
+    didexchange,
     oob_invitation,
-    trustping
 )
-import httpx
-from httpx import RequestError
 
 AUTHOR = getenv("AUTHOR", "http://author:3001")
 ENDORSER = getenv("ENDORSER", "http://endorser:3001")
 
+
 async def main():
-    """Test Controller protocols."""
-    async with Controller(base_url=AUTHOR) as author, Controller(base_url=ENDORSER) as endorser:
-        # 1. Want to set up endorser with its seed (Alex)
-        # (brb need to spin up agent with a seed to see which endpoint we can hit)
+    """Perform part 2 of the test.
 
-         # 2. Make OOB invitation from endorser to author (Athan) 
-         # 3. Have author receive invitation (Athan)
+    The endorser will have been stopped, its data cleared.
+    We then try to form a new connection with the author and endorser through
+    the endorser's public DID, which will "persist" because the --seed flag was
+    used.
+
+    If all goes well, the endorser and author will connect.
+    To reproduce an issue we're seeing in another context, we would expect this
+    to fail because the routing keys of the endorser's mediator haven't been
+    updated on the network.
+    """
+    async with (
+        Controller(base_url=AUTHOR) as author,
+        Controller(base_url=ENDORSER) as endorser,
+    ):
         with section("Establish connection"):
-          endorser_oob_invite = await oob_invitation(endorser, use_public_did=True, multi_use=False)
-          if (endorser_oob_invite):
-            endorser_conn, author_conn = await didexchange(endorser, author, invite=endorser_oob_invite) # Endorser creates invite for author
-            # ^didexchange would work here
-
-            # 4. Verify connection in active or done state (Athan)
-            assert(endorser_conn.rfc23_state == "completed")
+            endorser_oob_invite = await oob_invitation(
+                endorser, use_public_did=True, multi_use=False
+            )
+            await didexchange(
+                endorser, author, invite=endorser_oob_invite
+            )
 
 
 if __name__ == "__main__":

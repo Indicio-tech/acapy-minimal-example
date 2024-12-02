@@ -8,7 +8,7 @@ services:
     image: postgres:14.8
     platform: linux/amd64
     healthcheck:
-      test: "pg_isready --username=${DB_SERVER_USERNAME}"
+      test: "pg_isready --username=pguser"
       start_period: 30s
       interval: 30s
       timeout: 5s
@@ -20,20 +20,20 @@ services:
     volumes:
       - ./db:/docker-entrypoint-initdb.d/
     environment:
-      POSTGRES_USER: ${DB_SERVER_USERNAME}
-      POSTGRES_PASSWORD: ${DB_SERVER_PASSWORD}
-      AUTHOR_AGENT_DB: ${AUTHOR_AGENT_DB}
-      AUTHOR_AGENT_DB_USERNAME: ${AUTHOR_AGENT_DB_USERNAME}
-      AUTHOR_AGENT_DB_PASSWORD: ${AUTHOR_AGENT_DB_PASSWORD}
-      AUTHOR_PROXY_DB: ${AUTHOR_PROXY_DB}
-      AUTHOR_PROXY_DB_USERNAME: ${AUTHOR_PROXY_DB_USERNAME}
-      AUTHOR_PROXY_DB_PASSWORD: ${AUTHOR_PROXY_DB_PASSWORD}
-      ENDORSER_AGENT_DB: ${ENDORSER_AGENT_DB}
-      ENDORSER_AGENT_DB_USERNAME: ${ENDORSER_AGENT_DB_USERNAME}
-      ENDORSER_AGENT_DB_PASSWORD: ${ENDORSER_AGENT_DB_PASSWORD}
-      ENDORSER_PROXY_DB: ${ENDORSER_PROXY_DB}
-      ENDORSER_PROXY_DB_USERNAME: ${ENDORSER_PROXY_DB_USERNAME}
-      ENDORSER_PROXY_DB_PASSWORD: ${ENDORSER_PROXY_DB_PASSWORD}
+      POSTGRES_USER: pguser
+      POSTGRES_PASSWORD: pgpassword
+      AUTHOR_AGENT_DB: author
+      AUTHOR_AGENT_DB_USERNAME: author
+      AUTHOR_AGENT_DB_PASSWORD: authorpassword
+      AUTHOR_PROXY_DB: authorproxy
+      AUTHOR_PROXY_DB_USERNAME: authorproxy
+      AUTHOR_PROXY_DB_PASSWORD: authorpassword
+      ENDORSER_AGENT_DB: endorser
+      ENDORSER_AGENT_DB_USERNAME: endorser
+      ENDORSER_AGENT_DB_PASSWORD: endorserpassword
+      ENDORSER_PROXY_DB: endorserproxy
+      ENDORSER_PROXY_DB_USERNAME: endorserproxy
+      ENDORSER_PROXY_DB_PASSWORD: endorserpassword
     networks:
       - app-network
 
@@ -49,8 +49,8 @@ services:
     environment:
       PORT: 3000
       ENDPOINT: http://author-proxy:3000
-      ENABLE_STORE: "true"
-      REPO_URI: "${AUTHOR_PROXY_DB_COMBINED}"
+      #ENABLE_STORE: "true"
+      #REPO_URI: "postgres://authorproxy:authorpassword@db:5432/authorproxy"
       REPO_KEY: insecure
       LOG_LEVEL: WARNING
     networks:
@@ -69,7 +69,7 @@ services:
       - WAIT_HOST_CONNECT_TIMEOUT=10
       - PROXY=http://author-proxy:3000
       - AGENT=http:/author:3001
-      - MEDIATOR_INVITE=${MEDIATOR_INVITE}
+      - MEDIATOR_INVITE=https://us-east.proven.mediator.indiciotech.io/message?oob=eyJAaWQiOiJjYTBiYThmYS1kMTZkLTQ4NGUtOWE4Yi03YTczOTg1MzU0N2MiLCJAdHlwZSI6Imh0dHBzOi8vZGlkY29tbS5vcmcvb3V0LW9mLWJhbmQvMS4xL2ludml0YXRpb24iLCJoYW5kc2hha2VfcHJvdG9jb2xzIjpbImh0dHBzOi8vZGlkY29tbS5vcmcvZGlkZXhjaGFuZ2UvMS4wIl0sInNlcnZpY2VzIjpbeyJpZCI6IiNpbmxpbmUiLCJ0eXBlIjoiZGlkLWNvbW11bmljYXRpb24iLCJyZWNpcGllbnRLZXlzIjpbImRpZDprZXk6ejZNa3ZMdmpaVmM5aldKVnM4TTNxTlplUnNuWFhaR0ZqemNSSkRIOXZ2ZEpNZ0hCIl0sInNlcnZpY2VFbmRwb2ludCI6Imh0dHBzOi8vdXMtZWFzdC5wcm92ZW4ubWVkaWF0b3IuaW5kaWNpb3RlY2guaW8vbWVzc2FnZSJ9LHsiaWQiOiIjaW5saW5lIiwidHlwZSI6ImRpZC1jb21tdW5pY2F0aW9uIiwicmVjaXBpZW50S2V5cyI6WyJkaWQ6a2V5Ono2TWt2THZqWlZjOWpXSlZzOE0zcU5aZVJzblhYWkdGanpjUkpESDl2dmRKTWdIQiJdLCJzZXJ2aWNlRW5kcG9pbnQiOiJ3c3M6Ly93cy51cy1lYXN0LnByb3Zlbi5tZWRpYXRvci5pbmRpY2lvdGVjaC5pby93cyJ9XSwiYWNjZXB0IjpbImRpZGNvbW0vYWlwMSIsImRpZGNvbW0vYWlwMjtlbnY9cmZjMTkiXSwibGFiZWwiOiJDbG91ZCBNZWRpYXRvciJ9
     networks:
       - app-network
     depends_on:
@@ -98,11 +98,11 @@ services:
         --tails-server-base-url http://tails:6543
         --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_testnet_genesis
         --wallet-type askar
-        --wallet-name ${AUTHOR_AGENT_DB}
+        --wallet-name author
         --wallet-key insecure
         --wallet-storage-type postgres_storage
-        --wallet-storage-config '{"url":"${AUTHOR_AGENT_DB_HOST}:5432"}'
-        --wallet-storage-creds '{"account":"${AUTHOR_AGENT_DB_USERNAME}","password":"${AUTHOR_AGENT_DB_PASSWORD}","admin_account":"${AUTHOR_AGENT_ADMIN_DB_USERNAME}","admin_password":"${AUTHOR_AGENT_ADMIN_DB_PASSWORD}"}'
+        --wallet-storage-config '{"url":"db:5432"}'
+        --wallet-storage-creds '{"account":"author","password":"authorpassword","admin_account":"pguser","admin_password":"pgpassword"}'
         --auto-provision
         --log-level debug
         --debug-webhooks
@@ -133,8 +133,8 @@ services:
     environment:
       PORT: 3000
       ENDPOINT: http://endorser-proxy:3000
-      ENABLE_STORE: "true"
-      REPO_URI: "${ENDORSER_PROXY_DB_COMBINED}"
+      #ENABLE_STORE: "true"
+      #REPO_URI: "postgres://endorserproxy:endorserpassword@db:5432/endorserproxy"
       REPO_KEY: insecure
       LOG_LEVEL: WARNING
     networks:
@@ -153,7 +153,7 @@ services:
       - WAIT_HOST_CONNECT_TIMEOUT=10
       - PROXY=http://endorser-proxy:3000
       - AGENT=http:/endorser:3001
-      - MEDIATOR_INVITE=${MEDIATOR_INVITE}
+      - MEDIATOR_INVITE=https://us-east.proven.mediator.indiciotech.io/message?oob=eyJAaWQiOiJjYTBiYThmYS1kMTZkLTQ4NGUtOWE4Yi03YTczOTg1MzU0N2MiLCJAdHlwZSI6Imh0dHBzOi8vZGlkY29tbS5vcmcvb3V0LW9mLWJhbmQvMS4xL2ludml0YXRpb24iLCJoYW5kc2hha2VfcHJvdG9jb2xzIjpbImh0dHBzOi8vZGlkY29tbS5vcmcvZGlkZXhjaGFuZ2UvMS4wIl0sInNlcnZpY2VzIjpbeyJpZCI6IiNpbmxpbmUiLCJ0eXBlIjoiZGlkLWNvbW11bmljYXRpb24iLCJyZWNpcGllbnRLZXlzIjpbImRpZDprZXk6ejZNa3ZMdmpaVmM5aldKVnM4TTNxTlplUnNuWFhaR0ZqemNSSkRIOXZ2ZEpNZ0hCIl0sInNlcnZpY2VFbmRwb2ludCI6Imh0dHBzOi8vdXMtZWFzdC5wcm92ZW4ubWVkaWF0b3IuaW5kaWNpb3RlY2guaW8vbWVzc2FnZSJ9LHsiaWQiOiIjaW5saW5lIiwidHlwZSI6ImRpZC1jb21tdW5pY2F0aW9uIiwicmVjaXBpZW50S2V5cyI6WyJkaWQ6a2V5Ono2TWt2THZqWlZjOWpXSlZzOE0zcU5aZVJzblhYWkdGanpjUkpESDl2dmRKTWdIQiJdLCJzZXJ2aWNlRW5kcG9pbnQiOiJ3c3M6Ly93cy51cy1lYXN0LnByb3Zlbi5tZWRpYXRvci5pbmRpY2lvdGVjaC5pby93cyJ9XSwiYWNjZXB0IjpbImRpZGNvbW0vYWlwMSIsImRpZGNvbW0vYWlwMjtlbnY9cmZjMTkiXSwibGFiZWwiOiJDbG91ZCBNZWRpYXRvciJ9
     networks:
       - app-network
     depends_on:
@@ -182,15 +182,15 @@ services:
         --tails-server-base-url http://tails:6543
         --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_testnet_genesis
         --wallet-type askar
-        --wallet-name ${ENDORSER_AGENT_DB}
+        --wallet-name endorser
         --wallet-key insecure
         --wallet-storage-type postgres_storage
-        --wallet-storage-config '{"url":"${ENDORSER_AGENT_DB_HOST}:5432"}'
-        --wallet-storage-creds '{"account":"${ENDORSER_AGENT_DB_USERNAME}","password":"${ENDORSER_AGENT_DB_PASSWORD}","admin_account":"${ENDORSER_AGENT_ADMIN_DB_USERNAME}","admin_password":"${ENDORSER_AGENT_ADMIN_DB_PASSWORD}"}'
+        --wallet-storage-config '{"url":"db:5432"}'
+        --wallet-storage-creds '{"account":"endorser","password":"endorserpassword","admin_account":"pguser","admin_password":"pgpassword"}'
         --auto-provision
         --log-level debug
         --debug-webhooks
-        --seed maeJoux5oeK9Tietor8Oajux3iDoopha
+        --seed yex8ziesoo0thuv0iethah4tuo3tahB1
         --monitor-revocation-notification
         --public-invites
     healthcheck:
@@ -241,6 +241,14 @@ services:
         condition: service_healthy
       endorser:
         condition: service_healthy
+      endorser-proxy:
+        condition: service_healthy
+      author-proxy:
+        condition: service_healthy
+      endorser-proxy-setup:
+        condition: service_started
+      author-proxy-setup:
+        condition: service_started
 
   example2:
     platform: linux/amd64
@@ -261,6 +269,14 @@ services:
         condition: service_healthy
       endorser:
         condition: service_healthy
+      endorser-proxy:
+        condition: service_healthy
+      author-proxy:
+        condition: service_healthy
+      endorser-proxy-setup:
+        condition: service_started
+      author-proxy-setup:
+        condition: service_started
   
 #Docker Networks
 networks:
