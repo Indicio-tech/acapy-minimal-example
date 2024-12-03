@@ -68,7 +68,7 @@ services:
       - WAIT_SLEEP_INTERVAL=1
       - WAIT_HOST_CONNECT_TIMEOUT=10
       - PROXY=http://author-proxy:3000
-      - AGENT=http:/author:3001
+      - AGENT=http://author:3001
       - MEDIATOR_INVITE=https://us-east.proven.mediator.indiciotech.io/message?oob=eyJAaWQiOiJjYTBiYThmYS1kMTZkLTQ4NGUtOWE4Yi03YTczOTg1MzU0N2MiLCJAdHlwZSI6Imh0dHBzOi8vZGlkY29tbS5vcmcvb3V0LW9mLWJhbmQvMS4xL2ludml0YXRpb24iLCJoYW5kc2hha2VfcHJvdG9jb2xzIjpbImh0dHBzOi8vZGlkY29tbS5vcmcvZGlkZXhjaGFuZ2UvMS4wIl0sInNlcnZpY2VzIjpbeyJpZCI6IiNpbmxpbmUiLCJ0eXBlIjoiZGlkLWNvbW11bmljYXRpb24iLCJyZWNpcGllbnRLZXlzIjpbImRpZDprZXk6ejZNa3ZMdmpaVmM5aldKVnM4TTNxTlplUnNuWFhaR0ZqemNSSkRIOXZ2ZEpNZ0hCIl0sInNlcnZpY2VFbmRwb2ludCI6Imh0dHBzOi8vdXMtZWFzdC5wcm92ZW4ubWVkaWF0b3IuaW5kaWNpb3RlY2guaW8vbWVzc2FnZSJ9LHsiaWQiOiIjaW5saW5lIiwidHlwZSI6ImRpZC1jb21tdW5pY2F0aW9uIiwicmVjaXBpZW50S2V5cyI6WyJkaWQ6a2V5Ono2TWt2THZqWlZjOWpXSlZzOE0zcU5aZVJzblhYWkdGanpjUkpESDl2dmRKTWdIQiJdLCJzZXJ2aWNlRW5kcG9pbnQiOiJ3c3M6Ly93cy51cy1lYXN0LnByb3Zlbi5tZWRpYXRvci5pbmRpY2lvdGVjaC5pby93cyJ9XSwiYWNjZXB0IjpbImRpZGNvbW0vYWlwMSIsImRpZGNvbW0vYWlwMjtlbnY9cmZjMTkiXSwibGFiZWwiOiJDbG91ZCBNZWRpYXRvciJ9
     networks:
       - app-network
@@ -81,7 +81,7 @@ services:
         condition: service_started
 
   author:
-    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.12-1.0.0
+    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.12-1.0.1
     platform: linux/amd64
     ports:
       - "3001:3001"
@@ -100,9 +100,6 @@ services:
         --wallet-type askar
         --wallet-name author
         --wallet-key insecure
-        --wallet-storage-type postgres_storage
-        --wallet-storage-config '{"url":"db:5432"}'
-        --wallet-storage-creds '{"account":"author","password":"authorpassword","admin_account":"pguser","admin_password":"pgpassword"}'
         --auto-provision
         --log-level debug
         --debug-webhooks
@@ -152,7 +149,7 @@ services:
       - WAIT_SLEEP_INTERVAL=1
       - WAIT_HOST_CONNECT_TIMEOUT=10
       - PROXY=http://endorser-proxy:3000
-      - AGENT=http:/endorser:3001
+      - AGENT=http://endorser:3001
       - MEDIATOR_INVITE=https://us-east.proven.mediator.indiciotech.io/message?oob=eyJAaWQiOiJjYTBiYThmYS1kMTZkLTQ4NGUtOWE4Yi03YTczOTg1MzU0N2MiLCJAdHlwZSI6Imh0dHBzOi8vZGlkY29tbS5vcmcvb3V0LW9mLWJhbmQvMS4xL2ludml0YXRpb24iLCJoYW5kc2hha2VfcHJvdG9jb2xzIjpbImh0dHBzOi8vZGlkY29tbS5vcmcvZGlkZXhjaGFuZ2UvMS4wIl0sInNlcnZpY2VzIjpbeyJpZCI6IiNpbmxpbmUiLCJ0eXBlIjoiZGlkLWNvbW11bmljYXRpb24iLCJyZWNpcGllbnRLZXlzIjpbImRpZDprZXk6ejZNa3ZMdmpaVmM5aldKVnM4TTNxTlplUnNuWFhaR0ZqemNSSkRIOXZ2ZEpNZ0hCIl0sInNlcnZpY2VFbmRwb2ludCI6Imh0dHBzOi8vdXMtZWFzdC5wcm92ZW4ubWVkaWF0b3IuaW5kaWNpb3RlY2guaW8vbWVzc2FnZSJ9LHsiaWQiOiIjaW5saW5lIiwidHlwZSI6ImRpZC1jb21tdW5pY2F0aW9uIiwicmVjaXBpZW50S2V5cyI6WyJkaWQ6a2V5Ono2TWt2THZqWlZjOWpXSlZzOE0zcU5aZVJzblhYWkdGanpjUkpESDl2dmRKTWdIQiJdLCJzZXJ2aWNlRW5kcG9pbnQiOiJ3c3M6Ly93cy51cy1lYXN0LnByb3Zlbi5tZWRpYXRvci5pbmRpY2lvdGVjaC5pby93cyJ9XSwiYWNjZXB0IjpbImRpZGNvbW0vYWlwMSIsImRpZGNvbW0vYWlwMjtlbnY9cmZjMTkiXSwibGFiZWwiOiJDbG91ZCBNZWRpYXRvciJ9
     networks:
       - app-network
@@ -165,7 +162,7 @@ services:
         condition: service_started
 
   endorser:
-    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.12-1.0.0
+    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.12-1.0.1
     platform: linux/amd64
     ports:
       - "3002:3001"
@@ -184,13 +181,10 @@ services:
         --wallet-type askar
         --wallet-name endorser
         --wallet-key insecure
-        --wallet-storage-type postgres_storage
-        --wallet-storage-config '{"url":"db:5432"}'
-        --wallet-storage-creds '{"account":"endorser","password":"endorserpassword","admin_account":"pguser","admin_password":"pgpassword"}'
         --auto-provision
         --log-level debug
         --debug-webhooks
-        --seed yex8ziesoo0thuv0iethah4tuo3tahB1
+        --seed thevupuocieNg0eifaeShien6Eg0thei
         --monitor-revocation-notification
         --public-invites
     healthcheck:

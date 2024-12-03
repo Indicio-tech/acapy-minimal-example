@@ -10,6 +10,7 @@ from acapy_controller.controller import Controller
 from acapy_controller.logging import logging_to_stdout, section
 from acapy_controller.protocols import (
     didexchange,
+    indy_anoncred_onboard,
     oob_invitation,
 )
 
@@ -34,13 +35,20 @@ async def main():
         Controller(base_url=AUTHOR) as author,
         Controller(base_url=ENDORSER) as endorser,
     ):
+        with section("Update endpoint info"):
+            did_info = await indy_anoncred_onboard(endorser)
+            await endorser.post(
+                "/wallet/set-did-endpoint",
+                json={
+                    "did": did_info.did,
+                },
+            )
+
         with section("Establish connection"):
             endorser_oob_invite = await oob_invitation(
                 endorser, use_public_did=True, multi_use=False
             )
-            await didexchange(
-                endorser, author, invite=endorser_oob_invite
-            )
+            await didexchange(endorser, author, invite=endorser_oob_invite)
 
 
 if __name__ == "__main__":
