@@ -31,7 +31,7 @@ def get_onboarder(genesis_url: str) -> Optional["Onboarder"]:
 
     if genesis_url.endswith("/genesis"):
         # infer VonOnboarder
-        return VonOnboarder(genesis_url.replace("/genesis", "register"))
+        return VonOnboarder(genesis_url.replace("/genesis", "/register"))
 
     return {
         INDICIO_TESTNET_GENESIS: SelfServeOnboarder(
