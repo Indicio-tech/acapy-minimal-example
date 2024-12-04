@@ -1,0 +1,279 @@
+version: "3"
+services:
+  # ------------------------
+  # -------- Author --------
+  # ------------------------
+  # DB Service
+  db:
+    image: postgres:14.8
+    platform: linux/amd64
+    healthcheck:
+      test: "pg_isready --username=pguser"
+      start_period: 30s
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    hostname: db
+    restart: unless-stopped
+    #    ports: # Uncomment to access postgres outside of containers
+    #      - "5432:5432"
+    volumes:
+      - ./db:/docker-entrypoint-initdb.d/
+    environment:
+      POSTGRES_USER: pguser
+      POSTGRES_PASSWORD: pgpassword
+      AUTHOR_AGENT_DB: author
+      AUTHOR_AGENT_DB_USERNAME: author
+      AUTHOR_AGENT_DB_PASSWORD: authorpassword
+      AUTHOR_PROXY_DB: authorproxy
+      AUTHOR_PROXY_DB_USERNAME: authorproxy
+      AUTHOR_PROXY_DB_PASSWORD: authorpassword
+      ENDORSER_AGENT_DB: endorser
+      ENDORSER_AGENT_DB_USERNAME: endorser
+      ENDORSER_AGENT_DB_PASSWORD: endorserpassword
+      ENDORSER_PROXY_DB: endorserproxy
+      ENDORSER_PROXY_DB_USERNAME: endorserproxy
+      ENDORSER_PROXY_DB_PASSWORD: endorserpassword
+    networks:
+      - app-network
+
+  author-proxy:
+    image: ghcr.io/indicio-tech/proxy-mediator:0.1.6
+    healthcheck:
+      test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3000/status" | grep "200" > /dev/null
+      start_period: 30s
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      ENDPOINT: http://author-proxy:3000
+      #ENABLE_STORE: "true"
+      #REPO_URI: "postgres://authorproxy:authorpassword@db:5432/authorproxy"
+      REPO_KEY: insecure
+      LOG_LEVEL: WARNING
+    networks:
+      - app-network
+    depends_on:
+      db:
+        condition: service_healthy
+
+  author-proxy-setup:
+    image: ghcr.io/indicio-tech/proxy-mediator-setup:0.1.6
+    environment:
+      - WAIT_BEFORE_HOSTS=3
+      - WAIT_HOSTS=author-proxy:3000,author:3000
+      - WAIT_HOSTS_TIMEOUT=300
+      - WAIT_SLEEP_INTERVAL=1
+      - WAIT_HOST_CONNECT_TIMEOUT=10
+      - PROXY=http://author-proxy:3000
+      - AGENT=http://author:3001
+      - MEDIATOR_INVITE=https://us-east.proven.mediator.indiciotech.io/message?oob=eyJAaWQiOiJjYTBiYThmYS1kMTZkLTQ4NGUtOWE4Yi03YTczOTg1MzU0N2MiLCJAdHlwZSI6Imh0dHBzOi8vZGlkY29tbS5vcmcvb3V0LW9mLWJhbmQvMS4xL2ludml0YXRpb24iLCJoYW5kc2hha2VfcHJvdG9jb2xzIjpbImh0dHBzOi8vZGlkY29tbS5vcmcvZGlkZXhjaGFuZ2UvMS4wIl0sInNlcnZpY2VzIjpbeyJpZCI6IiNpbmxpbmUiLCJ0eXBlIjoiZGlkLWNvbW11bmljYXRpb24iLCJyZWNpcGllbnRLZXlzIjpbImRpZDprZXk6ejZNa3ZMdmpaVmM5aldKVnM4TTNxTlplUnNuWFhaR0ZqemNSSkRIOXZ2ZEpNZ0hCIl0sInNlcnZpY2VFbmRwb2ludCI6Imh0dHBzOi8vdXMtZWFzdC5wcm92ZW4ubWVkaWF0b3IuaW5kaWNpb3RlY2guaW8vbWVzc2FnZSJ9LHsiaWQiOiIjaW5saW5lIiwidHlwZSI6ImRpZC1jb21tdW5pY2F0aW9uIiwicmVjaXBpZW50S2V5cyI6WyJkaWQ6a2V5Ono2TWt2THZqWlZjOWpXSlZzOE0zcU5aZVJzblhYWkdGanpjUkpESDl2dmRKTWdIQiJdLCJzZXJ2aWNlRW5kcG9pbnQiOiJ3c3M6Ly93cy51cy1lYXN0LnByb3Zlbi5tZWRpYXRvci5pbmRpY2lvdGVjaC5pby93cyJ9XSwiYWNjZXB0IjpbImRpZGNvbW0vYWlwMSIsImRpZGNvbW0vYWlwMjtlbnY9cmZjMTkiXSwibGFiZWwiOiJDbG91ZCBNZWRpYXRvciJ9
+    networks:
+      - app-network
+    depends_on:
+      db:
+        condition: service_healthy
+      author:
+        condition: service_started
+      author-proxy:
+        condition: service_started
+
+  author:
+    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.12-1.0.1
+    platform: linux/amd64
+    ports:
+      - "3001:3001"
+    environment:
+      RUST_LOG: 'aries-askar::log::target=error'
+    command: >
+      start
+        --label Author
+        --inbound-transport http 0.0.0.0 3000
+        --outbound-transport http
+        --endpoint http://author:3000
+        --admin 0.0.0.0 3001
+        --admin-insecure-mode
+        --tails-server-base-url http://tails:6543
+        --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_testnet_genesis
+        --wallet-type askar
+        --wallet-name author
+        --wallet-key insecure
+        --auto-provision
+        --log-level debug
+        --debug-webhooks
+    healthcheck:
+      test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3001/status/live" | grep "200" > /dev/null
+      start_period: 30s
+      interval: 7s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+    depends_on:
+      tails:
+        condition: service_started
+
+  # ------------------------
+  # ------- Endorser -------
+  # ------------------------
+  endorser-proxy:
+    image: ghcr.io/indicio-tech/proxy-mediator:0.1.6
+    healthcheck:
+      test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3000/status" | grep "200" > /dev/null
+      start_period: 30s
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      ENDPOINT: http://endorser-proxy:3000
+      #ENABLE_STORE: "true"
+      #REPO_URI: "postgres://endorserproxy:endorserpassword@db:5432/endorserproxy"
+      REPO_KEY: insecure
+      LOG_LEVEL: WARNING
+    networks:
+      - app-network
+    depends_on:
+      db:
+        condition: service_healthy
+
+  endorser-proxy-setup:
+    image: ghcr.io/indicio-tech/proxy-mediator-setup:0.1.6
+    environment:
+      - WAIT_BEFORE_HOSTS=3
+      - WAIT_HOSTS=author-proxy:3000,endorser:3000
+      - WAIT_HOSTS_TIMEOUT=300
+      - WAIT_SLEEP_INTERVAL=1
+      - WAIT_HOST_CONNECT_TIMEOUT=10
+      - PROXY=http://endorser-proxy:3000
+      - AGENT=http://endorser:3001
+      - MEDIATOR_INVITE=https://us-east.proven.mediator.indiciotech.io/message?oob=eyJAaWQiOiJjYTBiYThmYS1kMTZkLTQ4NGUtOWE4Yi03YTczOTg1MzU0N2MiLCJAdHlwZSI6Imh0dHBzOi8vZGlkY29tbS5vcmcvb3V0LW9mLWJhbmQvMS4xL2ludml0YXRpb24iLCJoYW5kc2hha2VfcHJvdG9jb2xzIjpbImh0dHBzOi8vZGlkY29tbS5vcmcvZGlkZXhjaGFuZ2UvMS4wIl0sInNlcnZpY2VzIjpbeyJpZCI6IiNpbmxpbmUiLCJ0eXBlIjoiZGlkLWNvbW11bmljYXRpb24iLCJyZWNpcGllbnRLZXlzIjpbImRpZDprZXk6ejZNa3ZMdmpaVmM5aldKVnM4TTNxTlplUnNuWFhaR0ZqemNSSkRIOXZ2ZEpNZ0hCIl0sInNlcnZpY2VFbmRwb2ludCI6Imh0dHBzOi8vdXMtZWFzdC5wcm92ZW4ubWVkaWF0b3IuaW5kaWNpb3RlY2guaW8vbWVzc2FnZSJ9LHsiaWQiOiIjaW5saW5lIiwidHlwZSI6ImRpZC1jb21tdW5pY2F0aW9uIiwicmVjaXBpZW50S2V5cyI6WyJkaWQ6a2V5Ono2TWt2THZqWlZjOWpXSlZzOE0zcU5aZVJzblhYWkdGanpjUkpESDl2dmRKTWdIQiJdLCJzZXJ2aWNlRW5kcG9pbnQiOiJ3c3M6Ly93cy51cy1lYXN0LnByb3Zlbi5tZWRpYXRvci5pbmRpY2lvdGVjaC5pby93cyJ9XSwiYWNjZXB0IjpbImRpZGNvbW0vYWlwMSIsImRpZGNvbW0vYWlwMjtlbnY9cmZjMTkiXSwibGFiZWwiOiJDbG91ZCBNZWRpYXRvciJ9
+    networks:
+      - app-network
+    depends_on:
+      db:
+        condition: service_healthy
+      endorser:
+        condition: service_started
+      endorser-proxy:
+        condition: service_started
+
+  endorser:
+    image: ghcr.io/hyperledger/aries-cloudagent-python:py3.12-1.0.1
+    platform: linux/amd64
+    ports:
+      - "3002:3001"
+    environment:
+      RUST_LOG: 'aries-askar::log::target=error'
+    command: >
+      start
+        --label Endorser
+        --inbound-transport http 0.0.0.0 3000
+        --outbound-transport http
+        --endpoint http://endorser:3000
+        --admin 0.0.0.0 3001
+        --admin-insecure-mode
+        --tails-server-base-url http://tails:6543
+        --genesis-url https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_testnet_genesis
+        --wallet-type askar
+        --wallet-name endorser
+        --wallet-key insecure
+        --auto-provision
+        --log-level debug
+        --debug-webhooks
+        --seed thevupuocieNg0eifaeShien6Eg0thei
+        --monitor-revocation-notification
+        --public-invites
+    healthcheck:
+      test: curl -s -o /dev/null -w '%{http_code}' "http://localhost:3001/status/live" | grep "200" > /dev/null
+      start_period: 30s
+      interval: 7s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+    restart: on-failure 
+    depends_on:
+      db:
+        condition: service_started
+
+  tails:
+    image: ghcr.io/bcgov/tails-server:latest
+    platform: linux/amd64
+    ports:
+      - 6543:6543
+    environment:
+      - GENESIS_URL=https://raw.githubusercontent.com/Indicio-tech/indicio-network/main/genesis_files/pool_transactions_testnet_genesis
+    networks:
+      - app-network
+    command: >
+      tails-server
+      --host 0.0.0.0
+      --port 6543
+      --storage-path /tmp/tails-files
+      --log-level INFO
+
+  example1:
+    platform: linux/amd64
+    container_name: controller_one
+    build:
+      context: ../..
+    environment:
+      - author=http://author:3001
+      - endorser=http://endorser:3001
+    volumes:
+      - ../../acapy_controller:/usr/src/app/acapy_controller:z
+      - ./example1.py:/usr/src/app/example1.py:ro,z
+    command: python -m example1
+    networks:
+      - app-network
+    depends_on:
+      author:
+        condition: service_healthy
+      endorser:
+        condition: service_healthy
+      endorser-proxy:
+        condition: service_healthy
+      author-proxy:
+        condition: service_healthy
+      endorser-proxy-setup:
+        condition: service_started
+      author-proxy-setup:
+        condition: service_started
+
+  example2:
+    platform: linux/amd64
+    container_name: controller_two
+    build:
+      context: ../..
+    environment:
+      - author=http://author:3001
+      - endorser=http://endorser:3001
+    volumes:
+      - ../../acapy_controller:/usr/src/app/acapy_controller:z
+      - ./example2.py:/usr/src/app/example2.py:ro,z
+    command: python -m example2
+    networks:
+      - app-network
+    depends_on:
+      author:
+        condition: service_healthy
+      endorser:
+        condition: service_healthy
+      endorser-proxy:
+        condition: service_healthy
+      author-proxy:
+        condition: service_healthy
+      endorser-proxy-setup:
+        condition: service_started
+      author-proxy-setup:
+        condition: service_started
+  
+#Docker Networks
+networks:
+  app-network:
+    driver: bridge
+    

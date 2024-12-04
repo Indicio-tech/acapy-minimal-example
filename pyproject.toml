@@ -13,6 +13,7 @@ async-selective-queue = "^0.1.1"
 aiohttp = "^3.9.5"
 pydantic = {version = "^2.8.2", optional = true}
 blessings = "^1.7"
+httpx = "^0.27.2"
 
 [tool.poetry.extras]
 models = ["pydantic"]

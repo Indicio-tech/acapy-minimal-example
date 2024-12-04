@@ -19,9 +19,9 @@ class ConnRecord(Minimal):
     """Connection record."""
 
     connection_id: str
-    invitation_key: str
     state: str
     rfc23_state: str
+    invitation_key: Optional[str] = None
 
 
 async def trustping(
@@ -331,7 +331,7 @@ class DIDResult(Minimal):
         return super().deserialize(value)
 
 
-async def indy_anoncred_onboard(agent: Controller):
+async def indy_anoncred_onboard(agent: Controller, *, did_from_seed: bool = True):
     """Onboard agent for indy anoncred operations."""
 
     config = (await agent.get("/status/config"))["config"]
@@ -352,6 +352,7 @@ async def indy_anoncred_onboard(agent: Controller):
         )
 
     public_did = (await agent.get("/wallet/did/public", response=DIDResult)).result
+    new_did = bool(public_did)
     if not public_did:
         public_did = (
             await agent.post(
@@ -362,6 +363,7 @@ async def indy_anoncred_onboard(agent: Controller):
         ).result
         assert public_did
 
+    if did_from_seed or new_did:
         onboarder = get_onboarder(genesis_url)
         if not onboarder:
             raise ControllerError("Unrecognized ledger, cannot automatically onboard")
