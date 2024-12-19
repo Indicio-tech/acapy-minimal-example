@@ -404,11 +404,15 @@ async def indy_anoncred_credential_artifacts(
     cred_def_tag: Optional[str] = None,
     support_revocation: bool = False,
     revocation_registry_size: Optional[int] = None,
-    anoncreds_wallet: bool = False,
     issuerID: Optional[str] = None,
 ):
     """Prepare credential artifacts for indy anoncreds."""
-
+    # Get wallet type
+    if agent.wallet_type == None:
+        raise ControllerError("Wallet type not found. Please correctly set up the controller.")
+    anoncreds_wallet = agent.wallet_type == "askar-anoncreds"
+    print(f"is anoncreds wallet = {anoncreds_wallet}")
+    
     # If using wallet=askar-anoncreds:
     if anoncreds_wallet:
         if issuerID is None:
@@ -1014,13 +1018,18 @@ async def indy_anoncreds_revoke(
     publish: bool = False,
     notify: bool = True,
     notify_version: str = "v1_0",
-    anoncreds_wallet: bool = False,
 ):
     """Revoking an Indy credential using revocation revoke.
 
     V1.0: V10CredentialExchange
     V2.0: V20CredExRecordDetail.
     """
+    # Get wallet type
+    if issuer.wallet_type == None:
+        raise ControllerError("Wallet type not found. Please correctly set up the controller.")
+    anoncreds_wallet = issuer.wallet_type == "askar-anoncreds"
+    print(f"is anoncreds wallet = {anoncreds_wallet}")
+
     if notify and holder_connection_id is None:
         return (
             "If you are going to set notify to True,"
@@ -1067,13 +1076,18 @@ async def indy_anoncreds_publish_revocation(
     cred_ex: Union[V10CredentialExchange, V20CredExRecordDetail],
     publish: bool = False,
     notify: bool = True,
-    anoncreds_wallet: bool = False,
 ):
     """Publishing revocation of indy credential.
 
     V1.0: V10CredentialExchange
     V2.0: V20CredExRecordDetail.
     """
+    # Get wallet type
+    if issuer.wallet_type == None:
+        raise ControllerError("Wallet type not found. Please correctly set up the controller.")
+    anoncreds_wallet = issuer.wallet_type == "askar-anoncreds"
+    print(f"is anoncreds wallet = {anoncreds_wallet}")
+ 
     if isinstance(cred_ex, V10CredentialExchange):
         await issuer.post(
             url="{}/revocation/publish-revocations".format("/anoncreds" if anoncreds_wallet else ""),

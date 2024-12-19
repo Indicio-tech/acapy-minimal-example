@@ -53,7 +53,6 @@ async def main():
                 alice,
                 ["firstname", "lastname"],
                 support_revocation=True,
-                anoncreds_wallet=True,
                 issuerID=alice_did.did,
             )
 
@@ -86,9 +85,8 @@ async def main():
                 cred_ex=alice_cred_ex,
                 holder_connection_id=alice_conn.connection_id,
                 notify=True,
-                anoncreds_wallet=True,
             )
-            await indy_anoncreds_publish_revocation(alice, cred_ex=alice_cred_ex, anoncreds_wallet=True)
+            await indy_anoncreds_publish_revocation(alice, cred_ex=alice_cred_ex)
             # TODO: Make this into a helper in protocols.py?
             await bob.record(topic="revocation-notification")
             revoked_time = int(time.time())

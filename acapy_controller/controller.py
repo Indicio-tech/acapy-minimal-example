@@ -188,6 +188,7 @@ class Controller:
         label: Optional[str] = None,
         wallet_id: Optional[str] = None,
         subwallet_token: Optional[str] = None,
+        wallet_type: Optional[str] = None,
         headers: Optional[Mapping[str, str]] = None,
         event_queue: Optional[Queue[Event]] = None,
     ):
@@ -240,6 +241,11 @@ class Controller:
         # Get settings
         settings = await self.record("settings")
         self.label = settings["label"]
+
+        # Get wallet type
+        config = await self.get("/status/config")
+        self.wallet_type = config["config"]["wallet.type"]
+        print(f"Wallet type is: {self.wallet_type}")
         return self
 
     async def shutdown(self, exc_info: Optional[Tuple] = None):
