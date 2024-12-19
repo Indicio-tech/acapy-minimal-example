@@ -24,21 +24,6 @@ from acapy_controller.protocols import (
 ALICE = getenv("ALICE", "http://alice:3001")
 BOB = getenv("BOB", "http://bob:3001")
 
-
-def summary(presentation: V20PresExRecord) -> str:
-    """Summarize a presentation exchange record."""
-    request = presentation.pres_request
-    return "Summary: " + json.dumps(
-        {
-            "state": presentation.state,
-            "verified": presentation.verified,
-            "presentation_request": request.dict(by_alias=True) if request else None,
-        },
-        indent=2,
-        sort_keys=True,
-    )
-
-
 async def main():
     """Test Controller protocols."""
     async with Controller(base_url=ALICE) as alice, Controller(base_url=BOB) as bob:
@@ -63,7 +48,7 @@ async def main():
                 bob,
                 alice_conn.connection_id,
                 bob_conn.connection_id,
-                cred_def["credential_definition_id"],
+                cred_def.credential_definition_id,
                 {"firstname": "Bob", "lastname": "Builder"},
             )
             issued_time = int(time.time())

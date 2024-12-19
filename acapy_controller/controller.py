@@ -245,7 +245,6 @@ class Controller:
         # Get wallet type
         config = await self.get("/status/config")
         self.wallet_type = config["config"]["wallet.type"]
-        print(f"Wallet type is: {self.wallet_type}")
         return self
 
     async def shutdown(self, exc_info: Optional[Tuple] = None):

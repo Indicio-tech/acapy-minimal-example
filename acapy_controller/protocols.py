@@ -382,7 +382,14 @@ class SchemaResult(Minimal):
 class SchemaResultAnoncreds(Minimal):
     """Result of creating a schema using /anoncreds/schema."""
 
-    schema_state: dict
+    state: str
+    schema_id: str
+    schema: dict
+
+    @classmethod
+    def deserialize(cls: Type[MinType], value: Mapping[str, Any]) -> MinType: 
+        """Deserialize the cred def result record.""" 
+        return super().deserialize(value["schema_state"]) 
 
 @dataclass
 class CredDefResult(Minimal):
@@ -394,7 +401,15 @@ class CredDefResult(Minimal):
 class CredDefResultAnoncreds(Minimal):
     """Result of creating a credential definition using /anoncreds/credential-definition."""
 
-    credential_definition_state: dict
+    state: str
+    credential_definition_id: str
+    credential_definition: dict
+    
+    @classmethod
+    def deserialize(cls: Type[MinType], value: Mapping[str, Any]) -> MinType: 
+        """Deserialize the cred def result record.""" 
+        return super().deserialize(value["credential_definition_state"]) 
+
 
 async def indy_anoncred_credential_artifacts(
     agent: Controller,
@@ -411,7 +426,6 @@ async def indy_anoncred_credential_artifacts(
     if agent.wallet_type == None:
         raise ControllerError("Wallet type not found. Please correctly set up the controller.")
     anoncreds_wallet = agent.wallet_type == "askar-anoncreds"
-    print(f"is anoncreds wallet = {anoncreds_wallet}")
     
     # If using wallet=askar-anoncreds:
     if anoncreds_wallet:
@@ -429,14 +443,14 @@ async def indy_anoncred_credential_artifacts(
                 },
             },
             response=SchemaResultAnoncreds,
-        )).schema_state
+        ))
 
         cred_def = (await agent.post(
             "/anoncreds/credential-definition",
             json={
                 "credential_definition": {
                     "issuerId": issuerID,
-                    "schemaId": schema["schema_id"],
+                    "schemaId": schema.schema_id,
                     "tag": cred_def_tag or token_hex(8),
                 },
 
@@ -448,7 +462,7 @@ async def indy_anoncred_credential_artifacts(
                 },
             },
             response=CredDefResultAnoncreds,
-        )).credential_definition_state
+        ))
 
         return schema, cred_def
     
@@ -1028,7 +1042,6 @@ async def indy_anoncreds_revoke(
     if issuer.wallet_type == None:
         raise ControllerError("Wallet type not found. Please correctly set up the controller.")
     anoncreds_wallet = issuer.wallet_type == "askar-anoncreds"
-    print(f"is anoncreds wallet = {anoncreds_wallet}")
 
     if notify and holder_connection_id is None:
         return (
@@ -1086,7 +1099,6 @@ async def indy_anoncreds_publish_revocation(
     if issuer.wallet_type == None:
         raise ControllerError("Wallet type not found. Please correctly set up the controller.")
     anoncreds_wallet = issuer.wallet_type == "askar-anoncreds"
-    print(f"is anoncreds wallet = {anoncreds_wallet}")
  
     if isinstance(cred_ex, V10CredentialExchange):
         await issuer.post(
