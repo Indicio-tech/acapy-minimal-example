@@ -372,6 +372,7 @@ async def indy_anoncred_onboard(agent: Controller):
     return public_did
 
 
+# Schema
 @dataclass
 class SchemaResult(Minimal):
     """Result of creating a schema using /schemas."""
@@ -379,36 +380,55 @@ class SchemaResult(Minimal):
     schema_id: str
 
 @dataclass
-class SchemaResultAnoncreds(Minimal):
-    """Result of creating a schema using /anoncreds/schema."""
-
+class SchemaStateAnoncreds(Minimal):
+    "schema_state field in SchemaResultAnoncreds"
     state: str
     schema_id: str
     schema: dict
 
+@dataclass
+class SchemaResultAnoncreds(Minimal):
+    """Result of creating a schema using /anoncreds/schema."""
+    schema_state: SchemaStateAnoncreds
+    schema_metadata: dict
+    job_id: str
+    registration_metadata: dict
+
     @classmethod
     def deserialize(cls: Type[MinType], value: Mapping[str, Any]) -> MinType: 
         """Deserialize the cred def result record.""" 
-        return super().deserialize(value["schema_state"]) 
+        value = dict(value) 
+        value["schema_state"] = SchemaStateAnoncreds.deserialize(value["schema_state"]) 
+        return super().deserialize(value) 
+    
 
+# CredDefResult
 @dataclass
 class CredDefResult(Minimal):
     """Result of creating a credential definition."""
-
     credential_definition_id: str
+
+@dataclass
+class CredDefStateAnoncreds(Minimal):
+    """credential_definition_state field in CredDefResult"""
+    state: str
+    credential_definition_id: str
+    credential_definition: dict
 
 @dataclass
 class CredDefResultAnoncreds(Minimal):
     """Result of creating a credential definition using /anoncreds/credential-definition."""
-
-    state: str
-    credential_definition_id: str
-    credential_definition: dict
+    credential_definition_state: CredDefStateAnoncreds
+    credential_definition_metadata: dict
+    job_id: str
+    registration_metadata: dict
     
     @classmethod
     def deserialize(cls: Type[MinType], value: Mapping[str, Any]) -> MinType: 
         """Deserialize the cred def result record.""" 
-        return super().deserialize(value["credential_definition_state"]) 
+        value = dict(value) 
+        value["credential_definition_state"] = CredDefStateAnoncreds.deserialize(value["credential_definition_state"]) 
+        return super().deserialize(value) 
 
 
 async def indy_anoncred_credential_artifacts(
@@ -443,7 +463,7 @@ async def indy_anoncred_credential_artifacts(
                 },
             },
             response=SchemaResultAnoncreds,
-        ))
+        )).schema_state
 
         cred_def = (await agent.post(
             "/anoncreds/credential-definition",
@@ -462,7 +482,7 @@ async def indy_anoncred_credential_artifacts(
                 },
             },
             response=CredDefResultAnoncreds,
-        ))
+        )).credential_definition_state
 
         return schema, cred_def
     
