@@ -22,7 +22,7 @@ jobs:
         run: poetry install
       - name: Run tests
         run: |
-          docker-compose run tests
+          docker compose run tests
       - name: Build package
         run: |
           poetry build

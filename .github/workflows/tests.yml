@@ -27,7 +27,7 @@ jobs:
     - uses: actions/checkout@v4
     - name: Run integration tests for protocols
       run: |
-        docker-compose run tests tests/
+        docker compose run tests tests/
 
   examples:
     name: Check examples
