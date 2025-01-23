@@ -4,13 +4,10 @@ This script is for you to use to reproduce a bug or demonstrate a feature.
 """
 
 import asyncio
-import json
 from os import getenv
-import time
 
 from acapy_controller import Controller
 from acapy_controller.logging import logging_to_stdout, section
-from acapy_controller.models import V20PresExRecord, V20PresExRecordList
 from acapy_controller.protocols import (
     didexchange,
     indy_anoncred_credential_artifacts,
@@ -23,6 +20,7 @@ from acapy_controller.protocols import (
 
 ALICE = getenv("ALICE", "http://alice:3001")
 BOB = getenv("BOB", "http://bob:3001")
+
 
 async def main():
     """Test Controller protocols."""
@@ -51,7 +49,6 @@ async def main():
                 cred_def.credential_definition_id,
                 {"firstname": "Bob", "lastname": "Builder"},
             )
-            issued_time = int(time.time())
 
         with section("Present credential attributes"):
             # Present the the credential's attributes
@@ -74,7 +71,7 @@ async def main():
             await indy_anoncreds_publish_revocation(alice, cred_ex=alice_cred_ex)
             # TODO: Make this into a helper in protocols.py?
             await bob.record(topic="revocation-notification")
-            revoked_time = int(time.time())
+
 
 if __name__ == "__main__":
     logging_to_stdout()

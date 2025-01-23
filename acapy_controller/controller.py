@@ -168,9 +168,7 @@ def params(**kwargs) -> Mapping[str, Any]:
     """Filter out keys with none values from dictionary."""
 
     return {
-        key: _serialize_param(value)
-        for key, value in kwargs.items()
-        if value is not None
+        key: _serialize_param(value) for key, value in kwargs.items() if value is not None
     }
 
 
@@ -301,9 +299,7 @@ class Controller:
 
         body = await resp.text()
         if resp.ok:
-            raise ControllerError(
-                f"Unexpected content type {resp.content_type}: {body}"
-            )
+            raise ControllerError(f"Unexpected content type {resp.content_type}: {body}")
         raise ControllerError(f"Request failed: {resp.url} {body}")
 
     async def request(
@@ -318,9 +314,7 @@ class Controller:
         response: Optional[Type[T]] = None,
     ) -> Union[T, Mapping[str, Any]]:
         """Make an HTTP request."""
-        async with ClientSession(
-            base_url=self.base_url, headers=self.headers
-        ) as session:
+        async with ClientSession(base_url=self.base_url, headers=self.headers) as session:
             headers = dict(headers or {})
             headers.update(self.headers)
 
@@ -649,8 +643,7 @@ class Controller:
         """Await an event matching a given topic and condition."""
         try:
             event = await self.event_queue.get(
-                lambda event: event.topic == topic
-                and (select(event) if select else True)
+                lambda event: event.topic == topic and (select(event) if select else True)
             )
         except asyncio.TimeoutError:
             raise ControllerError(
@@ -689,9 +682,7 @@ class Controller:
         try:
             event = await self.event_queue.get(
                 lambda event: event.topic == topic
-                and all(
-                    event.payload.get(key) == value for key, value in values.items()
-                ),
+                and all(event.payload.get(key) == value for key, value in values.items()),
                 timeout=timeout,
             )
         except asyncio.TimeoutError:

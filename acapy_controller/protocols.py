@@ -24,9 +24,7 @@ class ConnRecord(Minimal):
     rfc23_state: str
 
 
-async def trustping(
-    sender: Controller, conn: ConnRecord, comment: Optional[str] = None
-):
+async def trustping(sender: Controller, conn: ConnRecord, comment: Optional[str] = None):
     """Send a trustping to the specified connection."""
     await sender.post(
         f"/connections/{conn.connection_id}/send-ping",
@@ -379,56 +377,67 @@ class SchemaResult(Minimal):
 
     schema_id: str
 
+
 @dataclass
 class SchemaStateAnoncreds(Minimal):
-    "schema_state field in SchemaResultAnoncreds"
+    """schema_state field in SchemaResultAnoncreds."""
+
     state: str
     schema_id: str
     schema: dict
 
+
 @dataclass
 class SchemaResultAnoncreds(Minimal):
     """Result of creating a schema using /anoncreds/schema."""
+
     schema_state: SchemaStateAnoncreds
     schema_metadata: dict
     job_id: str
     registration_metadata: dict
 
     @classmethod
-    def deserialize(cls: Type[MinType], value: Mapping[str, Any]) -> MinType: 
-        """Deserialize the cred def result record.""" 
-        value = dict(value) 
-        value["schema_state"] = SchemaStateAnoncreds.deserialize(value["schema_state"]) 
-        return super().deserialize(value) 
-    
+    def deserialize(cls: Type[MinType], value: Mapping[str, Any]) -> MinType:
+        """Deserialize the cred def result record."""
+        value = dict(value)
+        value["schema_state"] = SchemaStateAnoncreds.deserialize(value["schema_state"])
+        return super().deserialize(value)
+
 
 # CredDefResult
 @dataclass
 class CredDefResult(Minimal):
     """Result of creating a credential definition."""
+
     credential_definition_id: str
+
 
 @dataclass
 class CredDefStateAnoncreds(Minimal):
-    """credential_definition_state field in CredDefResult"""
+    """credential_definition_state field in CredDefResult."""
+
     state: str
     credential_definition_id: str
     credential_definition: dict
 
+
 @dataclass
 class CredDefResultAnoncreds(Minimal):
-    """Result of creating a credential definition using /anoncreds/credential-definition."""
+    """Result of creating a cred def using /anoncreds/credential-definition."""
+
     credential_definition_state: CredDefStateAnoncreds
     credential_definition_metadata: dict
     job_id: str
     registration_metadata: dict
-    
+
     @classmethod
-    def deserialize(cls: Type[MinType], value: Mapping[str, Any]) -> MinType: 
-        """Deserialize the cred def result record.""" 
-        value = dict(value) 
-        value["credential_definition_state"] = CredDefStateAnoncreds.deserialize(value["credential_definition_state"]) 
-        return super().deserialize(value) 
+    def deserialize(cls: Type[MinType], value: Mapping[str, Any]) -> MinType:
+        """Deserialize the cred def result record."""
+        value = dict(value)
+        value["credential_definition_state"] = CredDefStateAnoncreds.deserialize(
+            value["credential_definition_state"]
+        )
+        return super().deserialize(value)
 
 
 async def indy_anoncred_credential_artifacts(
@@ -443,49 +452,56 @@ async def indy_anoncred_credential_artifacts(
 ):
     """Prepare credential artifacts for indy anoncreds."""
     # Get wallet type
-    if agent.wallet_type == None:
-        raise ControllerError("Wallet type not found. Please correctly set up the controller.")
+    if agent.wallet_type is None:
+        raise ControllerError(
+            "Wallet type not found. Please correctly set up the controller."
+        )
     anoncreds_wallet = agent.wallet_type == "askar-anoncreds"
-    
+
     # If using wallet=askar-anoncreds:
     if anoncreds_wallet:
         if issuerID is None:
-            raise ControllerError("If using askar-anoncreds wallet, issuerID must be specified.")
-        
-        schema = (await agent.post(
-            "/anoncreds/schema",
-            json={
-                "schema": {
-                    "attrNames": attributes,
-                    "issuerId": issuerID,
-                    "name": schema_name or "minimal-" + token_hex(8),
-                    "version": schema_version or "1.0",
-                },
-            },
-            response=SchemaResultAnoncreds,
-        )).schema_state
+            raise ControllerError(
+                "If using askar-anoncreds wallet, issuerID must be specified."
+            )
 
-        cred_def = (await agent.post(
-            "/anoncreds/credential-definition",
-            json={
-                "credential_definition": {
-                    "issuerId": issuerID,
-                    "schemaId": schema.schema_id,
-                    "tag": cred_def_tag or token_hex(8),
+        schema = (
+            await agent.post(
+                "/anoncreds/schema",
+                json={
+                    "schema": {
+                        "attrNames": attributes,
+                        "issuerId": issuerID,
+                        "name": schema_name or "minimal-" + token_hex(8),
+                        "version": schema_version or "1.0",
+                    },
                 },
+                response=SchemaResultAnoncreds,
+            )
+        ).schema_state
 
-                "options": {
-                    "revocation_registry_size": (
-                        revocation_registry_size if revocation_registry_size else 10
-                    ),
-                    "support_revocation": support_revocation,
+        cred_def = (
+            await agent.post(
+                "/anoncreds/credential-definition",
+                json={
+                    "credential_definition": {
+                        "issuerId": issuerID,
+                        "schemaId": schema.schema_id,
+                        "tag": cred_def_tag or token_hex(8),
+                    },
+                    "options": {
+                        "revocation_registry_size": (
+                            revocation_registry_size if revocation_registry_size else 10
+                        ),
+                        "support_revocation": support_revocation,
+                    },
                 },
-            },
-            response=CredDefResultAnoncreds,
-        )).credential_definition_state
+                response=CredDefResultAnoncreds,
+            )
+        ).credential_definition_state
 
         return schema, cred_def
-    
+
     # If using wallet=askar
     schema = await agent.post(
         "/schemas",
@@ -1059,8 +1075,10 @@ async def indy_anoncreds_revoke(
     V2.0: V20CredExRecordDetail.
     """
     # Get wallet type
-    if issuer.wallet_type == None:
-        raise ControllerError("Wallet type not found. Please correctly set up the controller.")
+    if issuer.wallet_type is None:
+        raise ControllerError(
+            "Wallet type not found. Please correctly set up the controller."
+        )
     anoncreds_wallet = issuer.wallet_type == "askar-anoncreds"
 
     if notify and holder_connection_id is None:
@@ -1116,13 +1134,17 @@ async def indy_anoncreds_publish_revocation(
     V2.0: V20CredExRecordDetail.
     """
     # Get wallet type
-    if issuer.wallet_type == None:
-        raise ControllerError("Wallet type not found. Please correctly set up the controller.")
+    if issuer.wallet_type is None:
+        raise ControllerError(
+            "Wallet type not found. Please correctly set up the controller."
+        )
     anoncreds_wallet = issuer.wallet_type == "askar-anoncreds"
- 
+
     if isinstance(cred_ex, V10CredentialExchange):
         await issuer.post(
-            url="{}/revocation/publish-revocations".format("/anoncreds" if anoncreds_wallet else ""),
+            url="{}/revocation/publish-revocations".format(
+                "/anoncreds" if anoncreds_wallet else ""
+            ),
             json={
                 "rev_reg_id": cred_ex.revoc_reg_id,
                 "cred_rev_id": cred_ex.revocation_id,
@@ -1133,7 +1155,9 @@ async def indy_anoncreds_publish_revocation(
 
     elif isinstance(cred_ex, V20CredExRecordDetail) and cred_ex.indy:
         await issuer.post(
-            url="{}/revocation/publish-revocations".format("/anoncreds" if anoncreds_wallet else ""),
+            url="{}/revocation/publish-revocations".format(
+                "/anoncreds" if anoncreds_wallet else ""
+            ),
             json={
                 "rev_reg_id": cred_ex.indy.rev_reg_id,
                 "cred_rev_id": cred_ex.indy.cred_rev_id,
