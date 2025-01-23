@@ -35,7 +35,7 @@ class ExampleRunner:
         """
         try:
             subprocess.run(
-                ["docker-compose", "-f", self.compose_file, *command],
+                ["docker compose", "-f", self.compose_file, *command],
                 check=True,
             )
             return 0
