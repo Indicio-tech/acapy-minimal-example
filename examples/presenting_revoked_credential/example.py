@@ -95,9 +95,7 @@ async def main():
             requested_attributes=[
                 {
                     "name": "firstname",
-                    "restrictions": [
-                        {"cred_def_id": cred_def.credential_definition_id}
-                    ],
+                    "restrictions": [{"cred_def_id": cred_def.credential_definition_id}],
                 }
             ],
             non_revoked={"from": issued_time, "to": issued_time},
@@ -112,9 +110,7 @@ async def main():
             requested_attributes=[
                 {
                     "name": "firstname",
-                    "restrictions": [
-                        {"cred_def_id": cred_def.credential_definition_id}
-                    ],
+                    "restrictions": [{"cred_def_id": cred_def.credential_definition_id}],
                 }
             ],
         )
@@ -130,9 +126,7 @@ async def main():
             requested_attributes=[
                 {
                     "name": "firstname",
-                    "restrictions": [
-                        {"cred_def_id": cred_def.credential_definition_id}
-                    ],
+                    "restrictions": [{"cred_def_id": cred_def.credential_definition_id}],
                     "non_revoked": {
                         "from": issued_time,
                         "to": issued_time,
@@ -151,9 +145,7 @@ async def main():
             requested_attributes=[
                 {
                     "name": "firstname",
-                    "restrictions": [
-                        {"cred_def_id": cred_def.credential_definition_id}
-                    ],
+                    "restrictions": [{"cred_def_id": cred_def.credential_definition_id}],
                     "non_revoked": {
                         "from": revoked_time,
                         "to": revoked_time,

@@ -21,17 +21,17 @@ env:
 jobs:
   test:
     name: Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
     - uses: actions/checkout@v4
     - name: Run integration tests for protocols
       run: |
-        docker-compose run tests tests/
+        docker compose run tests tests/
 
   examples:
     name: Check examples
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - name: Install poetry

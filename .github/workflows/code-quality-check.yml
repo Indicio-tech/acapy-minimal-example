@@ -11,7 +11,7 @@ name: Code Quality Check
 jobs:
   format:
     name: Format and Lint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: psf/black@24.10.0

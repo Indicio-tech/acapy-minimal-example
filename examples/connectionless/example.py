@@ -62,9 +62,7 @@ async def icv2():
         )
         invite = await alice.post(
             "/out-of-band/create-invitation",
-            json={
-                "attachments": [{"id": offer.cred_ex_id, "type": "credential-offer"}]
-            },
+            json={"attachments": [{"id": offer.cred_ex_id, "type": "credential-offer"}]},
             response=InvitationRecord,
         )
         bob.event_queue.flush()
