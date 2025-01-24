@@ -393,8 +393,8 @@ class SchemaResultAnoncreds(Minimal):
 
     schema_state: SchemaStateAnoncreds
     schema_metadata: dict
-    job_id: str
     registration_metadata: dict
+    job_id: Optional[str] = None
 
     @classmethod
     def deserialize(cls: Type[MinType], value: Mapping[str, Any]) -> MinType:
@@ -427,8 +427,8 @@ class CredDefResultAnoncreds(Minimal):
 
     credential_definition_state: CredDefStateAnoncreds
     credential_definition_metadata: dict
-    job_id: str
     registration_metadata: dict
+    job_id: Optional[str] = None
 
     @classmethod
     def deserialize(cls: Type[MinType], value: Mapping[str, Any]) -> MinType:
