@@ -189,6 +189,7 @@ async def didexchange(
     *,
     invite: Optional[InvitationMessage] = None,
     use_existing_connection: bool = False,
+    alias: Optional[str] = None,
 ):
     """Connect two agents using did exchange protocol."""
     if not invite:
@@ -199,6 +200,7 @@ async def didexchange(
         json=invite,
         params=params(
             use_existing_connection=use_existing_connection,
+            alias=alias,
         ),
         response=OobRecord,
     )
