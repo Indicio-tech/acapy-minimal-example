@@ -19,12 +19,14 @@ class ConnRecord(Minimal):
     """Connection record."""
 
     connection_id: str
-    invitation_key: str
     state: str
     rfc23_state: str
+    invitation_key: str | None = None
 
 
-async def trustping(sender: Controller, conn: ConnRecord, comment: Optional[str] = None):
+async def trustping(
+    sender: Controller, conn: ConnRecord, comment: Optional[str] = None
+):
     """Send a trustping to the specified connection."""
     await sender.post(
         f"/connections/{conn.connection_id}/send-ping",
@@ -163,7 +165,7 @@ async def oob_invitation(
     invite_record = await inviter.post(
         "/out-of-band/create-invitation",
         json={
-            "handshake_protocols": ["https://didcomm.org/didexchange/1.0"],
+            "handshake_protocols": ["https://didcomm.org/didexchange/1.1"],
             "use_public_did": use_public_did,
         },
         params=params(
@@ -180,6 +182,7 @@ class OobRecord(Minimal):
     """Out-of-band record."""
 
     connection_id: str
+    state: str
     our_recipient_key: Optional[str] = None
 
 
@@ -203,9 +206,10 @@ async def didexchange(
         response=OobRecord,
     )
 
-    if use_existing_connection and invitee_oob_record == "reuse-accepted":
+    if use_existing_connection and invitee_oob_record.state == "reuse-accepted":
         inviter_oob_record = await inviter.event_with_values(
             topic="out_of_band",
+            state="done",
             invi_msg_id=invite.id,
             event_type=OobRecord,
         )
