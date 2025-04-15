@@ -4,20 +4,162 @@ This script is for you to use to reproduce a bug or demonstrate a feature.
 """
 
 import asyncio
+from contextlib import asynccontextmanager, suppress
+from dataclasses import dataclass
 from os import getenv
 
 from acapy_controller import Controller
+from acapy_controller.controller import ControllerError, Minimal
 from acapy_controller.logging import logging_to_stdout
-from acapy_controller.models import CreateWalletResponse
+from acapy_controller.models import CreateWalletResponse, DIDResult
 from acapy_controller.protocols import (
     didexchange,
     indy_anoncred_credential_artifacts,
     indy_anoncred_onboard,
-    indy_issue_credential_v2,
-    indy_present_proof_v2,
+    oob_invitation,
+    ConnRecord,
 )
 
 AGENCY = getenv("AGENCY", "http://agency:3001")
+
+
+@dataclass()
+class EndorseTxn(Minimal):
+    """Endorse txn request."""
+
+    transaction_id: str
+    state: str
+
+
+async def indy_anoncred_onboard_via_endorser(
+    endorser: Controller,
+    issuer: Controller,
+) -> tuple[str, ConnRecord, ConnRecord]:
+    """Do onboarding via endorser."""
+    endo_did = await indy_anoncred_onboard(endorser)
+    pub_invite = await oob_invitation(endorser, use_public_did=True)
+
+    # ea - endorser to issuer conn
+    # ae- issuer to endorser conn
+    ea, ae = await didexchange(endorser, issuer, invite=pub_invite)
+
+    # Trigger endorser set role
+    await endorser.post(
+        f"/transactions/{ea.connection_id}/set-endorser-role",
+        params={"transaction_my_job": "TRANSACTION_ENDORSER"},
+    )
+    await issuer.post(
+        f"/transactions/{ae.connection_id}/set-endorser-role",
+        params={"transaction_my_job": "TRANSACTION_AUTHOR"},
+    )
+
+    # Set endorser info
+    await issuer.put(
+        "/settings",
+        json={
+            "extra_settings": {
+                "endorser-protocol-role": "author",
+                "auto-request-endorsement": True,
+                "auto-write-transactions": True,
+                "auto-create-revocation-transactions": True,
+            }
+        },
+    )
+    assert ae.their_public_did
+    assert ae.their_public_did == endo_did.did
+    await issuer.post(
+        f"/transactions/{ae.connection_id}/set-endorser-info",
+        params={"endorser_did": ae.their_public_did},
+    )
+
+    # Register nym for issuer/issuer
+    result = await issuer.post(
+        "/wallet/did/create",
+        json={
+            "method": "sov",
+            "options": {
+                "key_type": "ed25519",
+            },
+        },
+        response=DIDResult,
+    )
+    assert result.result
+    issuer_did = result.result
+
+    await issuer.post(
+        "/ledger/register-nym",
+        params={
+            "did": issuer_did.did,
+            "verkey": issuer_did.verkey,
+            "conn_id": ae.connection_id,
+            "create_transaction_for_endorser": "true",
+        },
+    )
+
+    txn = await endorser.event_with_values(
+        "endorse_transaction", state="request_received", event_type=EndorseTxn
+    )
+    await endorser.post(f"/transactions/{txn.transaction_id}/endorse")
+    await issuer.event_with_values("endorse_transaction", state="transaction_acked")
+
+    config = (await issuer.get("/status/config"))["config"]
+    genesis_url = config.get("ledger.genesis_url")
+
+    if not genesis_url:
+        raise ControllerError("No ledger configured on agent")
+
+    taa = (await issuer.get("/ledger/taa"))["result"]
+    if taa.get("taa_required") is True and taa.get("taa_accepted") is None:
+        await issuer.post(
+            "/ledger/taa/accept",
+            json={
+                "mechanism": "on_file",
+                "text": taa["taa_record"]["text"],
+                "version": taa["taa_record"]["version"],
+            },
+        )
+    await issuer.post(
+        "/wallet/did/public",
+        params={
+            "did": issuer_did.did,
+            "conn_id": ae.connection_id,
+        },
+    )
+    txn = await endorser.event_with_values(
+        "endorse_transaction", state="request_received", event_type=EndorseTxn
+    )
+    await endorser.post(f"/transactions/{txn.transaction_id}/endorse")
+    await issuer.event_with_values("endorse_transaction", state="transaction_acked")
+
+    endorser.event_queue.flush()
+    issuer.event_queue.flush()
+
+    return issuer_did.did, ea, ae
+
+
+@asynccontextmanager
+async def auto_endorse_all(endorser: Controller):
+    """Auto endorse all received requests."""
+
+    async def _inner():
+        while True:
+            try:
+                txn = await endorser.event_with_values(
+                    "endorse_transaction",
+                    state="request_received",
+                    event_type=EndorseTxn,
+                )
+                await endorser.post(f"/transactions/{txn.transaction_id}/endorse")
+            except TimeoutError:
+                pass
+
+    task = asyncio.create_task(_inner())
+
+    yield
+
+    task.cancel()
+    with suppress(asyncio.CancelledError, TimeoutError):
+        await task
 
 
 async def main():
@@ -27,7 +169,7 @@ async def main():
             "/multitenancy/wallet",
             json={
                 "label": "Alice",
-                "wallet_type": "askar",
+                "wallet_type": "askar-anoncreds",
             },
             response=CreateWalletResponse,
         )
@@ -35,7 +177,7 @@ async def main():
             "/multitenancy/wallet",
             json={
                 "label": "Bob",
-                "wallet_type": "askar",
+                "wallet_type": "askar-anoncreds",
             },
             response=CreateWalletResponse,
         )
@@ -49,34 +191,17 @@ async def main():
         ) as bob,
     ):
         # Issuance prep
-        await indy_anoncred_onboard(alice)
-        _, cred_def = await indy_anoncred_credential_artifacts(
-            alice,
-            ["firstname", "lastname"],
-            support_revocation=True,
-        )
+        await indy_anoncred_onboard(bob)
+        alice_did, _, alice_conn = await indy_anoncred_onboard_via_endorser(bob, alice)
 
-        # Connecting
-        alice_conn, bob_conn = await didexchange(alice, bob)
-
-        # Issue a credential
-        await indy_issue_credential_v2(
-            alice,
-            bob,
-            alice_conn.connection_id,
-            bob_conn.connection_id,
-            cred_def.credential_definition_id,
-            {"firstname": "Bob", "lastname": "Builder"},
-        )
-
-        # Present the the credential's attributes
-        await indy_present_proof_v2(
-            bob,
-            alice,
-            bob_conn.connection_id,
-            alice_conn.connection_id,
-            requested_attributes=[{"name": "firstname"}],
-        )
+        async with auto_endorse_all(bob):
+            _, cred_def = await indy_anoncred_credential_artifacts(
+                alice,
+                ["firstname", "lastname"],
+                support_revocation=True,
+                issuer_id=alice_did,
+                endorser_connection_id=alice_conn.connection_id,
+            )
 
 
 if __name__ == "__main__":
