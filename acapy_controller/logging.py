@@ -31,7 +31,7 @@ class ColorFormatter(logging.Formatter):
         return formatter.format(record)
 
 
-def logging_to_stdout():
+def logging_to_stdout(*other: logging.Logger):
     """Set up logging to stdout."""
 
     global LOGGING_SET
@@ -39,19 +39,18 @@ def logging_to_stdout():
         return
 
     if sys.stdout.isatty():
-        logger = logging.getLogger("acapy_controller")
-        logger.setLevel(LOG_LEVEL.upper())
-        ch = logging.StreamHandler()
-        ch.setLevel(LOG_LEVEL.upper())
-        ch.setFormatter(ColorFormatter("[%(levelname)s] %(message)s"))
-        logger.addHandler(ch)
+        for logger in (logging.getLogger("acapy_controller"), *other):
+            logger.setLevel(LOG_LEVEL.upper())
+            ch = logging.StreamHandler()
+            ch.setLevel(LOG_LEVEL.upper())
+            ch.setFormatter(ColorFormatter("[%(levelname)s] %(message)s"))
+            logger.addHandler(ch)
     else:
         logging.basicConfig(
             stream=sys.stdout,
-            level=logging.WARNING,
+            level=LOG_LEVEL.upper(),
             format="[%(levelname)s] %(message)s",
         )
-        logging.getLogger("controller").setLevel(LOG_LEVEL.upper())
 
     LOGGING_SET = True
 
