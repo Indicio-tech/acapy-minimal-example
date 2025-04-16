@@ -1,6 +1,6 @@
 services:
   agency:
-    image: ghcr.io/openwallet-foundation/acapy-agent:py3.12-nightly
+    image: ghcr.io/openwallet-foundation/acapy-agent:py3.12-nightly-2025-04-16
     #image: acapy-test
     ports:
       - "3001:3001"
