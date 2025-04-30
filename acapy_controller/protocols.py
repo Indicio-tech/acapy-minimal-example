@@ -19,9 +19,9 @@ class ConnRecord(Minimal):
     """Connection record."""
 
     connection_id: str
-    invitation_key: str
     state: str
     rfc23_state: str
+    invitation_key: str | None = None
 
 
 async def trustping(
@@ -165,7 +165,7 @@ async def oob_invitation(
     invite_record = await inviter.post(
         "/out-of-band/create-invitation",
         json={
-            "handshake_protocols": ["https://didcomm.org/didexchange/1.0"],
+            "handshake_protocols": ["https://didcomm.org/didexchange/1.1"],
             "use_public_did": use_public_did,
         },
         params=params(
@@ -182,6 +182,7 @@ class OobRecord(Minimal):
     """Out-of-band record."""
 
     connection_id: str
+    state: str
     our_recipient_key: Optional[str] = None
 
 
@@ -207,9 +208,10 @@ async def didexchange(
         response=OobRecord,
     )
 
-    if use_existing_connection and invitee_oob_record == "reuse-accepted":
+    if use_existing_connection and invitee_oob_record.state == "reuse-accepted":
         inviter_oob_record = await inviter.event_with_values(
             topic="out_of_band",
+            state="done",
             invi_msg_id=invite.id,
             event_type=OobRecord,
         )
@@ -374,18 +376,74 @@ async def indy_anoncred_onboard(agent: Controller):
     return public_did
 
 
+# Schema
 @dataclass
 class SchemaResult(Minimal):
-    """Result of creating a schema."""
+    """Result of creating a schema using /schemas."""
 
     schema_id: str
 
 
 @dataclass
+class SchemaStateAnoncreds(Minimal):
+    """schema_state field in SchemaResultAnoncreds."""
+
+    state: str
+    schema_id: str
+    schema: dict
+
+
+@dataclass
+class SchemaResultAnoncreds(Minimal):
+    """Result of creating a schema using /anoncreds/schema."""
+
+    schema_state: SchemaStateAnoncreds
+    schema_metadata: dict
+    registration_metadata: dict
+    job_id: Optional[str] = None
+
+    @classmethod
+    def deserialize(cls: Type[MinType], value: Mapping[str, Any]) -> MinType:
+        """Deserialize the cred def result record."""
+        value = dict(value)
+        value["schema_state"] = SchemaStateAnoncreds.deserialize(value["schema_state"])
+        return super().deserialize(value)
+
+
+# CredDefResult
+@dataclass
 class CredDefResult(Minimal):
     """Result of creating a credential definition."""
 
     credential_definition_id: str
+
+
+@dataclass
+class CredDefStateAnoncreds(Minimal):
+    """credential_definition_state field in CredDefResult."""
+
+    state: str
+    credential_definition_id: str
+    credential_definition: dict
+
+
+@dataclass
+class CredDefResultAnoncreds(Minimal):
+    """Result of creating a cred def using /anoncreds/credential-definition."""
+
+    credential_definition_state: CredDefStateAnoncreds
+    credential_definition_metadata: dict
+    registration_metadata: dict
+    job_id: Optional[str] = None
+
+    @classmethod
+    def deserialize(cls: Type[MinType], value: Mapping[str, Any]) -> MinType:
+        """Deserialize the cred def result record."""
+        value = dict(value)
+        value["credential_definition_state"] = CredDefStateAnoncreds.deserialize(
+            value["credential_definition_state"]
+        )
+        return super().deserialize(value)
 
 
 async def indy_anoncred_credential_artifacts(
@@ -396,8 +454,61 @@ async def indy_anoncred_credential_artifacts(
     cred_def_tag: Optional[str] = None,
     support_revocation: bool = False,
     revocation_registry_size: Optional[int] = None,
+    issuerID: Optional[str] = None,
 ):
     """Prepare credential artifacts for indy anoncreds."""
+    # Get wallet type
+    if agent.wallet_type is None:
+        raise ControllerError(
+            "Wallet type not found. Please correctly set up the controller."
+        )
+    anoncreds_wallet = agent.wallet_type == "askar-anoncreds"
+
+    # If using wallet=askar-anoncreds:
+    if anoncreds_wallet:
+        if issuerID is None:
+            raise ControllerError(
+                "If using askar-anoncreds wallet, issuerID must be specified."
+            )
+
+        schema = (
+            await agent.post(
+                "/anoncreds/schema",
+                json={
+                    "schema": {
+                        "attrNames": attributes,
+                        "issuerId": issuerID,
+                        "name": schema_name or "minimal-" + token_hex(8),
+                        "version": schema_version or "1.0",
+                    },
+                },
+                response=SchemaResultAnoncreds,
+            )
+        ).schema_state
+
+        cred_def = (
+            await agent.post(
+                "/anoncreds/credential-definition",
+                json={
+                    "credential_definition": {
+                        "issuerId": issuerID,
+                        "schemaId": schema.schema_id,
+                        "tag": cred_def_tag or token_hex(8),
+                    },
+                    "options": {
+                        "revocation_registry_size": (
+                            revocation_registry_size if revocation_registry_size else 10
+                        ),
+                        "support_revocation": support_revocation,
+                    },
+                },
+                response=CredDefResultAnoncreds,
+            )
+        ).credential_definition_state
+
+        return schema, cred_def
+
+    # If using wallet=askar
     schema = await agent.post(
         "/schemas",
         json={
@@ -969,6 +1080,13 @@ async def indy_anoncreds_revoke(
     V1.0: V10CredentialExchange
     V2.0: V20CredExRecordDetail.
     """
+    # Get wallet type
+    if issuer.wallet_type is None:
+        raise ControllerError(
+            "Wallet type not found. Please correctly set up the controller."
+        )
+    anoncreds_wallet = issuer.wallet_type == "askar-anoncreds"
+
     if notify and holder_connection_id is None:
         return (
             "If you are going to set notify to True,"
@@ -978,7 +1096,7 @@ async def indy_anoncreds_revoke(
     # Passes in V10CredentialExchange
     if isinstance(cred_ex, V10CredentialExchange):
         await issuer.post(
-            url="/revocation/revoke",
+            url="{}/revocation/revoke".format("/anoncreds" if anoncreds_wallet else ""),
             json={
                 "connection_id": holder_connection_id,
                 "rev_reg_id": cred_ex.revoc_reg_id,
@@ -992,7 +1110,7 @@ async def indy_anoncreds_revoke(
     # Passes in V20CredExRecordDetail
     elif isinstance(cred_ex, V20CredExRecordDetail) and cred_ex.indy:
         await issuer.post(
-            url="/revocation/revoke",
+            url="{}/revocation/revoke".format("/anoncreds" if anoncreds_wallet else ""),
             json={
                 "connection_id": holder_connection_id,
                 "rev_reg_id": cred_ex.indy.rev_reg_id,
@@ -1021,9 +1139,18 @@ async def indy_anoncreds_publish_revocation(
     V1.0: V10CredentialExchange
     V2.0: V20CredExRecordDetail.
     """
+    # Get wallet type
+    if issuer.wallet_type is None:
+        raise ControllerError(
+            "Wallet type not found. Please correctly set up the controller."
+        )
+    anoncreds_wallet = issuer.wallet_type == "askar-anoncreds"
+
     if isinstance(cred_ex, V10CredentialExchange):
         await issuer.post(
-            url="/revocation/publish-revocations",
+            url="{}/revocation/publish-revocations".format(
+                "/anoncreds" if anoncreds_wallet else ""
+            ),
             json={
                 "rev_reg_id": cred_ex.revoc_reg_id,
                 "cred_rev_id": cred_ex.revocation_id,
@@ -1034,7 +1161,9 @@ async def indy_anoncreds_publish_revocation(
 
     elif isinstance(cred_ex, V20CredExRecordDetail) and cred_ex.indy:
         await issuer.post(
-            url="/revocation/publish-revocations",
+            url="{}/revocation/publish-revocations".format(
+                "/anoncreds" if anoncreds_wallet else ""
+            ),
             json={
                 "rev_reg_id": cred_ex.indy.rev_reg_id,
                 "cred_rev_id": cred_ex.indy.cred_rev_id,
