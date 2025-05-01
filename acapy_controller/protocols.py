@@ -7,7 +7,7 @@ from secrets import randbelow, token_hex
 from typing import Any, Dict, List, Mapping, Optional, Tuple, Type, Union
 from uuid import uuid4
 
-from .controller import Controller, ControllerError, MinType, Minimal, params
+from .controller import Controller, ControllerError, MinType, Minimal, omit_none, params
 from .onboarding import get_onboarder
 
 
@@ -482,9 +482,7 @@ async def indy_anoncred_credential_artifacts(
                         "name": schema_name or "minimal-" + token_hex(8),
                         "version": schema_version or "1.0",
                     },
-                    "options": {
-                        "endorser_connection_id": endorser_connection_id,
-                    },
+                    "options": omit_none(endorser_connection_id=endorser_connection_id),
                 },
                 response=SchemaResultAnoncreds,
             )
@@ -504,13 +502,13 @@ async def indy_anoncred_credential_artifacts(
                         "schemaId": schema.schema_id,
                         "tag": cred_def_tag or token_hex(8),
                     },
-                    "options": {
-                        "endorser_connection_id": endorser_connection_id,
-                        "revocation_registry_size": (
+                    "options": omit_none(
+                        endorser_connection_id=endorser_connection_id,
+                        revocation_registry_size=(
                             revocation_registry_size if revocation_registry_size else 10
                         ),
-                        "support_revocation": support_revocation,
-                    },
+                        support_revocation=support_revocation,
+                    ),
                 },
                 response=CredDefResultAnoncreds,
             )
