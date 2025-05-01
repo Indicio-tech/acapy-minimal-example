@@ -22,6 +22,8 @@ class ConnRecord(Minimal):
     state: str
     rfc23_state: str
     invitation_key: str | None = None
+    their_public_did: str | None = None
+    invitation_msg_id: str | None = None
 
 
 async def trustping(sender: Controller, conn: ConnRecord, comment: Optional[str] = None):
