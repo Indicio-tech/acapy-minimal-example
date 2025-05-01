@@ -14,10 +14,15 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - uses: psf/black@24.10.0
+      - uses: astralsh/ruff-action@v3
+        name: ruff check
         with:
+          version: 0.11.7
           src: "./acapy_controller ./examples"
-      - uses: chartboost/ruff-action@v1
+          args: check
+      - uses: astralsh/ruff-action@v3
+        name: ruff format
         with:
-          version: 0.3.5
+          version: 0.11.7
           src: "./acapy_controller ./examples"
+          args: format --check
