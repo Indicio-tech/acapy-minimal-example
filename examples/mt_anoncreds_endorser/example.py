@@ -190,11 +190,14 @@ async def main():
             response=CreateWalletResponse,
         )
 
-    async with Controller(
-        base_url=AGENCY, wallet_id=alice.wallet_id, subwallet_token=alice.token
-    ) as alice, Controller(
-        base_url=AGENCY, wallet_id=bob.wallet_id, subwallet_token=bob.token
-    ) as bob:
+    async with (
+        Controller(
+            base_url=AGENCY, wallet_id=alice.wallet_id, subwallet_token=alice.token
+        ) as alice,
+        Controller(
+            base_url=AGENCY, wallet_id=bob.wallet_id, subwallet_token=bob.token
+        ) as bob,
+    ):
         # Issuance prep
         await indy_anoncred_onboard(bob)
         alice_did, _, alice_conn = await indy_anoncred_onboard_via_endorser(bob, alice)
