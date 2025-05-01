@@ -1,4 +1,3 @@
-version: "3"
 services:
   agency:
     image: ghcr.io/openwallet-foundation/acapy-agent:py3.12-1.2.4
@@ -21,7 +20,7 @@ services:
         --multitenant
         --multitenant-admin
         --jwt-secret insecure
-        --multitenancy-config wallet_type=askar-profile key_derivation_method=RAW
+        --multitenancy-config wallet_type=single-wallet-askar key_derivation_method=RAW
         --log-level debug
         --debug-webhooks
     healthcheck:
