@@ -8,8 +8,8 @@ from acapy_controller import Controller
 from acapy_controller.protocols import (
     connection,
     didexchange,
-    indy_anoncreds_publish_revocation,
-    indy_anoncreds_revoke,
+    anoncreds_publish_revocation,
+    anoncreds_revoke,
     oob_invitation,
     ConnRecord,
     DIDInfo,
@@ -87,7 +87,7 @@ async def test_indy_anoncreds_revoke(
     alice: Controller, alice_cred_ex: V10CredentialExchange, alice_conn: ConnRecord
 ):
     """Testing revoking an Indy credential using revocation revoke."""
-    await indy_anoncreds_revoke(
+    await anoncreds_revoke(
         alice,
         cred_ex=alice_cred_ex,
         holder_connection_id=alice_conn.connection_id,
@@ -100,7 +100,7 @@ async def test_indy_anoncreds_revoke_v2(
     alice: Controller, alice_cred_ex_v2: V20CredExRecordDetail, alice_conn: ConnRecord
 ):
     """Testing revoking an Indy credential using revocation revoke."""
-    await indy_anoncreds_revoke(
+    await anoncreds_revoke(
         alice,
         cred_ex=alice_cred_ex_v2,
         holder_connection_id=alice_conn.connection_id,
@@ -115,7 +115,7 @@ async def test_indy_anoncreds_publish_revocation(
     """
     Testing publishing revocation
     """
-    await indy_anoncreds_publish_revocation(alice, cred_ex=alice_cred_ex)
+    await anoncreds_publish_revocation(alice, cred_ex=alice_cred_ex)
 
 
 @pytest.mark.asyncio
@@ -125,4 +125,4 @@ async def test_indy_anoncreds_publish_revocation_v2(
     """
     Testing publishing revocation
     """
-    await indy_anoncreds_publish_revocation(alice, cred_ex=alice_cred_ex_v2)
+    await anoncreds_publish_revocation(alice, cred_ex=alice_cred_ex_v2)

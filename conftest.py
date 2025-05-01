@@ -109,7 +109,7 @@ class ExmapleItem(pytest.Item):
 
     def runtest(self) -> None:
         """Run the test."""
-        ExampleRunner(self.compose_file).handle_run("run", "example")
+        ExampleRunner(self.compose_file).handle_run("run", "--rm", "example")
 
     def repr_failure(self, excinfo):
         """Called when self.runtest() raises an exception."""
