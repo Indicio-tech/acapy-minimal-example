@@ -24,9 +24,7 @@ class ConnRecord(Minimal):
     invitation_key: str | None = None
 
 
-async def trustping(
-    sender: Controller, conn: ConnRecord, comment: Optional[str] = None
-):
+async def trustping(sender: Controller, conn: ConnRecord, comment: Optional[str] = None):
     """Send a trustping to the specified connection."""
     await sender.post(
         f"/connections/{conn.connection_id}/send-ping",

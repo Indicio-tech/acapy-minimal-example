@@ -647,8 +647,7 @@ class Controller:
             )
         except asyncio.TimeoutError:
             raise ControllerError(
-                f"Event from {self.label} with topic {topic} not received "
-                "before timeout"
+                f"Event from {self.label} with topic {topic} not received before timeout"
             ) from None
         return _deserialize(event.payload, event_type)
 
