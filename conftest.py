@@ -66,20 +66,18 @@ class ExampleRunner:
             self.cleanup()
 
 
-def pytest_collect_file(parent: Session, path):
+def pytest_collect_file(parent: Session, file_path: Path):
     """Pytest collection hook.
 
     This will collect the docker-compose.yml files from the examples and create
     pytest items to run them.
     """
-    file = Path(str(path))
-
     # Skip certain examples
-    if (file.parent / "__skip__").exists():
+    if (file_path.parent / "__skip__").exists():
         return
 
-    if file.suffix == ".yml" and file.parent.parent == EXAMPLES_DIR:
-        return ExampleFile.from_parent(parent, path=file.parent)
+    if file_path.suffix == ".yml" and file_path.parent.parent == EXAMPLES_DIR:
+        return ExampleFile.from_parent(parent, path=file_path.parent)
 
 
 class ExampleFile(pytest.File):
@@ -109,7 +107,7 @@ class ExmapleItem(pytest.Item):
 
     def runtest(self) -> None:
         """Run the test."""
-        ExampleRunner(self.compose_file).handle_run("run", "example")
+        ExampleRunner(self.compose_file).handle_run("run", "--rm", "example")
 
     def repr_failure(self, excinfo):
         """Called when self.runtest() raises an exception."""
