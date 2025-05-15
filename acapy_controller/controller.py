@@ -172,8 +172,26 @@ def params(**kwargs) -> Mapping[str, Any]:
     }
 
 
+def omit_none(mapping: Mapping[str, Any] | None = None, **kwargs):
+    """Filter out none values from a mapping."""
+    if mapping and kwargs:
+        raise ValueError("Either pass a dict or use kwargs but not both")
+
+    if kwargs:
+        mapping = kwargs
+
+    if not mapping:
+        raise ValueError("Expected mapping or kwargs")
+
+    return {key: value for key, value in mapping.items() if value is not None}
+
+
 class ControllerError(Exception):
     """Raised on error in controller."""
+
+
+class ControllerTimeoutError(ControllerError, asyncio.TimeoutError):
+    """Raised on timout waiting for event."""
 
 
 class Controller:
@@ -685,7 +703,7 @@ class Controller:
                 timeout=timeout,
             )
         except asyncio.TimeoutError:
-            raise ControllerError(
+            raise ControllerTimeoutError(
                 f"Record from {self.label} with topic {topic} and values\n\t{values}\n"
                 "not received before timeout"
             ) from None

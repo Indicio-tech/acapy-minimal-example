@@ -7,7 +7,7 @@ from secrets import randbelow, token_hex
 from typing import Any, Dict, List, Mapping, Optional, Tuple, Type, Union
 from uuid import uuid4
 
-from .controller import Controller, ControllerError, MinType, Minimal, params
+from .controller import Controller, ControllerError, MinType, Minimal, omit_none, params
 from .onboarding import get_onboarder
 
 
@@ -454,7 +454,8 @@ async def indy_anoncred_credential_artifacts(
     cred_def_tag: Optional[str] = None,
     support_revocation: bool = False,
     revocation_registry_size: Optional[int] = None,
-    issuerID: Optional[str] = None,
+    issuer_id: Optional[str] = None,
+    endorser_connection_id: Optional[str] = None,
 ):
     """Prepare credential artifacts for indy anoncreds."""
     # Get wallet type
@@ -466,7 +467,7 @@ async def indy_anoncred_credential_artifacts(
 
     # If using wallet=askar-anoncreds:
     if anoncreds_wallet:
-        if issuerID is None:
+        if issuer_id is None:
             raise ControllerError(
                 "If using askar-anoncreds wallet, issuerID must be specified."
             )
@@ -477,34 +478,58 @@ async def indy_anoncred_credential_artifacts(
                 json={
                     "schema": {
                         "attrNames": attributes,
-                        "issuerId": issuerID,
+                        "issuerId": issuer_id,
                         "name": schema_name or "minimal-" + token_hex(8),
                         "version": schema_version or "1.0",
                     },
+                    "options": omit_none(endorser_connection_id=endorser_connection_id),
                 },
                 response=SchemaResultAnoncreds,
             )
         ).schema_state
+
+        if endorser_connection_id:
+            await agent.event_with_values(
+                "endorse_transaction", state="transaction_acked"
+            )
 
         cred_def = (
             await agent.post(
                 "/anoncreds/credential-definition",
                 json={
                     "credential_definition": {
-                        "issuerId": issuerID,
+                        "issuerId": issuer_id,
                         "schemaId": schema.schema_id,
                         "tag": cred_def_tag or token_hex(8),
                     },
-                    "options": {
-                        "revocation_registry_size": (
+                    "options": omit_none(
+                        endorser_connection_id=endorser_connection_id,
+                        revocation_registry_size=(
                             revocation_registry_size if revocation_registry_size else 10
                         ),
-                        "support_revocation": support_revocation,
-                    },
+                        support_revocation=support_revocation,
+                    ),
                 },
                 response=CredDefResultAnoncreds,
             )
         ).credential_definition_state
+
+        if endorser_connection_id:
+            # Cred Def
+            await agent.event_with_values(
+                "endorse_transaction", timeout=120, state="transaction_acked"
+            )
+            # Rev Reg Def x2
+            await agent.event_with_values(
+                "endorse_transaction", timeout=60, state="transaction_acked"
+            )
+            await agent.event_with_values(
+                "endorse_transaction", timeout=60, state="transaction_acked"
+            )
+            # Init list
+            await agent.event_with_values(
+                "endorse_transaction", timeout=60, state="transaction_acked"
+            )
 
         return schema, cred_def
 

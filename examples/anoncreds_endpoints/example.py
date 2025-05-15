@@ -36,7 +36,7 @@ async def main():
                 alice,
                 ["firstname", "lastname"],
                 support_revocation=True,
-                issuerID=alice_did.did,
+                issuer_id=alice_did.did,
             )
 
         with section("Issue credential to Bob"):
