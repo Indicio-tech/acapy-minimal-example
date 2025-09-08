@@ -18,9 +18,9 @@ blessings = "^1.7"
 models = ["pydantic"]
 
 [tool.poetry.dev-dependencies]
-ruff = "^0.12.0"
-pre-commit = "^4.2.0"
-pytest = "^8.4.1"
+ruff = "^0.12.12"
+pre-commit = "^4.3.0"
+pytest = "^8.4.2"
 pytest-asyncio = "^1.0.0"
 
 [tool.pytest.ini_options]
