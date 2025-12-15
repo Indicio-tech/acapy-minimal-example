@@ -14,13 +14,13 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository == 'openwallet-foundation/acapy-minimal-example' && github.event_name == 'push' && startsWith(github.ref, 'refs/heads/main')
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0 # fetch all commits/branches
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: 3.x
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           key: ${{ github.ref }}
           path: .cache
